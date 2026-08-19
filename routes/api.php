@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('dashboard')->group(function () {
+    // Route custom selalu didaftarkan lebih dulu untuk menghindari
+    // shadowing oleh segmen {param} (pelajaran dari modul PO HQ).
+    Route::get('/periods', [DashboardController::class, 'periods']);
+
     // Agregat satu periode (default: periode terbaru di data)
     Route::get('/pnl-summary', [DashboardController::class, 'pnlSummary']);
 

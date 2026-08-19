@@ -12,7 +12,7 @@
                 @include('po-hq.partials.form-fields')
 
                 <div class="mt-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
+                    <button type="submit" class="btn btn-brand btn-sm">Simpan</button>
                     <a href="{{ route('po-hq.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
                 </div>
             </form>

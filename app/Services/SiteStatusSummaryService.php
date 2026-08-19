@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Site;
 use App\Models\SiteMonthlyMetric;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 /**
@@ -24,11 +25,21 @@ use RuntimeException;
 class SiteStatusSummaryService
 {
     /**
+     * Hasil agregasi di-cache per periode (data hanya berubah saat import).
+     * Key diberi prefix versi yang dinaikkan lewat invalidateCache() setiap
+     * selesai import, sehingga entri lama tidak pernah dipakai lagi dan
+     * pergantian periode di UI terasa instan.
+     */
+    private const CACHE_VERSION_KEY = 'dashboard.cache_version';
+    private const CACHE_TTL_SECONDS = 60 * 60 * 12;
+
+    /**
      * Ringkasan distribusi status + total keuangan untuk satu periode.
      * Jika bulan/tahun null, pakai periode terbaru yang ada di data.
      *
      * Semua count & total dihitung dalam SATU query agregat (CASE WHEN)
      * di tabel site_monthly_metrics — bukan beberapa query terpisah.
+     * Hasilnya di-cache; panggil invalidateCache() setelah import data baru.
      *
      * Kebijakan anomali (is_anomaly = true):
      * - total_revenue/cost/profit_loss MENGECUALIKAN baris anomali
@@ -49,6 +60,19 @@ class SiteStatusSummaryService
             [$bulan, $tahun] = $this->latestPeriod();
         }
 
+        return Cache::remember(
+            $this->key("summary.{$tahun}.{$bulan}"),
+            self::CACHE_TTL_SECONDS,
+            fn () => $this->computeSummary($bulan, $tahun)
+        );
+    }
+
+    /**
+     * Perhitungan agregat asli (tanpa cache): satu query CASE WHEN +
+     * count total site.
+     */
+    private function computeSummary(int $bulan, int $tahun): array
+    {
         $totalSites = Site::count();
 
         // Satu query agregat: COUNT(DISTINCT CASE ...) untuk status site
@@ -87,6 +111,29 @@ class SiteStatusSummaryService
     }
 
     /**
+     * Periode-periode yang benar-benar ada di tabel metrik (distinct
+     * bulan+tahun), terurut dari terbaru ke terlama. Dipakai UI dashboard
+     * untuk mengisi dropdown pilihan periode — dinamis, bukan hardcode.
+     *
+     * @return array<int, array{bulan: int, tahun: int}>
+     */
+    public function availablePeriods(): array
+    {
+        return Cache::remember(
+            $this->key('periods'),
+            self::CACHE_TTL_SECONDS,
+            fn () => SiteMonthlyMetric::query()
+                ->select('bulan', 'tahun')
+                ->distinct()
+                ->orderByDesc('tahun')
+                ->orderByDesc('bulan')
+                ->get()
+                ->map(fn ($p) => ['bulan' => (int) $p->bulan, 'tahun' => (int) $p->tahun])
+                ->all()
+        );
+    }
+
+    /**
      * Periode (bulan, tahun) terbaru yang ada di tabel metrik,
      * dihitung dinamis — bukan hardcode.
      *
@@ -94,17 +141,13 @@ class SiteStatusSummaryService
      */
     public function latestPeriod(): array
     {
-        $latest = SiteMonthlyMetric::query()
-            ->select('bulan', 'tahun')
-            ->orderByDesc('tahun')
-            ->orderByDesc('bulan')
-            ->first();
+        $periods = $this->availablePeriods();
 
-        if ($latest === null) {
+        if ($periods === []) {
             throw new RuntimeException('Tabel site_monthly_metrics masih kosong; jalankan import terlebih dahulu.');
         }
 
-        return [(int) $latest->bulan, (int) $latest->tahun];
+        return [$periods[0]['bulan'], $periods[0]['tahun']];
     }
 
     /**
@@ -115,6 +158,15 @@ class SiteStatusSummaryService
      * @return array<int, array{bulan: int, tahun: int}>
      */
     public function periodRange(): array
+    {
+        return Cache::remember(
+            $this->key('period_range'),
+            self::CACHE_TTL_SECONDS,
+            fn () => $this->computePeriodRange()
+        );
+    }
+
+    private function computePeriodRange(): array
     {
         $min = SiteMonthlyMetric::query()
             ->select('bulan', 'tahun')
@@ -148,5 +200,26 @@ class SiteStatusSummaryService
         }
 
         return $periods;
+    }
+
+    /**
+     * Naikkan versi key cache sehingga semua entri agregat lama tidak
+     * dipakai lagi. Dipanggil setelah import data baru selesai.
+     */
+    public function invalidateCache(): void
+    {
+        Cache::put(
+            self::CACHE_VERSION_KEY,
+            (int) Cache::get(self::CACHE_VERSION_KEY, 1) + 1,
+            self::CACHE_TTL_SECONDS
+        );
+    }
+
+    /** Key cache ber-prefix versi agar invalidasi murah (tanpa tag). */
+    private function key(string $suffix): string
+    {
+        $version = (int) Cache::get(self::CACHE_VERSION_KEY, 1);
+
+        return "dashboard.v{$version}.{$suffix}";
     }
 }

@@ -86,6 +86,9 @@ class ImportSimawarPnL extends Command
         $elapsed = round(microtime(true) - $startTime, 2);
         $peakMemory = round((memory_get_peak_usage(true) - $startMemory) / 1024 / 1024, 2);
 
+        // Data berubah -> agregat dashboard yang di-cache harus dibuang.
+        app(\App\Services\SiteStatusSummaryService::class)->invalidateCache();
+
         // Report
         $stats = $import->getStats();
 

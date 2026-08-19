@@ -16,6 +16,19 @@ class DashboardController extends Controller
     }
 
     /**
+     * GET /api/dashboard/periods
+     *
+     * Daftar periode (bulan+tahun) yang tersedia di data, terurut dari
+     * terbaru. Dipakai dropdown pemilih periode di UI dashboard.
+     */
+    public function periods(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->summaryService->availablePeriods(),
+        ]);
+    }
+
+    /**
      * GET /api/dashboard/pnl-summary?bulan=&tahun=
      *
      * Agregat satu periode: jumlah site Profit/Loss/Tidak Aktif +

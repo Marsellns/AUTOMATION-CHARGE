@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">PO HQ</h1>
         @role('admin')
-            <a href="{{ route('po-hq.create') }}" class="btn btn-primary btn-sm">+ Tambah PO</a>
+            <a href="{{ route('po-hq.create') }}" class="btn btn-brand btn-sm">+ Tambah PO</a>
         @endrole
     </div>
 

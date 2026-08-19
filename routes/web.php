@@ -1,10 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\DashboardViewController;
 use App\Http\Controllers\PoHqController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/po-hq');
+Route::redirect('/', '/dashboard');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -13,6 +14,9 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // Dashboard utama (read-only): semua role terautentikasi bisa lihat.
+    Route::get('/dashboard', [DashboardViewController::class, 'index'])->name('dashboard');
 
     // Sumber data DataTables — WAJIB dideklarasikan sebelum resource agar
     // tidak tertangkap oleh route /po-hq/{po_hq}.
