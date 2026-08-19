@@ -29,3 +29,6 @@ Thumbs.db
 # Data files - do not commit
 *.xlsx
 /storage/app/imports/
+
+# Screenshots
+*.png
