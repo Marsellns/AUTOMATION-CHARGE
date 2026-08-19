@@ -55,6 +55,7 @@ class SiteMonthlyMetric extends Model
             'revenue' => 'decimal:2',
             'cost' => 'decimal:2',
             'profit_loss' => 'decimal:2',
+            'is_anomaly' => 'boolean',
         ];
     }
 
