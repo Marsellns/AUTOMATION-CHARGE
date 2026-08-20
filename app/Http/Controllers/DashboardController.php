@@ -45,23 +45,55 @@ class DashboardController extends Controller
     }
 
     /**
-     * GET /api/dashboard/pnl-summary/{status}?bulan=&tahun=
+     * GET /api/dashboard/pnl-summary/{status}?bulan=&tahun=&page=
      *
      * Daftar site berstatus Profit / Loss / TidakAktif pada periode tsb,
      * paginated 25/halaman, lengkap dengan nama site, region, dan nilai
      * revenue/cost/profit_loss bulan tersebut (null untuk TidakAktif).
+     *
+     * Hasil per halaman di-cache (versi naik tiap import) sehingga klik
+     * segmen donut dan navigasi halaman drawer tidak menghitung ulang
+     * query join/paginate yang berat.
      */
     public function pnlSummaryByStatus(Request $request, string $status): JsonResponse
     {
         $status = $this->normalizeStatus($status);
         [$bulan, $tahun] = $this->resolvePeriod($request);
+        $page = max(1, (int) $request->query('page', 1));
 
+        $sites = $this->summaryService->sitesByStatus(
+            $status,
+            $bulan,
+            $tahun,
+            $page,
+            fn () => $this->computeSitesByStatus($status, $bulan, $tahun, $page)
+        );
+
+        return response()->json([
+            'data' => [
+                'status' => $status,
+                'bulan' => $bulan,
+                'tahun' => $tahun,
+                'sites' => $sites,
+            ],
+        ]);
+    }
+
+    /**
+     * Perhitungan asli daftar site per status untuk satu halaman
+     * (dipanggil hanya saat cache miss). Dikembalikan sebagai array
+     * polos agar mudah disimpan ke cache.
+     *
+     * @return array{data: array, total: int, per_page: int, current_page: int, last_page: int}
+     */
+    private function computeSitesByStatus(string $status, int $bulan, int $tahun, int $page): array
+    {
         if ($status === 'TidakAktif') {
-            $sites = Site::query()
+            $paginator = Site::query()
                 ->inactiveIn($bulan, $tahun)
                 ->with('region')
                 ->orderBy('sites.site_id')
-                ->paginate(25)
+                ->paginate(25, ['*'], 'page', $page)
                 ->through(fn (Site $site) => $this->formatSiteRow($site, null));
         } else {
             // Profit/Loss: satu query JOIN sites <-> metrik periode tsb.
@@ -69,7 +101,7 @@ class DashboardController extends Controller
             // per periode, jadi tidak ada duplikasi hasil join.
             $operator = $status === 'Profit' ? '>' : '<=';
 
-            $sites = Site::query()
+            $paginator = Site::query()
                 ->join('site_monthly_metrics as m', function ($join) use ($bulan, $tahun) {
                     $join->on('m.site_id', '=', 'sites.id')
                         ->where('m.bulan', $bulan)
@@ -89,18 +121,17 @@ class DashboardController extends Controller
                 // Profit: terbaik dulu; Loss: kerugian terbesar dulu
                 ->orderBy('m.profit_loss', $status === 'Profit' ? 'desc' : 'asc')
                 ->orderBy('sites.site_id')
-                ->paginate(25)
+                ->paginate(25, ['*'], 'page', $page)
                 ->through(fn (Site $site) => $this->formatSiteRow($site, $site));
         }
 
-        return response()->json([
-            'data' => [
-                'status' => $status,
-                'bulan' => $bulan,
-                'tahun' => $tahun,
-                'sites' => $sites,
-            ],
-        ]);
+        return [
+            'data' => $paginator->items(),
+            'total' => $paginator->total(),
+            'per_page' => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+        ];
     }
 
     /**

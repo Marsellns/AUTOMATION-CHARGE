@@ -111,6 +111,22 @@ class SiteStatusSummaryService
     }
 
     /**
+     * Daftar site per status (Profit/Loss/TidakAktif) untuk satu halaman
+     * drawer, di-cache dengan skema versi yang sama seperti summary().
+     * Payload $compute sudah berupa array siap-serialisasi (hasil paginate
+     * ->through(...)), sehingga hit cache langsung dikembalikan tanpa
+     * menyentuh database — klik segmen donut & pindah halaman jadi instan.
+     */
+    public function sitesByStatus(string $status, int $bulan, int $tahun, int $page, callable $compute): array
+    {
+        return Cache::remember(
+            $this->key("sites.{$status}.{$tahun}.{$bulan}.p{$page}"),
+            self::CACHE_TTL_SECONDS,
+            $compute
+        );
+    }
+
+    /**
      * Periode-periode yang benar-benar ada di tabel metrik (distinct
      * bulan+tahun), terurut dari terbaru ke terlama. Dipakai UI dashboard
      * untuk mengisi dropdown pilihan periode — dinamis, bukan hardcode.

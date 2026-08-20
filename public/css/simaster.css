@@ -203,3 +203,9 @@ h1, h2, h3, h4, h5, h6,
 .card.is-loading {
     opacity: 0.5;
 }
+#drawer-list {
+    transition: opacity 0.15s ease;
+}
+#drawer-list.is-loading {
+    opacity: 0.5;
+}

@@ -181,6 +181,11 @@ $(function () {
     const summaryCache = new Map();
     let summaryAbort = null;
 
+    // Cache klien daftar site drawer per status+periode+halaman, diisi saat
+    // open & warming background, supaya klik donut / pindah halaman instan.
+    const drawerCache = new Map();
+    let drawerAbort = null;
+
     const drawerEl = document.getElementById('siteDrawer');
     const drawer = new bootstrap.Offcanvas(drawerEl);
     const siteModal = new bootstrap.Modal('#siteModal');
@@ -283,6 +288,7 @@ $(function () {
         if (cached) {
             renderDonut(cached);
             renderSummary(cached);
+            warmDrawerFirstPages();
             return;
         }
 
@@ -300,6 +306,7 @@ $(function () {
             summaryCache.set(key, data);
             renderDonut(data);
             renderSummary(data);
+            warmDrawerFirstPages();
         } catch (err) {
             if (err.name !== 'AbortError') $('#period-caption').text(err.message);
         } finally {
@@ -354,30 +361,94 @@ $(function () {
 
     // ======================= Level 2: drawer daftar site =======================
 
+    const drawerKey = (statusKey, bulan, tahun, page) => `${statusKey}|${tahun}-${bulan}|p${page}`;
+    const statusUrl = (statusKey, page) =>
+        `/api/dashboard/pnl-summary/${statusKey}?bulan=${current.bulan}&tahun=${current.tahun}&page=${page}`;
+
     async function openDrawer(statusKey, page = 1) {
-        drawerState = { status: statusKey, page, lastPage: 1 };
+        drawerState = { status: statusKey, page, lastPage: drawerState.lastPage };
         const def = STATUS_DEFS.find((s) => s.key === statusKey);
 
         $('#drawer-title').html(
             `Site ${esc(def.label)} <span class="badge text-bg-secondary" id="drawer-count"></span>` +
             `<div class="small text-body-secondary fw-normal">${periodLabel(current.bulan, current.tahun)}</div>`
         );
-        $('#drawer-list').text('Memuat...');
-        $('#drawer-pagination').empty();
         drawer.show();
 
+        const key = drawerKey(statusKey, current.bulan, current.tahun, page);
+        const cached = drawerCache.get(key);
+
+        // Sudah di cache klien (load sebelumnya / warming / halaman tetangga).
+        if (cached) {
+            renderDrawerList(cached);
+            prefetchDrawerNeighbors(statusKey, page);
+            return;
+        }
+
+        // Batalkan request drawer lama yang masih berjalan (anti-race).
+        if (drawerAbort) drawerAbort.abort();
+        drawerAbort = new AbortController();
+
+        $('#drawer-list').text('Memuat...');
+        $('#drawer-pagination').empty();
+        setDrawerLoading(true);
+
         try {
-            const { data } = await fetchJson(
-                `/api/dashboard/pnl-summary/${statusKey}?bulan=${current.bulan}&tahun=${current.tahun}&page=${page}`
-            );
+            const { data } = await fetchJson(statusUrl(statusKey, page), drawerAbort.signal);
 
             // Guard: user keburu ganti periode/status saat request berjalan.
             if (drawerState.status !== statusKey || drawerState.page !== page) return;
 
+            drawerCache.set(key, data);
             renderDrawerList(data);
+            prefetchDrawerNeighbors(statusKey, page);
         } catch (err) {
-            $('#drawer-list').text(err.message);
+            if (err.name !== 'AbortError') $('#drawer-list').text(err.message);
+        } finally {
+            setDrawerLoading(false);
         }
+    }
+
+    function setDrawerLoading(on) {
+        $('#drawer-list').toggleClass('is-loading', on);
+    }
+
+    // Ambil halaman tetangga (sebelumnya/berikutnya) di background begitu
+    // satu halaman tampil, sehingga klik navigasi berikutnya render instan.
+    function prefetchDrawerNeighbors(statusKey, page) {
+        const lastPage = drawerState.lastPage;
+
+        [page - 1, page + 1].forEach((p) => {
+            if (p < 1 || p > lastPage) return;
+            const key = drawerKey(statusKey, current.bulan, current.tahun, p);
+            if (drawerCache.has(key)) return;
+
+            fetchJson(statusUrl(statusKey, p))
+                .then(({ data }) => drawerCache.set(key, data))
+                .catch(() => { /* prefetch gagal tidak kritis */ });
+        });
+    }
+
+    // Warming halaman pertama ketiga status untuk periode aktif di background,
+    // sehingga klik segmen donut pertama kali tidak menunggu query berat.
+    function warmDrawerFirstPages() {
+        const { bulan, tahun } = current;
+
+        const run = async () => {
+            for (const def of STATUS_DEFS) {
+                const key = drawerKey(def.key, bulan, tahun, 1);
+                if (drawerCache.has(key)) continue;
+                try {
+                    const { data } = await fetchJson(
+                        `/api/dashboard/pnl-summary/${def.key}?bulan=${bulan}&tahun=${tahun}&page=1`
+                    );
+                    drawerCache.set(key, data);
+                } catch (e) { /* warming gagal tidak kritis; openDrawer tetap fetch */ }
+            }
+        };
+
+        if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 4000 });
+        else setTimeout(run, 1500);
     }
 
     function renderDrawerList(data) {
