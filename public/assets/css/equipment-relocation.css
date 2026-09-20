@@ -1,0 +1,417 @@
+/* =========================================================
+   SIMAWAR - EQUIPMENT RELOCATION
+   Page-specific styles only. Everything else (KPI cards,
+   dashboard-card, data-table, global-filter-*, buttons) is
+   inherited from assets/css/style.css so the module looks like
+   it has always been part of SIMAWAR.
+========================================================= */
+
+#equipmentRelocationPage,
+.er-modal-overlay {
+    --white: var(--bs-body-bg, #fff);
+    --page-bg: var(--bs-tertiary-bg, #f8fafc);
+    --border: var(--bs-border-color, #dbe2eb);
+    --border-soft: var(--bs-border-color, #e8edf3);
+    --text-primary: var(--bs-body-color, #17243a);
+    --text-secondary: var(--bs-secondary-color, #526175);
+    --text-muted: var(--bs-secondary-color, #64748b);
+    --primary: #db3347;
+    --filter-accent: #2563eb;
+    --filter-accent-hover: #1d4ed8;
+    --danger: #dc3545;
+    --radius: 14px;
+    --shadow-md: 0 18px 45px rgba(15, 23, 42, .2);
+}
+
+#equipmentRelocationPage { color: var(--text-primary); }
+#equipmentRelocationPage .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 22px; }
+#equipmentRelocationPage .page-eyebrow,
+#equipmentRelocationPage .section-eyebrow { display: block; margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--primary); }
+#equipmentRelocationPage .page-header h1 { margin: 0 0 6px; font-size: clamp(1.55rem, 2.2vw, 2.1rem); font-weight: 750; }
+#equipmentRelocationPage .page-description { max-width: 760px; margin: 0; color: var(--text-muted); }
+#equipmentRelocationPage .btn-primary,
+#equipmentRelocationPage .btn-secondary,
+.er-modal-overlay .btn-primary,
+.er-modal-overlay .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 7px 13px; border-radius: 9px; font-size: 13px; font-weight: 650; cursor: pointer; }
+#equipmentRelocationPage .btn-primary,
+.er-modal-overlay .btn-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); }
+#equipmentRelocationPage .btn-primary:hover,
+.er-modal-overlay .btn-primary:hover { filter: brightness(.93); }
+#equipmentRelocationPage .er-filter-trigger,
+#equipmentRelocationPage .global-filter-btn-apply {
+    background: var(--filter-accent);
+    border-color: var(--filter-accent);
+}
+#equipmentRelocationPage .er-filter-trigger:hover,
+#equipmentRelocationPage .er-filter-trigger:focus-visible,
+#equipmentRelocationPage .global-filter-btn-apply:hover,
+#equipmentRelocationPage .global-filter-btn-apply:focus-visible {
+    background: var(--filter-accent-hover);
+    border-color: var(--filter-accent-hover);
+    outline: none;
+}
+#equipmentRelocationPage .btn-secondary,
+.er-modal-overlay .btn-secondary { background: var(--white); color: var(--text-primary); border: 1px solid var(--border); }
+#equipmentRelocationPage .btn-secondary:hover,
+.er-modal-overlay .btn-secondary:hover { background: var(--page-bg); }
+#equipmentRelocationPage .btn-secondary:disabled { opacity: .45; cursor: not-allowed; }
+#equipmentRelocationPage .er-load-state { margin: 0 0 18px; padding: 11px 14px; border: 1px solid #bee3f8; border-radius: 9px; color: #075985; background: #f0f9ff; font-size: 13px; }
+#equipmentRelocationPage .er-load-state:empty { display: none; }
+#equipmentRelocationPage .er-load-state.error { border-color: #fecaca; color: #991b1b; background: #fef2f2; }
+
+#equipmentRelocationPage .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+#equipmentRelocationPage .kpi-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 13px; background: var(--white); box-shadow: 0 2px 9px rgba(15, 23, 42, .04); transition: transform .15s, border-color .15s; }
+#equipmentRelocationPage .kpi-card::before { display: none; }
+#equipmentRelocationPage .clickable-kpi { cursor: pointer; }
+#equipmentRelocationPage .clickable-kpi:hover,
+#equipmentRelocationPage .clickable-kpi:focus-visible { transform: translateY(-2px); border-color: var(--primary); outline: none; }
+#equipmentRelocationPage .kpi-icon { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 10px; font-size: 16px; }
+#equipmentRelocationPage .kpi-icon.blue { color: #1d4ed8; background: #dbeafe; }
+#equipmentRelocationPage .kpi-icon.green { color: #047857; background: #d1fae5; }
+#equipmentRelocationPage .kpi-icon.orange { color: #b45309; background: #fef3c7; }
+#equipmentRelocationPage .kpi-content { min-width: 0; }
+#equipmentRelocationPage .kpi-content span { display: block; font-size: 12px; color: var(--text-muted); }
+#equipmentRelocationPage .kpi-content h2 { margin: 4px 0 3px; font-size: 1.65rem; line-height: 1.1; font-weight: 750; }
+#equipmentRelocationPage .kpi-content small { display: block; font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+#equipmentRelocationPage .dashboard-card { min-width: 0; background: var(--white); border: 1px solid var(--border); border-radius: 13px; box-shadow: 0 2px 9px rgba(15, 23, 42, .04); }
+#equipmentRelocationPage .dashboard-card .card-header { flex: none; display: block; padding: 0 0 12px; background: transparent; border: 0; }
+#equipmentRelocationPage .dashboard-card .card-header h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+#equipmentRelocationPage .dashboard-card .card-header p { margin: 0; font-size: 12px; color: var(--text-muted); }
+#equipmentRelocationPage .chart-container { min-width: 0; }
+#equipmentRelocationPage .chart-container canvas { width: 100% !important; max-width: 100%; }
+
+#equipmentRelocationPage .data-table-section { padding: 22px; }
+#equipmentRelocationPage .table-header h3 { margin: 0 0 5px; font-size: 18px; font-weight: 700; }
+#equipmentRelocationPage .table-header p { margin: 0; font-size: 12px; color: var(--text-muted); }
+#equipmentRelocationPage .table-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin: 18px 0 12px; }
+#equipmentRelocationPage .table-toolbar-left,
+#equipmentRelocationPage .table-toolbar-right { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+#equipmentRelocationPage .search-box { display: flex; align-items: center; gap: 8px; min-width: min(360px, 100%); padding: 0 11px; border: 1px solid var(--border); border-radius: 9px; color: var(--text-muted); background: var(--white); }
+#equipmentRelocationPage .search-box input { flex: 1; min-width: 0; height: 38px; border: 0; outline: 0; color: var(--text-primary); background: transparent; font-size: 13px; }
+#equipmentRelocationPage .table-rows-selector { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); }
+#equipmentRelocationPage .table-rows-selector select { border: 1px solid var(--border); border-radius: 7px; padding: 6px; color: var(--text-primary); background: var(--white); }
+#equipmentRelocationPage .table-info { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; font-size: 12px; color: var(--text-muted); }
+#equipmentRelocationPage .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#equipmentRelocationPage .data-table th { padding: 11px 10px; white-space: nowrap; text-align: left; border-bottom: 1px solid var(--border); background: var(--page-bg); color: var(--text-secondary); }
+#equipmentRelocationPage .data-table td { padding: 10px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+#equipmentRelocationPage .data-table tbody tr:hover { background: var(--page-bg); }
+#equipmentRelocationPage .data-table tbody td:not(:first-child) { cursor: pointer; }
+#equipmentRelocationPage .table-status { display: inline-block; padding: 4px 8px; border-radius: 999px; white-space: nowrap; font-size: 11px; font-weight: 700; }
+#equipmentRelocationPage .status-success { color: #047857; background: #d1fae5; }
+#equipmentRelocationPage .status-danger { color: #b91c1c; background: #fee2e2; }
+#equipmentRelocationPage .status-warning { color: #92400e; background: #fef3c7; }
+#equipmentRelocationPage .status-info { color: #075985; background: #e0f2fe; }
+#equipmentRelocationPage .table-pagination-toolbar { display: flex; justify-content: flex-end; margin-top: 15px; }
+#equipmentRelocationPage .table-pagination { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+#equipmentRelocationPage .table-pagination button { min-width: 35px; }
+#equipmentRelocationPage .empty-state { text-align: center; color: var(--text-muted); padding: 36px !important; }
+
+#equipmentRelocationPage .global-filter-overlay { display: none; position: fixed; inset: 0; z-index: 10010; background: rgba(15, 23, 42, .45); justify-content: flex-end; }
+#equipmentRelocationPage .global-filter-overlay.show { display: flex; }
+#equipmentRelocationPage .global-filter-panel { width: min(390px, 100vw); height: 100%; overflow-y: auto; display: flex; flex-direction: column; background: var(--white); box-shadow: -15px 0 35px rgba(15, 23, 42, .15); }
+#equipmentRelocationPage .global-filter-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 22px; border-bottom: 1px solid var(--border); }
+#equipmentRelocationPage .global-filter-title { margin: 0; font-size: 17px; font-weight: 700; }
+#equipmentRelocationPage .global-filter-close { border: 0; background: transparent; color: var(--text-primary); font-size: 18px; cursor: pointer; }
+#equipmentRelocationPage .global-filter-body { flex: 1; padding: 20px 22px; }
+#equipmentRelocationPage .global-filter-group { margin-bottom: 17px; }
+#equipmentRelocationPage .global-filter-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 650; }
+#equipmentRelocationPage .global-filter-select { width: 100%; min-height: 39px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); background: var(--white); }
+#equipmentRelocationPage .global-filter-footer { display: flex; gap: 9px; justify-content: flex-end; padding: 17px 22px; border-top: 1px solid var(--border); }
+#equipmentRelocationPage .global-filter-btn-reset,
+#equipmentRelocationPage .global-filter-btn-apply { min-height: 37px; padding: 7px 13px; border-radius: 8px; font-weight: 650; cursor: pointer; }
+#equipmentRelocationPage .global-filter-btn-reset { border: 1px solid var(--border); color: var(--text-primary); background: var(--white); }
+#equipmentRelocationPage .global-filter-btn-apply { border: 1px solid var(--filter-accent); color: #fff; background: var(--filter-accent); }
+
+@media (max-width: 1200px) { #equipmentRelocationPage .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 800px) {
+    #equipmentRelocationPage .dashboard-grid { grid-template-columns: 1fr !important; }
+    #equipmentRelocationPage .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #equipmentRelocationPage .page-header { flex-wrap: wrap; }
+}
+@media (max-width: 540px) {
+    #equipmentRelocationPage .kpi-grid { grid-template-columns: 1fr; }
+    #equipmentRelocationPage .table-toolbar-left,
+    #equipmentRelocationPage .table-toolbar-right,
+    #equipmentRelocationPage .search-box { width: 100%; }
+    #equipmentRelocationPage .table-toolbar-right button { flex: 1; }
+    #equipmentRelocationPage .dashboard-card { padding: 15px !important; }
+}
+
+
+/* ---------------------------------------------------------
+   TABLE ACTION BUTTONS (Aksi column)
+--------------------------------------------------------- */
+
+.er-action-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.er-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.er-action-btn.er-assign-btn {
+    color: var(--primary);
+}
+.er-action-btn.er-assign-btn:hover {
+    background: #eff6ff;
+    border-color: var(--primary);
+}
+
+.er-action-btn.er-edit-btn {
+    color: var(--primary);
+}
+.er-action-btn.er-edit-btn:hover {
+    background: #eff6ff;
+    border-color: var(--primary);
+}
+
+.er-action-btn.er-delete-btn {
+    color: var(--danger);
+}
+.er-action-btn.er-delete-btn:hover {
+    background: #fef2f2;
+    border-color: var(--danger);
+}
+
+.data-table tbody td:not(:first-child) {
+    cursor: pointer;
+}
+.data-table tbody tr:hover td:not(:first-child) {
+    background: rgba(37, 99, 235, .06);
+}
+
+
+/* ---------------------------------------------------------
+   DONOR -> ACCEPTOR movement cell
+--------------------------------------------------------- */
+
+.er-movement {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.er-movement i {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.er-movement.er-movement-pending {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+
+/* ---------------------------------------------------------
+   MODAL (Create / Edit relocation, Delete confirm)
+   Same visual language as the rest of SIMAWAR's overlays
+   (see .global-filter-overlay / .site-detail-overlay).
+--------------------------------------------------------- */
+
+.er-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 10020;
+}
+
+.er-modal {
+    width: min(720px, 96vw);
+    max-height: 90vh;
+    overflow: auto;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+}
+
+.er-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.er-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.er-modal-header p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.er-modal-close {
+    border: 1px solid var(--border);
+    background: var(--white);
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+.er-modal-close:hover {
+    background: var(--page-bg);
+}
+
+.er-modal-body {
+    padding: 22px 24px;
+}
+
+.er-modal-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+}
+
+.er-readonly-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 20px;
+    margin-bottom: 22px;
+    padding: 16px;
+    background: var(--page-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+}
+
+.er-readonly-item span {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+}
+
+.er-readonly-item strong {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.er-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.er-form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.er-form-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 7px;
+}
+
+.er-form-field input,
+.er-form-field select,
+.er-form-field textarea {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px;
+    color: var(--text-primary);
+    background: var(--white);
+    font-family: inherit;
+}
+
+.er-form-field textarea {
+    min-height: 84px;
+    padding: 10px 12px;
+    resize: vertical;
+}
+
+.er-form-hint {
+    margin: 14px 0 0;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.er-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+}
+
+.er-modal-footer .btn-primary.danger {
+    background: var(--danger);
+}
+.er-modal-footer .btn-primary.danger:hover {
+    background: #b91c1c;
+}
+
+.er-inline-error {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: var(--danger);
+    font-size: 13px;
+    display: none;
+}
+.er-inline-error.show {
+    display: block;
+}
+
+@media (max-width: 720px) {
+    .er-readonly-grid,
+    .er-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   TABLE INFO ROW (Menampilkan .../ active filter badge)
+   Sized to match the compact look used on other SIMAWAR
+   list pages (e.g. Sewa Lahan).
+--------------------------------------------------------- */
+
+#erTableResultInfo {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+#erActiveFilterBadge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: var(--filter-accent);
+}

@@ -30,5 +30,12 @@ Thumbs.db
 *.xlsx
 /storage/app/imports/
 
+# Local operational data — provision separately, never publish in source control
+/DATASET/
+/CONFIG SYSTEM/
+/public/data/equipment_inventory.json
+/public/data/equipment_relocation_inventory.json
+/storage/app/backups/
+
 # Screenshots
 *.png

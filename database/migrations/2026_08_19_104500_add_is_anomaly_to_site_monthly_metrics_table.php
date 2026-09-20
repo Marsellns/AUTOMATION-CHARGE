@@ -28,9 +28,9 @@ return new class extends Migration
             ->where('revenue', '=', 2147483647)
             ->update(['is_anomaly' => true]);
 
-        // Sanity check: jumlah yang ditandai harus persis 29 (hasil audit).
-        // Jika sumber data berubah di masa depan, angka ini bisa disesuaikan.
-        if ($flagged !== 29) {
+        // Audit 29 baris berlaku untuk database yang sudah memuat data sumber.
+        // Instalasi baru boleh memiliki tabel metrik yang masih kosong.
+        if (DB::table('site_monthly_metrics')->exists() && $flagged !== 29) {
             throw new RuntimeException(
                 "Anomali yang ditandai {$flagged} baris, diharapkan 29. Periksa ulang data sumber."
             );

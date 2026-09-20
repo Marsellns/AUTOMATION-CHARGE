@@ -62,12 +62,18 @@ class Site extends Model
     }
 
     /**
-     * Scope: site yang TIDAK punya data metrik pada bulan+tahun tertentu
-     * ("Tidak Aktif" — site baru aktif di tengah periode atau sudah berhenti).
-     * Usage: Site::inactiveIn(6, 2026)->count()
+     * Scope: site yang tidak punya data metrik pada periode yang dipilih.
+     * Jika bulan <= 0, periode berarti seluruh tahun dan baris anomali
+     * tidak dianggap sebagai data aktif.
      */
     public function scopeInactiveIn(Builder $query, int $bulan, int $tahun): Builder
     {
+        if ($bulan <= 0) {
+            return $query->whereDoesntHave('monthlyMetrics', function (Builder $metrics) use ($tahun) {
+                $metrics->where('tahun', $tahun)->where('is_anomaly', 0);
+            });
+        }
+
         return $query->whereDoesntHave('monthlyMetrics', function (Builder $metrics) use ($bulan, $tahun) {
             $metrics->where('bulan', $bulan)->where('tahun', $tahun);
         });

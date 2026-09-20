@@ -22,6 +22,8 @@ class SiteMonthlyMetric extends Model
         'tahun',
         'revenue',
         'cost',
+        'opex_freq', 'opex_isr', 'opex_trans', 'opex_power', 'opex_rm',
+        'total_direct_dep', 'rev_voice', 'rev_sms', 'rev_broath', 'rev_digi', 'rev_tapout',
     ];
 
     /**
@@ -54,6 +56,17 @@ class SiteMonthlyMetric extends Model
             'tahun' => 'integer',
             'revenue' => 'decimal:2',
             'cost' => 'decimal:2',
+            'opex_freq' => 'decimal:2',
+            'opex_isr' => 'decimal:2',
+            'opex_trans' => 'decimal:2',
+            'opex_power' => 'decimal:2',
+            'opex_rm' => 'decimal:2',
+            'total_direct_dep' => 'decimal:2',
+            'rev_voice' => 'decimal:2',
+            'rev_sms' => 'decimal:2',
+            'rev_broath' => 'decimal:2',
+            'rev_digi' => 'decimal:2',
+            'rev_tapout' => 'decimal:2',
             'profit_loss' => 'decimal:2',
             'is_anomaly' => 'boolean',
         ];

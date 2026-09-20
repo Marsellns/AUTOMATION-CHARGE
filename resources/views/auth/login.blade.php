@@ -17,6 +17,9 @@
         @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
         @endif
+        @if (session('status'))
+            <div class="alert alert-success">{{ session('status') }}</div>
+        @endif
 
         <div class="card">
             <div class="card-body">
@@ -33,6 +36,9 @@
                     </div>
                     <button type="submit" class="btn btn-brand w-100">Login</button>
                 </form>
+                <div class="text-center mt-3">
+                    <a href="{{ route('register') }}">Buat akun baru</a>
+                </div>
             </div>
         </div>
 

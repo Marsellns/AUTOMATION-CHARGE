@@ -23,9 +23,20 @@ class LoginController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            if ($user->account_status !== 'approved') {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'email' => $user->account_status === 'pending'
+                        ? 'Akun masih menunggu persetujuan admin.'
+                        : 'Akun tidak dapat digunakan.',
+                ])->onlyInput('email');
+            }
+
             $request->session()->regenerate();
 
-            return redirect()->intended('/po-hq');
+            return redirect()->route('dashboard');
         }
 
         return back()

@@ -23,11 +23,21 @@ class PoHq extends Model
         'expense_type',
         'status',
         'location',
+        'remark',
+        'update_by',
+        'source_updated_at',
     ];
 
     public const EXPENSE_TYPES = ['Capex', 'Opex'];
 
-    public const STATUSES = ['Draft', 'On Process', 'Approved', 'Rejected', 'Closed'];
+    public const STATUSES = ['Draft', 'On Process', 'Approved', 'Rejected', 'Closed', 'Overdue', 'Need Check'];
+
+    protected function casts(): array
+    {
+        return [
+            'source_updated_at' => 'datetime',
+        ];
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

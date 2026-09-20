@@ -20,8 +20,13 @@ Schedule::call(function () {
     for ($i = 0; $i < 5; $i++) {
         try {
             Http::timeout(15)->get('http://localhost/api/dashboard/periods');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Keep-alive bersifat best-effort; abaikan kegagalan.
         }
     }
 })->everyMinute()->name('dashboard-keepalive')->withoutOverlapping();
+
+Schedule::command('notifications:send-scheduled')
+    ->everyFifteenMinutes()
+    ->name('scheduled-notifications')
+    ->withoutOverlapping();

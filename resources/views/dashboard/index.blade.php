@@ -8,7 +8,7 @@
             <h1 class="h4 mb-1">Dashboard PnL Site</h1>
             <p class="text-body-secondary small mb-0" id="period-caption">Memuat periode...</p>
         </div>
-        <div style="min-width: 200px;">
+        <div style="min-width: 200px;" data-simaster-filter-panel="Filter Periode Dashboard">
             <label for="period-select" class="form-label small mb-1">Periode (bulan)</label>
             <select id="period-select" class="form-select form-select-sm" disabled>
                 <option>Memuat...</option>
@@ -23,9 +23,6 @@
                 <div class="card-header bg-white">Distribusi Status Site</div>
                 <div class="card-body">
                     <div id="status-donut" style="min-height: 340px;"></div>
-                    <p class="small text-body-secondary mb-0">
-                        Klik segmen chart untuk melihat daftar site kontributor di panel samping.
-                    </p>
                 </div>
             </div>
         </div>
@@ -85,13 +82,20 @@
     </div>
 
     {{-- Level 2: drawer samping (bukan modal fullscreen) — chart tetap terlihat --}}
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="siteDrawer" style="width: 480px;" aria-labelledby="drawer-title">
-        <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title" id="drawer-title">Daftar Site</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="siteDrawer" style="width: 640px; max-width: 90vw;" aria-labelledby="drawer-title">
+        <div class="offcanvas-header border-bottom pb-2 flex-column align-items-stretch">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="offcanvas-title" id="drawer-title">Daftar Site</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
+            </div>
+            <div class="position-relative">
+                <input type="text" class="form-control form-control-sm" id="drawer-search"
+                       placeholder="Cari Site ID atau Nama Site..." autocomplete="off">
+                <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y border-0 text-body-secondary d-none" id="drawer-search-clear" style="margin-right: 4px;" title="Hapus pencarian">&times;</button>
+            </div>
         </div>
-        <div class="offcanvas-body d-flex flex-column">
-            <div id="drawer-list" class="flex-grow-1 overflow-auto">Memuat...</div>
+        <div class="offcanvas-body d-flex flex-column pt-2">
+            <div id="drawer-list" class="flex-grow-1 overflow-auto"></div>
             <div id="drawer-pagination" class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top"></div>
         </div>
     </div>
@@ -144,6 +148,22 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="metricDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detail-modal-title">Detail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody id="detail-modal-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -166,7 +186,7 @@ $(function () {
     const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const fmt = new Intl.NumberFormat('id-ID');
 
-    const periodLabel = (b, t) => `${BULAN[b - 1]} ${t}`;
+    const periodLabel = (b, t) => b === 0 ? `Semua bulan ${t}` : `${BULAN[b - 1]} ${t}`;
     const money = (v) => (v === null || v === undefined) ? '—' : fmt.format(Math.round(v));
     const esc = (v) => $('<div>').text(v === null || v === undefined || v === '' ? '—' : String(v)).html();
 
@@ -263,7 +283,7 @@ $(function () {
 
     function renderSummary(summary) {
         $('#period-caption').text(
-            `Periode ${periodLabel(summary.bulan, summary.tahun)} — klik segmen donut untuk drilldown daftar site.`
+            `Periode ${periodLabel(summary.bulan, summary.tahun)}`
         );
         $('#fin-period').text(`(${periodLabel(summary.bulan, summary.tahun)})`);
         $('#stat-revenue').text(money(summary.total_revenue));
@@ -362,12 +382,50 @@ $(function () {
     // ======================= Level 2: drawer daftar site =======================
 
     const drawerKey = (statusKey, bulan, tahun, page) => `${statusKey}|${tahun}-${bulan}|p${page}`;
-    const statusUrl = (statusKey, page) =>
-        `/api/dashboard/pnl-summary/${statusKey}?bulan=${current.bulan}&tahun=${current.tahun}&page=${page}`;
+    const statusUrl = (statusKey, page, search = '') => {
+        let url = `/api/dashboard/pnl-summary/${statusKey}?bulan=${current.bulan}&tahun=${current.tahun}&page=${page}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        return url;
+    };
 
-    async function openDrawer(statusKey, page = 1) {
+    // --- Search state & debounce ---
+    let searchDebounceTimer = null;
+    const $searchInput = $('#drawer-search');
+    const $searchClear = $('#drawer-search-clear');
+
+    $searchInput.on('input', function () {
+        const val = this.value.trim();
+        $searchClear.toggleClass('d-none', val === '');
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+            // Reset ke halaman 1 saat search berubah
+            if (drawerState.status) {
+                openDrawer(drawerState.status, 1, val);
+            }
+        }, 300);
+    });
+
+    $searchClear.on('click', function () {
+        $searchInput.val('').trigger('input').focus();
+    });
+
+    // Reset search saat drawer ditutup
+    drawerEl.addEventListener('hidden.bs.offcanvas', () => {
+        $searchInput.val('');
+        $searchClear.addClass('d-none');
+    });
+
+    async function openDrawer(statusKey, page = 1, search = '') {
         drawerState = { status: statusKey, page, lastPage: drawerState.lastPage };
         const def = STATUS_DEFS.find((s) => s.key === statusKey);
+
+        // Update search input tanpa trigger event (kalau dipanggil dari donut klik)
+        if (search === '' && !$searchInput.is(':focus')) {
+            $searchInput.val('');
+            $searchClear.addClass('d-none');
+        }
+
+        const currentSearch = search || $searchInput.val().trim();
 
         $('#drawer-title').html(
             `Site ${esc(def.label)} <span class="badge text-bg-secondary" id="drawer-count"></span>` +
@@ -375,17 +433,37 @@ $(function () {
         );
         drawer.show();
 
+        // Jika ada search query, selalu fetch fresh (tidak cache)
+        if (currentSearch !== '') {
+            if (drawerAbort) drawerAbort.abort();
+            drawerAbort = new AbortController();
+
+            $('#drawer-list').text('Mencari...');
+            $('#drawer-pagination').empty();
+            setDrawerLoading(true);
+
+            try {
+                const { data } = await fetchJson(statusUrl(statusKey, page, currentSearch), drawerAbort.signal);
+                if (drawerState.status !== statusKey) return;
+                renderDrawerList(data);
+            } catch (err) {
+                if (err.name !== 'AbortError') $('#drawer-list').text(err.message);
+            } finally {
+                setDrawerLoading(false);
+            }
+            return;
+        }
+
+        // Tanpa search: gunakan cache biasa
         const key = drawerKey(statusKey, current.bulan, current.tahun, page);
         const cached = drawerCache.get(key);
 
-        // Sudah di cache klien (load sebelumnya / warming / halaman tetangga).
         if (cached) {
             renderDrawerList(cached);
             prefetchDrawerNeighbors(statusKey, page);
             return;
         }
 
-        // Batalkan request drawer lama yang masih berjalan (anti-race).
         if (drawerAbort) drawerAbort.abort();
         drawerAbort = new AbortController();
 
@@ -395,8 +473,6 @@ $(function () {
 
         try {
             const { data } = await fetchJson(statusUrl(statusKey, page), drawerAbort.signal);
-
-            // Guard: user keburu ganti periode/status saat request berjalan.
             if (drawerState.status !== statusKey || drawerState.page !== page) return;
 
             drawerCache.set(key, data);
@@ -413,8 +489,6 @@ $(function () {
         $('#drawer-list').toggleClass('is-loading', on);
     }
 
-    // Ambil halaman tetangga (sebelumnya/berikutnya) di background begitu
-    // satu halaman tampil, sehingga klik navigasi berikutnya render instan.
     function prefetchDrawerNeighbors(statusKey, page) {
         const lastPage = drawerState.lastPage;
 
@@ -429,8 +503,6 @@ $(function () {
         });
     }
 
-    // Warming halaman pertama ketiga status untuk periode aktif di background,
-    // sehingga klik segmen donut pertama kali tidak menunggu query berat.
     function warmDrawerFirstPages() {
         const { bulan, tahun } = current;
 
@@ -460,29 +532,43 @@ $(function () {
         const $list = $('#drawer-list').empty();
 
         if (!sites.data.length) {
-            $list.append('<div class="text-body-secondary small">Tidak ada site pada status ini.</div>');
+            const searchVal = $searchInput.val().trim();
+            $list.append(
+                searchVal
+                    ? `<div class="text-body-secondary small py-3 text-center">Tidak ditemukan site dengan kata kunci "<b>${esc(searchVal)}</b>".</div>`
+                    : '<div class="text-body-secondary small py-3 text-center">Tidak ada site pada status ini.</div>'
+            );
         }
 
         sites.data.forEach((site) => {
-            const financial =
-                site.profit_loss === null
-                    ? '<span class="text-body-secondary small">Tidak ada data di periode ini</span>'
-                    : `<span class="small">PnL: <b>${money(site.profit_loss)}</b></span>
-                       <span class="small text-body-secondary ms-2">Rev: ${money(site.revenue)} · Cost: ${money(site.cost)}</span>`;
+            const regionLabel = site.region
+                ? `${esc(site.region.kode)}${site.region.nama ? ' · ' + esc(site.region.nama) : ''}`
+                : '—';
+
+            let financialHtml;
+            if (site.profit_loss === null) {
+                financialHtml = '<span class="text-body-secondary small">Tidak ada data di periode ini</span>';
+            } else {
+                const pnlClass = site.profit_loss > 0 ? 'stat-profit' : 'stat-loss';
+                financialHtml = `
+                    <div class="fw-semibold ${pnlClass}">PnL: ${money(site.profit_loss)}</div>
+                    <div class="small text-body-secondary">Rev: ${money(site.revenue)}</div>
+                    <div class="small text-body-secondary">Cost: ${money(site.cost)}</div>`;
+            }
 
             const $item = $(`
                 <div class="drawer-item border rounded p-2 mb-2" role="button" data-site="${esc(site.site_id)}">
                     <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold">${esc(site.site_id)} <span class="badge text-bg-light border">${esc(site.region ? site.region.kode : '—')}</span></div>
-                            <div class="small text-body-secondary">${esc(site.site_name)}</div>
+                        <div class="flex-grow-1 me-3">
+                            <div class="fw-semibold">${esc(site.site_id)}</div>
+                            <div class="small">${esc(site.site_name)}</div>
+                            <div class="small text-body-secondary">${regionLabel}</div>
                         </div>
-                        <div class="text-end">${financial}</div>
+                        <div class="text-end flex-shrink-0">${financialHtml}</div>
                     </div>
                 </div>
             `);
 
-            // Level 2 -> Level 3: klik site -> modal detail.
             $item.on('click', () => openSiteDetail(site.site_id));
             $list.append($item);
         });
@@ -499,13 +585,14 @@ $(function () {
             return;
         }
 
+        const currentSearch = $searchInput.val().trim();
         $pag.append(`
             <button class="btn btn-outline-secondary btn-sm" id="drawer-prev" ${page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button>
             <span class="small text-body-secondary">Halaman ${page} / ${lastPage}</span>
             <button class="btn btn-outline-secondary btn-sm" id="drawer-next" ${page >= lastPage ? 'disabled' : ''}>Berikutnya ›</button>
         `);
-        $('#drawer-prev').on('click', () => openDrawer(drawerState.status, page - 1));
-        $('#drawer-next').on('click', () => openDrawer(drawerState.status, page + 1));
+        $('#drawer-prev').on('click', () => openDrawer(drawerState.status, page - 1, currentSearch));
+        $('#drawer-next').on('click', () => openDrawer(drawerState.status, page + 1, currentSearch));
     }
 
     // ======================= Level 3: modal detail site =======================
@@ -605,18 +692,46 @@ $(function () {
             const anomalyBadge = h.is_anomaly
                 ? ' <span class="badge status-badge badge-anomaly" title="Revenue bulan ini = INT32 max (diduga overflow di sumber data)">⚠ Anomali</span>'
                 : '';
+            const createDetailButton = (title, details, total) => {
+                const $button = $('<button>', {
+                    type: 'button',
+                    class: 'btn btn-link btn-sm p-0 detail-value',
+                    title: `Lihat detail ${title}`,
+                }).text(`${money(total)} +`);
 
-            $body.append(`
+                $button.data({
+                    title: `${title} Details — ${h.periode}`,
+                    details,
+                });
+
+                return $button;
+            };
+
+            const $row = $(`
                 <tr>
                     <td>${esc(h.periode)}</td>
-                    <td class="text-end">${money(h.revenue)}</td>
-                    <td class="text-end">${money(h.cost)}</td>
+                    <td class="text-end revenue-detail-cell"></td>
+                    <td class="text-end cost-detail-cell"></td>
                     <td class="text-end fw-semibold">${money(h.profit_loss)}</td>
                     <td class="text-center">${statusBadge}${anomalyBadge}</td>
                 </tr>
             `);
+
+            $row.find('.revenue-detail-cell').append(createDetailButton('Revenue', h.revenue_details, h.revenue));
+            $row.find('.cost-detail-cell').append(createDetailButton('Cost', h.cost_details, h.cost));
+            $body.append($row);
         });
     }
+
+    $(document).on('click', '.detail-value', function () {
+        const details = $(this).data('details') || {};
+        const rows = Object.entries(details).map(([label, value]) =>
+            `<tr><th>${esc(label)}</th><td class="text-end">${value === null ? '—' : `Rp ${money(value)}`}</td></tr>`
+        ).join('');
+        $('#detail-modal-title').text($(this).data('title'));
+        $('#detail-modal-body').html(rows || '<tr><td class="text-center">—</td></tr>');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('metricDetailModal')).show();
+    });
 
     // ======================= Bootstrap awal =======================
     // Prefetch jalan paralel dengan load awal agar cache klien cepat hangat.

@@ -13,18 +13,23 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
+    /** Nilai sentinel INT32 max yang menandakan data sumber tidak valid. */
+    private const ANOMALY_SENTINEL = 2147483647;
+
     /**
      * Mapping 18 bulan ke heading keys.
-     * Format: [bulan, tahun, revenue_key, cost_key]
+    * Format: [bulan, tahun, revenue_key, cost_key, detail_keys]
      *
      * PENTING: Keys di sini harus match persis dengan output dari
-     * `php artisan simawar:check-headings`. Jalankan command itu dulu
-     * sebelum import penuh untuk verifikasi.
-     *
-     * Default assumption: Maatwebsite Str::slug($heading, '_') mengkonversi
-     * "Rev Jan-25" → "rev_jan_25", "Cost Jan-25" → "cost_jan_25"
+     * `php artisan simawar:check-headings`.
      */
     private array $monthColumns;
+
+    /**
+     * Master Site list dari Dapot (Site Owner).
+     * Format: [UPPERCASE_SITE_ID => ['site_id' => ..., 'site_name' => ...]]
+     */
+    private array $allowedSites = [];
 
     /** Cache regions yang sudah di-firstOrCreate (kode => id) */
     private array $regionCache = [];
@@ -35,11 +40,52 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
     /** Counter untuk progress reporting */
     private int $processedRows = 0;
     private int $skippedRows = 0;
+    private int $skippedNonDapot = 0;
     private int $metricsUpserted = 0;
 
-    public function __construct()
+    public function __construct(array $allowedSites = [])
     {
         $this->monthColumns = $this->buildMonthColumns();
+        if (!empty($allowedSites)) {
+            $this->setAllowedSites($allowedSites);
+        }
+    }
+
+    /**
+     * Set master sites dari Dapot dan pastikan semua site terdaftar di database.
+     */
+    public function setAllowedSites(array $allowedSites): void
+    {
+        $this->allowedSites = [];
+        foreach ($allowedSites as $key => $val) {
+            $sId = is_array($val) ? ($val['site_id'] ?? $key) : (is_string($val) ? $val : $key);
+            $sName = is_array($val) ? ($val['site_name'] ?? null) : null;
+            $cleanId = $this->cleanString($sId);
+            if (!empty($cleanId)) {
+                $upper = strtoupper($cleanId);
+                $this->allowedSites[$upper] = [
+                    'site_id'   => $cleanId,
+                    'site_name' => $this->cleanSiteName($sName),
+                ];
+            }
+        }
+
+        // Pre-seed seluruh site Dapot ke DB
+        $this->seedAllowedSitesToDatabase();
+    }
+
+    /**
+     * Pastikan semua Site dari Dapot memiliki entri di tabel `sites`.
+     */
+    private function seedAllowedSitesToDatabase(): void
+    {
+        foreach ($this->allowedSites as $siteData) {
+            $sId = $siteData['site_id'];
+            $sName = $siteData['site_name'];
+            $regionKode = strtoupper(substr($sId, 0, 3));
+            $regionId = $this->getOrCreateRegionId($regionKode);
+            $this->getOrCreateSiteId($sId, $sName, $regionId);
+        }
     }
 
     /**
@@ -81,21 +127,32 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
             return;
         }
 
+        $upperSiteId = strtoupper($siteId);
+
+        // Jika master Dapot ditentukan, hanya proses site yang terdaftar di Dapot
+        if (!empty($this->allowedSites) && !isset($this->allowedSites[$upperSiteId])) {
+            $this->skippedNonDapot++;
+            return;
+        }
+
         // 1. Extract region kode dari 3 huruf pertama Site ID
         $regionKode = strtoupper(substr($siteId, 0, 3));
 
         // 2. FirstOrCreate region (cached)
         $regionId = $this->getOrCreateRegionId($regionKode);
 
-        // 3. Clean site name
+        // 3. Clean site name (prioritaskan dari file PnL jika ada, fallback ke Dapot)
         $siteName = $this->cleanSiteName($row['site_name'] ?? null);
+        if ($siteName === null && isset($this->allowedSites[$upperSiteId]['site_name'])) {
+            $siteName = $this->allowedSites[$upperSiteId]['site_name'];
+        }
 
         // 4. UpdateOrCreate site (cached)
         $siteDbId = $this->getOrCreateSiteId($siteId, $siteName, $regionId);
 
         // 5. Loop 18 bulan: insert/update metrics
         foreach ($this->monthColumns as $monthDef) {
-            [$bulan, $tahun, $revKey, $costKey] = $monthDef;
+            [$bulan, $tahun, $revKey, $costKey, $detailKeys] = $monthDef;
 
             $revenue = $this->parseNumeric($row[$revKey] ?? null);
             $cost = $this->parseNumeric($row[$costKey] ?? null);
@@ -105,8 +162,12 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
                 continue;
             }
 
-            // profit_loss tidak dikirim: dihitung otomatis oleh event saving
-            // di model SiteMonthlyMetric (revenue - cost)
+            // profit_loss dihitung otomatis oleh event saving di model SiteMonthlyMetric (revenue - cost)
+            $details = [];
+            foreach ($detailKeys as $column => $keys) {
+                $details[$column] = $this->parseDetailValue($row, $keys);
+            }
+
             SiteMonthlyMetric::updateOrCreate(
                 [
                     'site_id' => $siteDbId,
@@ -116,6 +177,8 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
                 [
                     'revenue' => $revenue,
                     'cost'    => $cost,
+                    'is_anomaly' => $this->isAnomaly($revenue, $cost),
+                    ...$details,
                 ]
             );
 
@@ -124,9 +187,9 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         $this->processedRows++;
 
-        // Log progress setiap 1000 baris
-        if ($this->processedRows % 1000 === 0) {
-            Log::info("SimawarPnLImport progress: {$this->processedRows} sites processed, {$this->metricsUpserted} metrics upserted");
+        // Log progress setiap 500 baris yang berhasil diproses
+        if ($this->processedRows % 500 === 0) {
+            Log::info("SimawarPnLImport progress: {$this->processedRows} matching sites processed, {$this->metricsUpserted} metrics upserted");
         }
     }
 
@@ -155,8 +218,37 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
                 $tahun,
                 "rev_{$label}",   // e.g. "rev_jan_25"
                 "cost_{$label}",  // e.g. "cost_jan_25"
+                $this->detailKeys($label),
             ];
         }, $months);
+    }
+
+    private function detailKeys(string $label): array
+    {
+        return [
+            'opex_freq' => ["opexfreq_{$label}", "opex_freq_{$label}"],
+            'opex_isr' => ["opexisr_{$label}", "opex_isr_{$label}"],
+            'opex_trans' => ["opextrans_{$label}", "opex_trans_{$label}"],
+            'opex_power' => ["opexpower_{$label}", "opex_power_{$label}"],
+            'opex_rm' => ["opexrm_{$label}", "opex_rm_{$label}"],
+            'total_direct_dep' => ["totaldirectdep_{$label}", "total_direct_dep_{$label}"],
+            'rev_voice' => ["revvoice_{$label}", "rev_voice_{$label}"],
+            'rev_sms' => ["revsms_{$label}", "rev_sms_{$label}"],
+            'rev_broath' => ["revbroath_{$label}", "rev_broath_{$label}"],
+            'rev_digi' => ["revdigi_{$label}", "rev_digi_{$label}"],
+            'rev_tapout' => ["revtapout_{$label}", "rev_tapout_{$label}"],
+        ];
+    }
+
+    private function parseDetailValue(Collection $row, array $keys): ?float
+    {
+        foreach ($keys as $key) {
+            if ($row->has($key)) {
+                return $this->parseNumeric($row->get($key));
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -167,7 +259,7 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
         if (!isset($this->regionCache[$kode])) {
             $region = Region::firstOrCreate(
                 ['kode' => $kode],
-                ['nama' => null] // Nama diisi manual nanti
+                ['nama' => null] // Nama diisi manual / seeder
             );
             $this->regionCache[$kode] = $region->id;
         }
@@ -215,6 +307,15 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
     }
 
     /**
+     * Nilai sentinel dapat berada pada revenue maupun cost. Dalam kedua
+     * kondisi, PnL hasil pengurangan tidak layak dimasukkan ke agregat.
+     */
+    private function isAnomaly(float $revenue, float $cost): bool
+    {
+        return $revenue === self::ANOMALY_SENTINEL || $cost === self::ANOMALY_SENTINEL;
+    }
+
+    /**
      * Clean site name: null, empty, atau "-" → null.
      */
     private function cleanSiteName(mixed $value): ?string
@@ -248,11 +349,13 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
     public function getStats(): array
     {
         return [
-            'processed_rows'   => $this->processedRows,
-            'skipped_rows'     => $this->skippedRows,
-            'metrics_upserted' => $this->metricsUpserted,
-            'regions_cached'   => count($this->regionCache),
-            'sites_cached'     => count($this->siteCache),
+            'total_dapot_sites' => count($this->allowedSites),
+            'processed_rows'    => $this->processedRows,
+            'skipped_rows'      => $this->skippedRows,
+            'skipped_non_dapot' => $this->skippedNonDapot,
+            'metrics_upserted'  => $this->metricsUpserted,
+            'regions_cached'    => count($this->regionCache),
+            'sites_cached'      => count($this->siteCache),
         ];
     }
 }

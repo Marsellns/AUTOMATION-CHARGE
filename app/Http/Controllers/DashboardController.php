@@ -12,8 +12,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly SiteStatusSummaryService $summaryService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/dashboard/periods
@@ -60,14 +59,21 @@ class DashboardController extends Controller
         $status = $this->normalizeStatus($status);
         [$bulan, $tahun] = $this->resolvePeriod($request);
         $page = max(1, (int) $request->query('page', 1));
+        $search = trim((string) $request->query('search', ''));
 
-        $sites = $this->summaryService->sitesByStatus(
-            $status,
-            $bulan,
-            $tahun,
-            $page,
-            fn () => $this->computeSitesByStatus($status, $bulan, $tahun, $page)
-        );
+        // Jika ada search query, bypass cache dan query langsung
+        // (cache hanya untuk browsing tanpa filter)
+        if ($search !== '') {
+            $sites = $this->computeSitesByStatus($status, $bulan, $tahun, $page, $search);
+        } else {
+            $sites = $this->summaryService->sitesByStatus(
+                $status,
+                $bulan,
+                $tahun,
+                $page,
+                fn () => $this->computeSitesByStatus($status, $bulan, $tahun, $page)
+            );
+        }
 
         return response()->json([
             'data' => [
@@ -86,38 +92,80 @@ class DashboardController extends Controller
      *
      * @return array{data: array, total: int, per_page: int, current_page: int, last_page: int}
      */
-    private function computeSitesByStatus(string $status, int $bulan, int $tahun, int $page): array
+    private function computeSitesByStatus(string $status, int $bulan, int $tahun, int $page, string $search = ''): array
     {
         if ($status === 'TidakAktif') {
-            $paginator = Site::query()
+            $query = Site::query()
                 ->inactiveIn($bulan, $tahun)
-                ->with('region')
+                ->with('region');
+
+            // Tambahkan filter search jika ada
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('sites.site_id', 'like', "%{$search}%")
+                        ->orWhere('sites.site_name', 'like', "%{$search}%");
+                });
+            }
+
+            $paginator = $query
                 ->orderBy('sites.site_id')
                 ->paginate(25, ['*'], 'page', $page)
                 ->through(fn (Site $site) => $this->formatSiteRow($site, null));
         } else {
-            // Profit/Loss: satu query JOIN sites <-> metrik periode tsb.
-            // Unique constraint menjamin maksimal 1 baris metrik per site
-            // per periode, jadi tidak ada duplikasi hasil join.
             $operator = $status === 'Profit' ? '>' : '<=';
 
-            $paginator = Site::query()
-                ->join('site_monthly_metrics as m', function ($join) use ($bulan, $tahun) {
-                    $join->on('m.site_id', '=', 'sites.id')
-                        ->where('m.bulan', $bulan)
-                        ->where('m.tahun', $tahun);
-                })
-                ->where('m.profit_loss', $operator, 0)
-                ->select(
-                    'sites.id',
-                    'sites.site_id',
-                    'sites.site_name',
-                    'sites.region_id',
-                    'm.revenue',
-                    'm.cost',
-                    'm.profit_loss'
-                )
-                ->with('region')
+            if ($bulan > 0) {
+                // Bulan spesifik: satu baris metrik per site pada periode tersebut.
+                $query = Site::query()
+                    ->join('site_monthly_metrics as m', function ($join) use ($bulan, $tahun) {
+                        $join->on('m.site_id', '=', 'sites.id')
+                            ->where('m.bulan', $bulan)
+                            ->where('m.tahun', $tahun);
+                    })
+                    ->where('m.profit_loss', $operator, 0)
+                    ->select(
+                        'sites.id',
+                        'sites.site_id',
+                        'sites.site_name',
+                        'sites.region_id',
+                        'm.revenue',
+                        'm.cost',
+                        'm.profit_loss'
+                    )
+                    ->with('region');
+            } else {
+                // Semua bulan: gunakan agregasi tahunan per site yang sama
+                // dengan ringkasan dashboard, tanpa memasukkan baris anomali.
+                $metricsBySite = SiteMonthlyMetric::query()
+                    ->where('tahun', $tahun)
+                    ->where('is_anomaly', 0)
+                    ->selectRaw('site_id, SUM(revenue) as revenue, SUM(cost) as cost, SUM(profit_loss) as profit_loss')
+                    ->groupBy('site_id');
+
+                $query = Site::query()
+                    ->joinSub($metricsBySite, 'm', 'm.site_id', '=', 'sites.id')
+                    ->where('m.profit_loss', $operator, 0)
+                    ->select(
+                        'sites.id',
+                        'sites.site_id',
+                        'sites.site_name',
+                        'sites.region_id',
+                        'm.revenue',
+                        'm.cost',
+                        'm.profit_loss'
+                    )
+                    ->with('region');
+            }
+
+            // Tambahkan filter search jika ada
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('sites.site_id', 'like', "%{$search}%")
+                        ->orWhere('sites.site_name', 'like', "%{$search}%");
+                });
+            }
+
+            $paginator = $query
                 // Profit: terbaik dulu; Loss: kerugian terbesar dulu
                 ->orderBy('m.profit_loss', $status === 'Profit' ? 'desc' : 'asc')
                 ->orderBy('sites.site_id')
@@ -159,6 +207,21 @@ class DashboardController extends Controller
             'periode' => $m->periode_label,
             'revenue' => (float) $m->revenue,
             'cost' => (float) $m->cost,
+            'cost_details' => [
+                'OpexFreq' => $m->opex_freq === null ? null : (float) $m->opex_freq,
+                'Opex ISR' => $m->opex_isr === null ? null : (float) $m->opex_isr,
+                'Opex Trans' => $m->opex_trans === null ? null : (float) $m->opex_trans,
+                'Opex Power' => $m->opex_power === null ? null : (float) $m->opex_power,
+                'Opex RM' => $m->opex_rm === null ? null : (float) $m->opex_rm,
+                'Total Direct Dep' => $m->total_direct_dep === null ? null : (float) $m->total_direct_dep,
+            ],
+            'revenue_details' => [
+                'RevVoice' => $m->rev_voice === null ? null : (float) $m->rev_voice,
+                'RevSMS' => $m->rev_sms === null ? null : (float) $m->rev_sms,
+                'RevBroath' => $m->rev_broath === null ? null : (float) $m->rev_broath,
+                'RevDigi' => $m->rev_digi === null ? null : (float) $m->rev_digi,
+                'RevTapout' => $m->rev_tapout === null ? null : (float) $m->rev_tapout,
+            ],
             'profit_loss' => (float) $m->profit_loss,
             'status' => $m->status,
             // Untuk badge peringatan di UI drilldown bila data bulan ini mencurigakan
@@ -184,9 +247,9 @@ class DashboardController extends Controller
                     'kode' => $site->region->kode,
                     'nama' => $site->region->nama,
                 ],
-                'total_revenue' => (float) $metrics->sum('revenue'),
-                'total_cost' => (float) $metrics->sum('cost'),
-                'total_profit_loss' => (float) $metrics->sum('profit_loss'),
+                'total_revenue' => (float) $metrics->where('is_anomaly', false)->sum('revenue'),
+                'total_cost' => (float) $metrics->where('is_anomaly', false)->sum('cost'),
+                'total_profit_loss' => (float) $metrics->where('is_anomaly', false)->sum('profit_loss'),
                 'months_with_data' => $metrics->count(),
                 'history' => $history,
                 'missing_months' => $missingMonths,
@@ -204,7 +267,7 @@ class DashboardController extends Controller
     private function resolvePeriod(Request $request): array
     {
         $validated = $request->validate([
-            'bulan' => ['nullable', 'integer', 'between:1,12'],
+            'bulan' => ['nullable', 'integer', 'between:0,12'],
             'tahun' => ['nullable', 'integer', 'between:2000,2100'],
         ]);
 

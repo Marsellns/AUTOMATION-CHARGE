@@ -13,6 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust semua proxy (ngrok / load balancer) agar X-Forwarded-Proto
+        // dihormati: asset(), url(), dan redirect ikut skema https.
+        $middleware->trustProxies(at: '*');
+
+        // Security hardening enterprise: enforce HTTPS, add security headers,
+        // dan protect sensitive web routes from common attack vectors.
+        $middleware->append([
+            \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\EnforceHttps::class,
+        ]);
+
         // Alias middleware spatie/laravel-permission (role & permission)
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

@@ -12,7 +12,7 @@
 
     <div class="card">
         <div class="card-body">
-            <table id="po-table" class="display align-middle" style="width:100%">
+            <table id="po-table" class="display align-middle text-nowrap" style="width:100%">
                 <thead>
                     <tr>
                         <th>No</th>
@@ -81,6 +81,7 @@ $(function () {
     const table = new DataTable('#po-table', {
         processing: true,
         serverSide: true,
+        scrollX: true,
         ajax: { url: @json(route('po-hq.data')) },
         columns: columns,
         order: [], // urutan default diatur server (latest id)

@@ -30,7 +30,9 @@ class SiteStatusSummaryService
      * selesai import, sehingga entri lama tidak pernah dipakai lagi dan
      * pergantian periode di UI terasa instan.
      */
-    private const CACHE_VERSION_KEY = 'dashboard.cache_version';
+    // Separate cache namespace after changing all-month anomaly classification.
+    private const CACHE_VERSION_KEY = 'dashboard.cache_version.v2';
+
     private const CACHE_TTL_SECONDS = 60 * 60 * 12;
 
     /**
@@ -43,9 +45,10 @@ class SiteStatusSummaryService
      *
      * Kebijakan anomali (is_anomaly = true):
      * - total_revenue/cost/profit_loss MENGECUALIKAN baris anomali
-     * - jumlah site Profit/Loss/Active/Inactive TETAP mengikutkan baris
-     *   anomali, karena statusnya belum tentu salah — hanya nilainya
-     *   yang mencurigakan.
+     * - mode bulan spesifik tetap mengikutkan baris anomali dalam status,
+     *   karena statusnya belum tentu salah — hanya nilainya yang mencurigakan.
+     * - mode semua bulan mengecualikan baris anomali dari status agar
+     *   klasifikasinya memakai basis data yang sama dengan nilai finansial.
      *
      * @return array{
      *     bulan: int, tahun: int, total_sites: int,
@@ -75,34 +78,62 @@ class SiteStatusSummaryService
     {
         $totalSites = Site::count();
 
-        // Satu query agregat: COUNT(DISTINCT CASE ...) untuk status site
-        // (termasuk baris anomali), SUM(CASE WHEN is_anomaly = 0 ...)
-        // untuk total keuangan (tanpa baris anomali).
-        $agg = SiteMonthlyMetric::query()
-            ->where('bulan', $bulan)
-            ->where('tahun', $tahun)
-            ->selectRaw(implode(', ', [
-                'COUNT(DISTINCT CASE WHEN profit_loss > 0 THEN site_id END) as profit',
-                'COUNT(DISTINCT CASE WHEN profit_loss <= 0 THEN site_id END) as loss',
-                'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN revenue END), 0) as total_revenue',
-                'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN cost END), 0) as total_cost',
-                'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN profit_loss END), 0) as total_profit_loss',
-                'COALESCE(SUM(is_anomaly), 0) as excluded_anomaly_rows',
-            ]))
-            ->first();
+        if ($bulan > 0) {
+            // Mode bulan spesifik: satu query agregat langsung di tabel metrik.
+            // COUNT(DISTINCT CASE ...) untuk status site (termasuk baris anomali),
+            // SUM(CASE WHEN is_anomaly = 0 ...) untuk total keuangan (tanpa anomali).
+            $agg = SiteMonthlyMetric::query()
+                ->where('tahun', $tahun)
+                ->where('bulan', $bulan)
+                ->selectRaw(implode(', ', [
+                    'COUNT(DISTINCT CASE WHEN profit_loss > 0 THEN site_id END) as profit',
+                    'COUNT(DISTINCT CASE WHEN profit_loss <= 0 THEN site_id END) as loss',
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN revenue END), 0) as total_revenue',
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN cost END), 0) as total_cost',
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN profit_loss END), 0) as total_profit_loss',
+                    'COALESCE(SUM(is_anomaly), 0) as excluded_anomaly_rows',
+                ]))
+                ->first();
 
-        $profit = (int) $agg->profit;
-        $loss = (int) $agg->loss;
-        $active = $profit + $loss;
+            $profit = (int) $agg->profit;
+            $loss = (int) $agg->loss;
+        } else {
+            // Mode semua bulan: agregasi SUM(profit_loss) per site terlebih dahulu,
+            // lalu hitung jumlah site Profit (sum > 0) vs Loss (sum <= 0).
+            // Ini selaras dengan logika PnlViewController::data() yang juga
+            // menggunakan SUM per site saat bulan=all, sehingga angka yang
+            // ditampilkan di donut chart dashboard dan di tabel PnL konsisten.
+            $agg = SiteMonthlyMetric::query()
+                ->where('tahun', $tahun)
+                ->selectRaw(implode(', ', [
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN revenue END), 0) as total_revenue',
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN cost END), 0) as total_cost',
+                    'COALESCE(SUM(CASE WHEN is_anomaly = 0 THEN profit_loss END), 0) as total_profit_loss',
+                    'COALESCE(SUM(is_anomaly), 0) as excluded_anomaly_rows',
+                ]))
+                ->first();
+
+            $siteSums = SiteMonthlyMetric::query()
+                ->where('tahun', $tahun)
+                ->where('is_anomaly', 0)
+                ->selectRaw('site_id, SUM(profit_loss) as total_pnl')
+                ->groupBy('site_id')
+                ->get();
+
+            $profit = $siteSums->where('total_pnl', '>', 0)->count();
+            $loss = $siteSums->where('total_pnl', '<=', 0)->count();
+        }
+
+        $active = min($totalSites, $profit + $loss);
 
         return [
-            'bulan'     => $bulan,
-            'tahun'     => $tahun,
+            'bulan' => $bulan,
+            'tahun' => $tahun,
             'total_sites' => $totalSites,
-            'profit'    => $profit,
-            'loss'      => $loss,
-            'active'    => $active,
-            'inactive'  => $totalSites - $active,
+            'profit' => $profit,
+            'loss' => $loss,
+            'active' => $active,
+            'inactive' => $totalSites - $active,
             'total_revenue' => (float) $agg->total_revenue,
             'total_cost' => (float) $agg->total_cost,
             'total_profit_loss' => (float) $agg->total_profit_loss,

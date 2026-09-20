@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 | Format response JSON; tidak ada Blade view.
 */
 
-Route::prefix('dashboard')->group(function () {
+Route::middleware('throttle:60,1')->prefix('dashboard')->group(function () {
     // Route custom selalu didaftarkan lebih dulu untuk menghindari
     // shadowing oleh segmen {param} (pelajaran dari modul PO HQ).
     Route::get('/periods', [DashboardController::class, 'periods']);
