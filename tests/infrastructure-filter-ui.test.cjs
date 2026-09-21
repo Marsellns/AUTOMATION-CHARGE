@@ -17,6 +17,10 @@ test('Sewa Lahan and Combat chart selections use their existing lower table', ()
     assert.match(analytics, /within_180:\s*\['lease_window', '180'\]/);
     assert.match(analytics, /window\.applyInfrastructureFilter\(scope, selected\[0\], selected\[1\], root\.data\('ownership-scope'\)/);
     assert.match(analytics, /params\.set\('ownership_scope', ownershipScope\)/);
+    assert.doesNotMatch(analytics, /Status Dokumen Terbanyak/);
+    assert.doesNotMatch(analytics, /infra-priority-table/);
+    assert.match(analytics, /infra-priority-trigger/);
+    assert.match(analytics, /'priority',\s*'1'/);
 });
 
 test('Infrastructure tables expose the operational dataset columns', () => {
@@ -25,7 +29,7 @@ test('Infrastructure tables expose the operational dataset columns', () => {
 
     for (const label of [
         'Status Site', 'Area', 'NOP', 'Ownership', 'Vendor', 'Periode Awal Baru',
-        'Periode Akhir Baru', 'Masa Sewa', 'Harga Baru / Tahun', 'Total Harga Existing',
+        'Periode Akhir Baru', 'Masa Sewa', 'Harga Baru / Tahun', 'Total Harga Existing', 'Process Aging',
     ]) {
         assert.ok(sewa.includes(`<th>${label}</th>`), `Sewa Lahan is missing ${label}`);
     }
@@ -36,6 +40,21 @@ test('Infrastructure tables expose the operational dataset columns', () => {
     ]) {
         assert.ok(combat.includes(`<th>${label}</th>`), `Combat is missing ${label}`);
     }
+});
+
+test('infrastructure source formulas are replaced by derived display fields', () => {
+    const sewa = read('resources/views/infrastruktur/sewa-lahan/index.blade.php');
+    const combat = read('resources/views/infrastruktur/combat/index.blade.php');
+
+    assert.match(sewa, /data: 'lease_duration'/);
+    assert.match(sewa, /data: 'process_aging_days'/);
+    assert.match(combat, /data: 'lease_duration'/);
+    assert.match(combat, /data: 'pks_status_label'/);
+    assert.match(combat, /data: 'process_aging_days'/);
+    assert.match(combat, /data: 'next_action_label'/);
+    assert.match(combat, /data: 'priority_label'/);
+    assert.match(sewa, /startsWith\('='\)/);
+    assert.match(combat, /startsWith\('='\)/);
 });
 
 test('main-module filters opt into the shared compact drawer', () => {

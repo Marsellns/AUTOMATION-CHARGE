@@ -1994,7 +1994,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                     data-uniq="${escapeHtml(item.uniq_key)}"
                     title="Isi / Edit Data"
                 >
-                    <i class="fa-solid fa-pen"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-1 5 5-1L19 9l-4-4L4 16Z"/><path d="m13 7 4 4"/></svg>
                 </button>
 
                 ${
@@ -2006,7 +2006,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                                 data-uniq="${escapeHtml(item.uniq_key)}"
                                 title="Hapus Data"
                             >
-                                <i class="fa-solid fa-trash"></i>
+                                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>
                             </button>
                         `
                         : ""

@@ -6,7 +6,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Infrastruktur management — 01 Sewa Lahan (Renewal Eastern Jabotabek).
- * File: DATASET/Infrastruktur management/01 Sewa Lahan/Data Renewal Eastern Jabotabek.xlsx
+ * File: DATASET/02 Infrastruktur management/01 Sewa Lahan/DATABASE SIMAWAR RENEWAL.xlsx
  * Kolom "No" dan "Aksi" (artefak UI) tidak diimpor.
  */
 class SewaLahanRenewalImport extends BaseDatasetImport
@@ -33,7 +33,9 @@ class SewaLahanRenewalImport extends BaseDatasetImport
             'site_code'           => $siteCode,
             'site_name'           => $this->cleanText($row['site_name'] ?? null),
             'tahun_renewal'       => $this->parseYear($row['year'] ?? $row['tahun_renewal'] ?? null),
-            'status_dokumen'      => $this->cleanText($row['status_dokumen'] ?? $row['status'] ?? null),
+            // STATUS and STATUS DOKUMEN are different dimensions.  Do not
+            // place On Air/Off Air values into the document-status column.
+            'status_dokumen'      => $this->cleanText($row['status_dokumen'] ?? null),
             'status_perpanjangan' => $this->cleanText($row['status_perpanjangan'] ?? null),
             'no_pks_baru'         => $this->cleanText($row['nomor_pks_baru'] ?? $row['no_pks_baru'] ?? null),
             'start_date_baru'     => $this->parseDate($row['new_period_awal'] ?? $row['start_date_baru'] ?? null),

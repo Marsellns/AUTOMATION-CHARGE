@@ -35,7 +35,7 @@
                 class="btn-primary er-filter-trigger"
                 id="erOpenFilterBtn"
             >
-                <i class="fa-solid fa-filter"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z"/></svg>
                 Filter
             </button>
 
@@ -59,7 +59,7 @@
             tabindex="0"
         >
             <div class="kpi-icon blue">
-                <i class="fa-solid fa-boxes-stacked"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 4 2-4 2-4-2 4-2Zm-7 5 4 2-4 2-4-2 4-2Zm14 0 4 2-4 2-4-2 4-2ZM5 14l4 2-4 2-4-2 4-2Zm14 0 4 2-4 2-4-2 4-2Zm-7-3 4 2-4 2-4-2 4-2Zm0 6 4 2-4 2-4-2 4-2Z"/></svg>
             </div>
 
             <div class="kpi-content">
@@ -78,7 +78,7 @@
             tabindex="0"
         >
             <div class="kpi-icon green">
-                <i class="fa-solid fa-shield-halved"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 3 8.2 7 10 4-1.8 7-5.2 7-10V6l-7-3Z"/><path class="er-icon-cutout" d="m9 12 2 2 4-5"/></svg>
             </div>
 
             <div class="kpi-content">
@@ -97,7 +97,7 @@
             tabindex="0"
         >
             <div class="kpi-icon blue">
-                <i class="fa-solid fa-satellite-dish"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4a10 10 0 0 0 15 12M4 8a6 6 0 0 0 8 8M8 20h8M12 15v5"/><circle cx="18" cy="6" r="2"/></svg>
             </div>
 
             <div class="kpi-content">
@@ -116,7 +116,7 @@
             tabindex="0"
         >
             <div class="kpi-icon green">
-                <i class="fa-solid fa-shield-halved"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 3 8.2 7 10 4-1.8 7-5.2 7-10V6l-7-3Z"/><path class="er-icon-cutout" d="m9 12 2 2 4-5"/></svg>
             </div>
 
             <div class="kpi-content">
@@ -135,7 +135,7 @@
             tabindex="0"
         >
             <div class="kpi-icon orange">
-                <i class="fa-solid fa-truck-fast"></i>
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3V6Zm11 4h4l3 3v3h-7v-6Z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M1 9h5M1 12h4"/></svg>
             </div>
 
             <div class="kpi-content">
@@ -361,7 +361,7 @@
             <div class="table-toolbar-left">
 
                 <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
                     <input
                         type="text"
                         id="erSearch"
@@ -390,7 +390,7 @@
                     class="btn-secondary"
                     id="erResetFilter"
                 >
-                    <i class="fa-solid fa-rotate-left"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4l3 3a8 8 0 1 1-2 8"/></svg>
                     Reset Filter
                 </button>
 
@@ -398,7 +398,7 @@
                     class="btn-secondary"
                     id="erExportData"
                 >
-                    <i class="fa-solid fa-download"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></svg>
                     Export Data
                 </button>
 
@@ -472,7 +472,7 @@
                     class="btn-secondary"
                     id="erPrevPage"
                 >
-                    <i class="fa-solid fa-chevron-left"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
                 </button>
 
                 <span id="erPaginationInfo">
@@ -484,7 +484,7 @@
                     class="btn-secondary"
                     id="erNextPage"
                 >
-                    <i class="fa-solid fa-chevron-right"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
                 </button>
 
             </div>
@@ -525,7 +525,7 @@
                     id="erCloseFilterBtn"
                     aria-label="Tutup filter"
                 >
-                    <i class="fa-solid fa-xmark"></i>
+                    <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19"/></svg>
                 </button>
 
             </div>

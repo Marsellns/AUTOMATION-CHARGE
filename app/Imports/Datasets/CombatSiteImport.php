@@ -7,11 +7,12 @@ use Illuminate\Support\Collection;
 /**
  * Infrastruktur management — 02 Combat.
  * File: DATASET/02 Infrastruktur management/02 Combat/NEW DATABASE COMBAT SIMAWAR.xlsx
- * (sheets DATABASE + DATABASE_REVENUE; both are intentionally imported into
- * the snapshot because the workbook is the current source of truth.)
+ * Mapping kolom untuk sheet DATABASE dan DATABASE_REVENUE. Penggabungan
+ * kedua sheet per Site ID ditangani CombatWorkbookImport agar satu site tidak
+ * tersimpan berulang hanya karena punya beberapa baris tahun revenue.
  *
- * Satu site bisa muncul beberapa kali (per tahun justi dirnet), sehingga
- * tidak ada unique constraint — tabel snapshot diisi ulang tiap import.
+ * Tabel snapshot diisi ulang tiap import. CombatWorkbookImport memastikan
+ * hasil akhirnya satu baris kanonis per Site ID.
  * Blok bulanan Jan–Jun 2026 disimpan flat; kolom PnL di sumber berbentuk
  * "1.543.712 (Profit)" / "-17.485.329 (Loss)" → parseMoney menangani.
  */
@@ -31,6 +32,16 @@ class CombatSiteImport extends BaseDatasetImport
 
     protected function mapRow(Collection $row): ?array
     {
+        return $this->mapSourceRow($row->toArray());
+    }
+
+    /**
+     * Map satu baris sumber. Method public ini juga dipakai importer workbook
+     * untuk mengonsolidasikan sheet DATABASE dan DATABASE_REVENUE.
+     */
+    public function mapSourceRow(array $source): ?array
+    {
+        $row = new Collection($source);
         $siteCode = $this->cleanText($row['site_id'] ?? null);
 
         if ($siteCode === null) {
@@ -41,7 +52,9 @@ class CombatSiteImport extends BaseDatasetImport
             'site_code'           => $siteCode,
             'site_name'           => $this->cleanText($row['site_name'] ?? null),
             'tahun_justi_dirnet'  => $this->parseYear($row['tahun_justi_dirnet'] ?? $row['renewal_cycle'] ?? null),
-            'status_dokumen'      => $this->cleanText($row['status_dokumen'] ?? $row['status'] ?? null),
+            // STATUS and STATUS DOKUMEN are different dimensions.  Do not
+            // place On Air/Off Air values into the document-status column.
+            'status_dokumen'      => $this->cleanText($row['status_dokumen'] ?? null),
             'status_perpanjangan' => $this->cleanText($row['status_perpanjangan'] ?? null),
             'no_pks_baru'         => $this->cleanText($row['nomor_pks_baru'] ?? $row['no_pks_baru'] ?? null),
             'start_date_baru'     => $this->parseDate($row['periode_awal_baru'] ?? $row['start_date_baru'] ?? null),
@@ -71,13 +84,12 @@ class CombatSiteImport extends BaseDatasetImport
             $mapped["pnl_{$month}_2026"] = $this->parseMoney($row["pnl_{$month}_2026"] ?? null);
         }
 
-        if ($mapped['revenue_mei_2026'] === null && isset($row['revenue_mei_2026'])) {
-            $mapped['revenue_mei_2026'] = $this->parseMoney($row['revenue_mei_2026']);
-            $margin = $this->parseMoney($row['margindirect'] ?? null);
+        // Sheet DATABASE menyimpan Margin Direct Mei tanpa kolom PnL/Cost.
+        // Revenue-nya sudah terbaca di loop di atas, jadi cek PnL yang kosong.
+        $margin = $this->parseMoney($row['margindirect'] ?? null);
+        if ($mapped['revenue_mei_2026'] !== null && $mapped['pnl_mei_2026'] === null && $margin !== null) {
             $mapped['pnl_mei_2026'] = $margin;
-            $mapped['cost_mei_2026'] = $mapped['revenue_mei_2026'] !== null && $margin !== null
-                ? $mapped['revenue_mei_2026'] - $margin
-                : null;
+            $mapped['cost_mei_2026'] = $mapped['revenue_mei_2026'] - $margin;
         }
 
         $mapped['source_details'] = json_encode($this->sourceDetails($row), JSON_UNESCAPED_UNICODE);

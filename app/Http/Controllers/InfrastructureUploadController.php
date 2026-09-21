@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Imports\Datasets\BapssImport;
 use App\Imports\Datasets\CombatSiteImport;
+use App\Imports\Datasets\CombatWorkbookImport;
 use App\Imports\Datasets\DataSiteUnlockImport;
 use App\Imports\Datasets\JaknetContractImport;
 use App\Imports\Datasets\RecurringIpasImport;
@@ -98,14 +99,24 @@ class InfrastructureUploadController extends Controller
         abort_unless(isset(self::DATASETS[$dataset]), 404);
         $request->validate(['dataset_file' => 'required|file|mimes:xlsx,xls,csv|max:51200']);
         $definition = self::DATASETS[$dataset];
-        $import = new $definition['import']();
+        $import = $dataset === 'combat'
+            ? new CombatWorkbookImport()
+            : new $definition['import']();
 
         try {
             // Dataset files are snapshots. Replacing the snapshot avoids stale rows while
             // preserving the same idempotent behaviour as the CLI importer.
-            DB::transaction(function () use ($definition, $import, $request): void {
+            DB::transaction(function () use ($dataset, $definition, $import, $request): void {
                 DB::table($definition['table'])->delete();
-                Excel::import($import, $request->file('dataset_file'));
+                if ($dataset === 'combat' && $import instanceof CombatWorkbookImport) {
+                    $path = $request->file('dataset_file')->getRealPath();
+                    if ($path === false) {
+                        throw new \RuntimeException('File upload sementara tidak dapat dibaca.');
+                    }
+                    $import->import($path);
+                } else {
+                    Excel::import($import, $request->file('dataset_file'));
+                }
             });
         } catch (\Throwable $e) {
             report($e);

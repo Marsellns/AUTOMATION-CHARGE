@@ -11,7 +11,7 @@
     @include('infrastruktur.partials.analytics', ['scope' => 'combat'])
 
     {{-- Container Data Tabel Infrastruktur --}}
-    <div id="infrastructure-data" class="infrastructure-table-section mt-4">
+    <div id="infrastructure-data" class="infrastructure-table-section mt-4 {{ request()->filled('filter_field') || request()->filled('tahun') || request()->boolean('unique_sites') ? '' : 'd-none' }}">
         {{-- Banner Filter Aktif dari Diagram / Kartu --}}
         <div id="active-filter-alert" class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between mb-3 d-none">
             <div class="d-flex align-items-center gap-2">
@@ -127,6 +127,7 @@
 $(function () {
     const isAdmin = {{ auth()->user()->hasRole('admin') ? 'true' : 'false' }};
     const exportBaseUrl = @json(route('infrastruktur.combat.export-excel'));
+    const tableInitiallyVisible = !$('#infrastructure-data').hasClass('d-none');
 
     const urlParams = new URLSearchParams(window.location.search);
     const currentFilter = {
@@ -143,8 +144,8 @@ $(function () {
 
     function updateFilterBadge() {
         if (currentFilter.field && currentFilter.value) {
-            const fieldLabel = currentFilter.field.replace(/_/g, ' ');
-            $('#active-filter-text').text(`${fieldLabel}: ${currentFilter.value}`);
+            const fieldLabel = currentFilter.field === 'priority' ? 'Prioritas Tindakan' : currentFilter.field.replace(/_/g, ' ');
+            $('#active-filter-text').text(currentFilter.field === 'priority' ? fieldLabel : `${fieldLabel}: ${currentFilter.value}`);
             $('#active-filter-alert').removeClass('d-none');
         } else {
             $('#active-filter-alert').addClass('d-none');
@@ -161,7 +162,7 @@ $(function () {
         url.searchParams.delete('unique_sites');
         window.history.pushState({}, '', url);
         updateFilterBadge();
-        table.ajax.reload();
+        $('#infrastructure-data').addClass('d-none');
     });
 
     const columns = [
@@ -186,17 +187,18 @@ $(function () {
         detailTextColumn('tp', 'tp_vendor', 'tp_v'),
         dateColumn('start_date_baru'),
         dateColumn('end_date_baru'),
-        detailTextColumn('masa_sewa'),
+        { data: 'lease_duration', name: 'lease_duration', orderable: false, searchable: false, defaultContent: '-' },
         leaseStatusColumn(),
-        detailTextColumn('pks_status'),
+        { data: 'pks_status_label', name: 'pks_status_label', orderable: false, searchable: false, defaultContent: '-' },
         { data: 'no_pks_baru', name: 'no_pks_baru', defaultContent: '-' },
         moneyColumn('total_harga_baru'),
-        detailTextColumn('aging_days', 'lama_proses_saat_ini_hari'),
-        detailTextColumn('tindak_lanjut'),
-        detailTextColumn('prioritas'),
+        { data: 'process_aging_days', name: 'process_aging_days', orderable: false, searchable: false,
+            render: (value, type) => type === 'display' ? (value === null || value === undefined ? '-' : `${value} hari`) : value },
+        { data: 'next_action_label', name: 'next_action_label', orderable: false, searchable: false, defaultContent: '-' },
+        { data: 'priority_label', name: 'priority_label', orderable: false, searchable: false, defaultContent: '-' },
     );
 
-    const table = new DataTable('#combat-table', {
+    const tableOptions = {
         processing: true,
         serverSide: true,
         scrollX: true,
@@ -209,9 +211,12 @@ $(function () {
         columns,
         order: [],
         pageLength: 10,
-    });
+    };
+    if (!tableInitiallyVisible) tableOptions.deferLoading = 0;
+    const table = new DataTable('#combat-table', tableOptions);
 
     $(document).on('infrastructure-filter', function (e, data) {
+        $('#infrastructure-data').removeClass('d-none');
         currentFilter.field = (data && data.filterField) || '';
         currentFilter.value = (data && data.filterValue) || '';
 
@@ -224,6 +229,7 @@ $(function () {
 
         updateFilterBadge();
         table.ajax.reload();
+        table.columns.adjust();
         if (typeof window.scrollToInfrastructureTable === 'function') {
             window.scrollToInfrastructureTable();
         }
@@ -242,7 +248,8 @@ $(function () {
         const details = row?.source_details || {};
         for (const key of keys) {
             const value = details[key];
-            if (value !== null && value !== undefined && value !== '') return value;
+            if (value !== null && value !== undefined && value !== ''
+                && !(typeof value === 'string' && value.trim().startsWith('='))) return value;
         }
         return null;
     }
@@ -333,7 +340,7 @@ $(function () {
         const dateConnect = dateConnectRaw ? fmtDate(dateConnectRaw) : '-';
         const statusSite = detailValue(d, 'status') || '-';
         const statusCombat = detailValue(d, 'status_combat') || '-';
-        const pksStatus = detailValue(d, 'pks_status') || '-';
+        const pksStatus = d.pks_status_label || '-';
 
         return `
         <div class="detail-block">
@@ -356,6 +363,7 @@ $(function () {
                 <tr><th>No PKS Baru</th><td>${esc(d.no_pks_baru)}</td><th>Start Date Baru</th><td>${fmtDate(d.start_date_baru)}</td></tr>
                 <tr><th>End Date Baru</th><td>${fmtDate(d.end_date_baru)}</td><th>Harga Baru</th><td>${fmtMoney(d.harga_baru)}</td></tr>
                 <tr><th>Total Harga Baru</th><td>${fmtMoney(d.total_harga_baru)}</td><th>PKS Status</th><td>${esc(pksStatus)}</td></tr>
+                <tr><th>Mulai Tahap Proses</th><td>${fmtDate(d.process_started_at)}</td><th>Process Aging</th><td>${d.process_aging_days == null ? '-' : esc(d.process_aging_days + ' hari')}</td></tr>
             </table>
             <table class="table table-bordered table-sm mb-2">
                 <tr><td colspan="4" class="section-title">Penawaran & Negosiasi</td></tr>

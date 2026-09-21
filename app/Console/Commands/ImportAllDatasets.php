@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Imports\Datasets\BapssImport;
 use App\Imports\Datasets\CombatSiteImport;
+use App\Imports\Datasets\CombatWorkbookImport;
 use App\Imports\Datasets\DataAssetTowerImport;
 use App\Imports\Datasets\DataSiteUnlockImport;
 use App\Imports\Datasets\JaknetContractImport;
@@ -25,7 +26,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class ImportAllDatasets extends Command
 {
     protected $signature = 'dataset:import-all
-                            {--only= : Jalankan satu dataset saja (kunci: site-owner, asset-tower, sewa-lahan, combat, recurring, recurring-tagihan-ipas, jaknet, site-unlock, bapss, listrik-pln)}';
+                            {--only= : Jalankan satu dataset saja (kunci: site-owner, asset-tower, sewa-lahan, combat, recurring, recurring-tagihan-ipas, jaknet, site-unlock, bapss, listrik-pln, listrik-inbuilding)}';
 
     protected $description = 'Import semua file dataset Simawar (folder DATASET/) ke database';
 
@@ -55,9 +56,8 @@ class ImportAllDatasets extends Command
             ],
             'combat' => [
                 'label'  => 'Infra 02 — Combat',
-                // NEW DATABASE already contains DATABASE and DATABASE_REVENUE;
-                // Simawar.xlsx is an older overlapping export and is not
-                // imported separately (it would double-count the sites).
+                // Workbook aktif berisi DATABASE dan DATABASE_REVENUE; file
+                // lama yang sudah dibuang tidak lagi menjadi dependensi.
                 'file'   => 'DATASET/02 Infrastruktur management/02 Combat/NEW DATABASE COMBAT SIMAWAR.xlsx',
                 'table'  => 'combat_sites',
                 'import' => CombatSiteImport::class,
@@ -97,6 +97,12 @@ class ImportAllDatasets extends Command
                 'file'   => 'DATASET/03 Electricity/Centralized/Listrik PLN/Data Master Export.xlsx',
                 'table'  => 'listrik_pln',
                 'import' => ListrikPlnImport::class,
+            ],
+            'listrik-inbuilding' => [
+                'label'  => 'Electricity Inbuilding — Listrik Inbuilding',
+                'file'   => 'DATASET/03 Electricity/Inbuilding/Listrik Inbuilding/Data Inbuilding Export.xlsx',
+                'table'  => 'listrik_inbuilding',
+                'import' => null,
             ],
         ];
     }
@@ -145,6 +151,14 @@ class ImportAllDatasets extends Command
 
                     $inserted = DB::table($def['table'])->count();
                     $skipped = 0;
+                } elseif ($key === 'listrik-inbuilding') {
+                    $exitCode = $this->call('dataset:import-inbuilding-dataset', ['--skip-notifications' => true]);
+                    if ($exitCode !== self::SUCCESS) {
+                        throw new \RuntimeException('Importer Inbuilding mengembalikan status gagal.');
+                    }
+
+                    $inserted = DB::table($def['table'])->count();
+                    $skipped = 0;
                 } else {
                     [$inserted, $skipped] = DB::transaction(function () use ($key, $def, $files): array {
                         DB::table($def['table'])->delete();
@@ -152,8 +166,15 @@ class ImportAllDatasets extends Command
                         $inserted = 0;
                         $skipped = 0;
                         foreach ($files as $file) {
-                            $import = new $file['import']();
-                            Excel::import($import, base_path($file['file']));
+                            $import = $key === 'combat'
+                                ? new CombatWorkbookImport()
+                                : new $file['import']();
+
+                            if ($import instanceof CombatWorkbookImport) {
+                                $import->import(base_path($file['file']));
+                            } else {
+                                Excel::import($import, base_path($file['file']));
+                            }
                             $stats = $import->getStats();
                             $inserted += $stats['inserted'];
                             $skipped += $stats['skipped'];

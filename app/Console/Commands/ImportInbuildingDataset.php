@@ -9,21 +9,24 @@ use App\Models\PaymentIbc;
 use App\Services\ElectricityAnomalyNotificationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class ImportInbuildingDataset extends Command
 {
-    protected $signature = 'dataset:import-inbuilding-dataset';
+    protected $signature = 'dataset:import-inbuilding-dataset
+                            {--skip-notifications : Jangan kirim notifikasi/email anomali setelah refresh snapshot}';
     protected $description = 'Mengimpor dataset Listrik Inbuilding, Payment IBC, Anomali, dan Inbuilding All';
 
     public function handle(): int
     {
         $this->info('Memulai import dataset Inbuilding...');
 
-        // 1. Import Listrik Inbuilding
+        // 1. Import Listrik Inbuilding. Data Inbuilding Export adalah master
+        // atribut, sedangkan Tracker Payment menambah site Inbuilding terbaru
+        // dan memperbarui status bila tersedia.
         $listrikFile = base_path('DATASET/03 Electricity/Inbuilding/Listrik Inbuilding/Data Inbuilding Export.xlsx');
         if (File::exists($listrikFile)) {
             $this->info('Mengimpor Listrik Inbuilding dari Data Inbuilding Export.xlsx...');
@@ -31,12 +34,10 @@ class ImportInbuildingDataset extends Command
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            ListrikInbuilding::truncate();
-
-            $records = [];
+            $recordsBySite = [];
             for ($i = 2; $i < count($rows); $i++) {
                 $r = $rows[$i];
-                $siteId = trim((string) ($r[2] ?? ''));
+                $siteId = strtoupper(trim((string) ($r[2] ?? '')));
                 if ($siteId === '') continue;
 
                 $dayaRaw = trim((string) ($r[9] ?? ''));
@@ -45,10 +46,10 @@ class ImportInbuildingDataset extends Command
                 $hargaKwh = $this->parseHarga($r[10] ?? 0);
                 $tanggal = $this->parseTanggal($r[12] ?? null);
 
-                $records[] = [
+                $recordsBySite[$siteId] = [
                     'site_id' => $siteId,
                     'site_name' => trim((string) ($r[3] ?? '')),
-                    'status' => trim((string) ($r[4] ?? 'active')),
+                    'status' => $this->normalizeSiteStatus($r[4] ?? null),
                     'nama_bm' => trim((string) ($r[5] ?? '')),
                     'no_npwp' => trim((string) ($r[6] ?? '')),
                     'alamat' => trim((string) ($r[7] ?? '')),
@@ -62,10 +63,20 @@ class ImportInbuildingDataset extends Command
                 ];
             }
 
+            $trackerFile = base_path('DATASET/03 Electricity/Inbuilding/Listrik Inbuilding/Tracker Payment Electricity Eastern 11092026 Rev2.0.xlsx');
+            $trackerStats = ['matched' => 0, 'added' => 0];
+            if (File::exists($trackerFile)) {
+                $trackerStats = $this->mergeTrackerInbuildingSites($recordsBySite, $trackerFile);
+            } else {
+                $this->warn('Tracker Payment Electricity Eastern tidak ditemukan; hanya master Inbuilding yang diimpor.');
+            }
+
+            $records = array_values($recordsBySite);
+            ListrikInbuilding::truncate();
             foreach (array_chunk($records, 100) as $chunk) {
                 ListrikInbuilding::insert($chunk);
             }
-            $this->info("✓ Selesai mengimpor " . count($records) . " data Listrik Inbuilding.");
+            $this->info("✓ Selesai mengimpor " . count($records) . " site Listrik Inbuilding ({$trackerStats['added']} site baru dari tracker, {$trackerStats['matched']} site cocok diperbarui).");
         }
 
         // 2. Import Payment IBC Done & Pending
@@ -247,7 +258,7 @@ class ImportInbuildingDataset extends Command
                 fn (array $anomaly): bool => (float) $anomaly['kenaikan_persen'] > 50
             ));
 
-            if ($alertRows !== []) {
+            if ($alertRows !== [] && !$this->option('skip-notifications')) {
                 app(ElectricityAnomalyNotificationService::class)->send('Inbuilding', $alertRows);
                 $this->info('✓ Notifikasi kenaikan listrik >50% berhasil dikirim.');
             }
@@ -317,5 +328,114 @@ class ImportInbuildingDataset extends Command
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $recordsBySite
+     * @return array{matched: int, added: int}
+     */
+    private function mergeTrackerInbuildingSites(array &$recordsBySite, string $trackerFile): array
+    {
+        $this->info('Mencocokkan site dengan Tracker Payment Electricity Eastern...');
+        $spreadsheet = IOFactory::load($trackerFile);
+        $sheet = $spreadsheet->getSheetByName('Raw') ?? $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray(null, true, false, false);
+
+        if (count($rows) < 4) {
+            return ['matched' => 0, 'added' => 0];
+        }
+
+        // Tracker memakai baris 3 sebagai header.
+        $headers = array_map(
+            static fn (mixed $value): string => Str::slug(trim((string) $value), '_'),
+            $rows[2]
+        );
+        $matched = 0;
+        $added = 0;
+
+        for ($index = 3; $index < count($rows); $index++) {
+            $source = [];
+            foreach ($headers as $column => $header) {
+                if ($header === '') continue;
+                $value = $rows[$index][$column] ?? null;
+                if (!array_key_exists($header, $source) || $source[$header] === null || $source[$header] === '') {
+                    $source[$header] = $value;
+                }
+            }
+
+            if (strtoupper(trim((string) ($source['tipe_pembayaran_listrik'] ?? ''))) !== 'INBUILDING') {
+                continue;
+            }
+
+            $siteId = strtoupper(trim((string) ($source['site_id'] ?? '')));
+            if ($siteId === '') {
+                continue;
+            }
+
+            $towerOwner = trim((string) ($source['tower_own'] ?? ''));
+            $addressParts = array_values(array_filter([
+                trim((string) ($source['kecamatan'] ?? '')),
+                trim((string) ($source['kabupaten'] ?? '')),
+            ], static fn (string $value): bool => $value !== ''));
+            $dayaDigits = preg_replace('/[^0-9]/', '', (string) ($source['daya_va'] ?? ''));
+            $trackerRecord = [
+                'site_id' => $siteId,
+                'site_name' => trim((string) ($source['site_name'] ?? '')),
+                'status' => $this->normalizeSiteStatus($source['status_site_on_air'] ?? null),
+                'nama_bm' => trim((string) ($source['nama_pelanggan'] ?? '')),
+                'no_npwp' => null,
+                'alamat' => $addressParts === [] ? null : implode(', ', $addressParts),
+                'telkomsel_tp' => $towerOwner === ''
+                    ? null
+                    : (str_contains(strtolower($towerOwner), 'telkomsel') ? 'Telkomsel' : 'TP'),
+                'daya' => $dayaDigits === '' ? null : (int) $dayaDigits,
+                'harga_per_kwh' => null,
+                'update_by' => 'Tracker Payment Electricity Eastern',
+                'tanggal' => $this->parseTanggal($source['date_update'] ?? null),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            if (!isset($recordsBySite[$siteId])) {
+                $recordsBySite[$siteId] = $trackerRecord;
+                $added++;
+                continue;
+            }
+
+            $matched++;
+            // Status dan tanggal tracker lebih mutakhir. Atribut master tetap
+            // dipertahankan, tetapi kolom kosong boleh dilengkapi dari tracker.
+            if (($source['status_site_on_air'] ?? null) !== null && trim((string) $source['status_site_on_air']) !== '') {
+                $recordsBySite[$siteId]['status'] = $trackerRecord['status'];
+            }
+            if ($trackerRecord['tanggal'] !== null) {
+                $recordsBySite[$siteId]['tanggal'] = $trackerRecord['tanggal'];
+                $recordsBySite[$siteId]['update_by'] = $trackerRecord['update_by'];
+            }
+
+            foreach (['site_name', 'nama_bm', 'alamat', 'telkomsel_tp', 'daya'] as $field) {
+                if (($recordsBySite[$siteId][$field] ?? null) === null || trim((string) ($recordsBySite[$siteId][$field] ?? '')) === '') {
+                    $recordsBySite[$siteId][$field] = $trackerRecord[$field];
+                }
+            }
+            $recordsBySite[$siteId]['updated_at'] = now();
+        }
+
+        ksort($recordsBySite, SORT_NATURAL | SORT_FLAG_CASE);
+        return ['matched' => $matched, 'added' => $added];
+    }
+
+    private function normalizeSiteStatus(mixed $value): string
+    {
+        $status = strtolower(trim((string) $value));
+        if ($status === '' || $status === '-') {
+            return 'Active';
+        }
+
+        if (str_contains($status, 'off') || str_contains($status, 'inactive') || str_contains($status, 'tidak')) {
+            return 'Inactive';
+        }
+
+        return 'Active';
     }
 }

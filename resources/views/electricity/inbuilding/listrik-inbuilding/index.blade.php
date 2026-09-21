@@ -612,7 +612,7 @@ $(function () {
         <tr>
             <td><strong>${esc(detail.nama_bulan)}</strong></td>
             <td class="text-primary fw-bold">${esc(detail.nominal_format)}</td>
-            <td><span class="badge ${detail.status === 'Active' || detail.status === 'Done' ? 'badge-profit' : 'badge-loss'}">${esc(detail.status)}</span></td>
+            <td><span class="badge ${!String(detail.status || '').toLowerCase().includes('inactive') && !String(detail.status || '').toLowerCase().includes('tidak') && (String(detail.status || '').toLowerCase().includes('active') || String(detail.status || '').toLowerCase().includes('aktif') || detail.status === 'Done') ? 'badge-profit' : 'badge-loss'}">${esc(detail.status)}</span></td>
             <td>${esc(detail.invoice)}</td>
             <td>${esc(detail.update_by)}</td>
             <td>${esc(detail.tanggal)}</td>

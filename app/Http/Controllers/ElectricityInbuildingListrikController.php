@@ -42,7 +42,9 @@ class ElectricityInbuildingListrikController extends Controller
             ->editColumn('harga_per_kwh', fn (ListrikInbuilding $item) => $item->harga_per_kwh ? 'Rp ' . number_format($item->harga_per_kwh, 0, ',', '.') : '-')
             ->editColumn('status', function (ListrikInbuilding $item) {
                 $status = strtolower($item->status ?? 'active');
-                $isAktif = str_contains($status, 'active') || str_contains($status, 'aktif');
+                $isAktif = !str_contains($status, 'inactive')
+                    && !str_contains($status, 'tidak')
+                    && (str_contains($status, 'active') || str_contains($status, 'aktif'));
                 $badgeClass = $isAktif ? 'badge-profit' : 'badge-loss';
                 return '<span class="badge ' . $badgeClass . '">' . e(ucfirst($item->status ?? 'Active')) . '</span>';
             })

@@ -68,38 +68,35 @@
             ['id' => 'status', 'title' => 'Komposisi Status Site', 'type' => 'pie', 'key' => 'status'],
             ['id' => 'owner', 'title' => 'Site Owner', 'type' => 'pie', 'key' => 'owners'],
             ['id' => 'source', 'title' => 'Sumber Data Site', 'type' => 'pie', 'key' => 'sources'],
-            ['id' => 'status-breakdown', 'title' => 'Status Dokumen Terbanyak', 'type' => 'bar', 'key' => 'status_breakdown'],
             ['id' => 'renewal', 'title' => 'Distribusi Tahun Renewal / Justi', 'type' => 'column', 'key' => 'renewal_years'],
             ['id' => 'contract-source', 'title' => 'Nilai Kontrak Berdasarkan Sumber', 'type' => 'column', 'key' => 'contract_by_source', 'wide' => true],
             ['id' => 'pks-status', 'title' => 'PKS Status', 'type' => 'pie', 'key' => 'pks_status'],
             ['id' => 'lease-status', 'title' => 'Status Masa Sewa (berdasarkan tanggal akhir)', 'type' => 'pie', 'key' => 'lease_status'],
-            ['id' => 'renewal-status', 'title' => 'Status Perpanjangan', 'type' => 'column', 'key' => 'renewal_status'],
-            ['id' => 'air-status', 'title' => 'Status Off / On Air', 'type' => 'pie', 'key' => 'air_status'],
             ['id' => 'nop', 'title' => 'NOP Site', 'type' => 'pie', 'key' => 'nop'],
             ['id' => 'vendor', 'title' => 'Vendor', 'type' => 'column', 'key' => 'vendor'],
             ['id' => 'health', 'title' => 'Contract Health / Aging Masa Sewa', 'type' => 'pie', 'key' => 'health'],
-            ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline', 'wide' => true],
+            ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline'],
             ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging'],
-            ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography'],
+            ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography', 'wide' => true],
         ])
         @if ($scope === 'all')
-            @php($charts = array_slice($charts, 7))
+            @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'lease_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
         @endif
         @foreach ($charts as $chart)
-            <div class="{{ !empty($chart['wide']) ? 'col-lg-7' : 'col-lg-5' }}">
+            <div class="{{ !empty($chart['wide']) ? 'col-12' : 'col-xl-6' }}">
                 <div class="card h-100">
                     <div class="card-header fw-semibold">{{ $chart['title'] }}</div>
-                    <div class="card-body"><div id="infra-{{ $scope }}-{{ $chart['id'] }}" style="height:300px"></div></div>
+                    <div class="card-body"><div id="infra-{{ $scope }}-{{ $chart['id'] }}" style="height:320px"></div></div>
                 </div>
             </div>
         @endforeach
     </div>
-    <div class="card mt-3">
-        <div class="card-header fw-semibold">Prioritas Tindakan</div>
-        <div class="card-body p-0">
-            <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0 infra-priority-table"><thead><tr><th>Site</th><th>Status Masa Sewa</th><th>Pipeline</th></tr></thead><tbody><tr><td colspan="3" class="text-muted text-center py-3">Memuat prioritas...</td></tr></tbody></table></div>
-        </div>
-    </div>
+    <button type="button" class="card mt-3 w-100 text-start infra-priority-trigger" aria-label="Tampilkan site Prioritas Tindakan">
+        <span class="card-body d-flex align-items-center justify-content-between gap-3 py-3">
+            <span><strong>Prioritas Tindakan</strong><small class="d-block text-body-secondary">Klik untuk menampilkan site yang memerlukan tindak lanjut.</small></span>
+            <span class="badge text-bg-warning rounded-pill fs-6 infra-priority-count">—</span>
+        </span>
+    </button>
 </section>
 
 @once
@@ -122,10 +119,10 @@
                             <tr>
                                 <th>Site ID</th><th>Nama Site</th><th>Sumber</th><th>Owner</th>
                                 <th>Status Dokumen</th><th>Status Perpanjangan</th><th>Masa Sewa</th>
-                                <th>Tanggal Akhir</th><th>Sisa Hari</th><th></th>
+                                <th>Tanggal Akhir</th><th>Sisa Hari</th><th>Aging Proses</th><th></th>
                             </tr>
                         </thead>
-                        <tbody><tr><td colspan="10" class="text-center text-body-secondary py-4">Memuat data...</td></tr></tbody>
+                        <tbody><tr><td colspan="11" class="text-center text-body-secondary py-4">Memuat data...</td></tr></tbody>
                     </table>
                 </div>
                 </div>
@@ -147,11 +144,11 @@
     #infra-drilldown-table { font-size: .82rem; }
     #infra-drilldown-table th { white-space: nowrap; }
     #infra-drilldown-table tbody tr,
-    .infra-alert-details-body tr,
-    .infra-priority-table tbody tr { cursor: pointer; }
+    .infra-alert-details-body tr { cursor: pointer; }
     #infra-drilldown-table tbody tr:hover,
-    .infra-alert-details-body tr:hover,
-    .infra-priority-table tbody tr:hover { background: rgba(13,110,253,.08); }
+    .infra-alert-details-body tr:hover { background: rgba(13,110,253,.08); }
+    .infra-priority-trigger { border: 1px solid var(--bs-warning-border-subtle); background: var(--bs-body-bg); }
+    .infra-priority-trigger:hover, .infra-priority-trigger:focus-visible { background: var(--bs-warning-bg-subtle); }
     #infra-drilldown-table details summary { cursor: pointer; white-space: nowrap; }
     .infra-drilldown-extra { min-width: 280px; max-width: 460px; white-space: normal; }
     @media (max-width: 992px) {
@@ -163,6 +160,70 @@
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
 <script>
+window.infrastructureChartThemeOptions = function (requestedTheme) {
+    const theme = requestedTheme || document.documentElement.getAttribute('data-bs-theme') || 'light';
+    const dark = theme === 'dark';
+    const background = dark ? '#111827' : '#ffffff';
+    const text = dark ? '#f1f5f9' : '#0f172a';
+    const muted = dark ? '#cbd5e1' : '#64748b';
+    const grid = dark ? '#334155' : '#e2e8f0';
+
+    return {
+        credits: { enabled: false },
+        exporting: { enabled: false },
+        chart: {
+            backgroundColor: background,
+            plotBackgroundColor: background,
+            style: { color: text }
+        },
+        title: { text: null, style: { color: text } },
+        subtitle: { style: { color: muted } },
+        legend: {
+            itemStyle: { color: text },
+            itemHoverStyle: { color: dark ? '#ffffff' : '#020617' },
+            itemHiddenStyle: { color: dark ? '#64748b' : '#94a3b8' }
+        },
+        xAxis: {
+            lineColor: grid,
+            tickColor: grid,
+            labels: { style: { color: muted } },
+            title: { style: { color: text } }
+        },
+        yAxis: {
+            gridLineColor: grid,
+            lineColor: grid,
+            tickColor: grid,
+            labels: { style: { color: muted } },
+            title: { style: { color: text } }
+        },
+        tooltip: {
+            backgroundColor: dark ? '#1f2937' : '#ffffff',
+            borderColor: grid,
+            style: { color: text }
+        },
+        plotOptions: {
+            series: { dataLabels: { style: { color: text, textOutline: 'none' } } },
+            pie: {
+                dataLabels: {
+                    color: text,
+                    connectorColor: muted,
+                    style: { color: text, textOutline: 'none' }
+                }
+            }
+        }
+    };
+};
+
+window.addEventListener('simaster:theme-changed', function (event) {
+    if (!window.Highcharts) return;
+    const options = window.infrastructureChartThemeOptions(event.detail?.theme);
+    Highcharts.charts.filter(Boolean).forEach(function (chart) {
+        if (chart.renderTo?.id?.startsWith('infra-')) {
+            chart.update(options, true, false);
+        }
+    });
+});
+
 const infrastructureDrilldownEscape = function (value) {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'object') {
@@ -189,6 +250,7 @@ window.showInfrastructureRowDetail = function (row, scope, title) {
         ['Status Dokumen', row.status_dokumen], ['Status Perpanjangan', row.status_perpanjangan],
         ['Status Masa Sewa', row.status_masa_sewa], ['Tanggal Akhir', row.end_date],
         ['Sisa Hari', row.days_remaining === null || row.days_remaining === undefined ? '—' : row.days_remaining],
+        ['Mulai Tahap Proses', row.process_started_at], ['Aging Proses (hari)', row.process_aging_days],
         ['No PKS Baru', row.no_pks_baru], ['Total Harga Baru', row.total_harga_baru]
     ].concat(Object.entries(row.source_details || {}).map(([key, value]) => [key.replaceAll('_', ' '), value]));
     const cells = entries
@@ -236,7 +298,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
     $('#infraDrilldownModalLabel').text(`Detail ${scope === 'combat' ? 'Combat' : (scope === 'sewa' ? 'Sewa Lahan' : 'Infrastruktur')} — ${selectedTitle}`);
     summary.text('Memuat data...');
     error.addClass('d-none').text('');
-    body.html('<tr><td colspan="10" class="text-center text-body-secondary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat data...</td></tr>');
+    body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat data...</td></tr>');
     modal.show();
 
     const params = new URLSearchParams({ scope: scope || 'all' });
@@ -262,7 +324,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             summary.text(`${new Intl.NumberFormat('id-ID').format(payload.count || rows.length)} site unik${sourceSummary ? ` (${sourceSummary})` : ''}`);
 
             if (!rows.length) {
-                body.html('<tr><td colspan="10" class="text-center text-body-secondary py-4">Tidak ada data untuk pilihan ini.</td></tr>');
+                body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4">Tidak ada data untuk pilihan ini.</td></tr>');
                 return;
             }
 
@@ -272,7 +334,9 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
                     ['NOP', row.nop],
                     ['Vendor / TP', row.vendor],
                     ['No PKS Baru', row.no_pks_baru],
-                    ['Total Harga Baru', row.total_harga_baru]
+                    ['Total Harga Baru', row.total_harga_baru],
+                    ['Mulai Tahap Proses', row.process_started_at],
+                    ['Aging Proses (hari)', row.process_aging_days]
                 ].concat(Object.entries(row.source_details || {}))
                     .filter(([key, value]) => value !== null && value !== '' && !/^(rev|cost|pnl|revenue|margin|profit|tracy|payload|jan|feb|mar|apr|mei|may|jun|jul|aug|agu|sep|okt|oct|nov|des|dec)|_202[0-9]|-(25|26)/i.test(key));
                 if (!entries.length) return '';
@@ -293,6 +357,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
                     <td>${infrastructureDrilldownEscape(row.status_masa_sewa)}</td>
                     <td>${infrastructureDrilldownEscape(row.end_date)}</td>
                     <td>${infrastructureDrilldownEscape(days)}</td>
+                    <td>${infrastructureDrilldownEscape(row.process_aging_days === null || row.process_aging_days === undefined ? '—' : `${row.process_aging_days} hari`)}</td>
                     <td>${extraDetails(row)}</td>
                 </tr>`;
             }).join(''));
@@ -308,7 +373,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             const message = payload?.message || 'Detail data belum dapat dimuat.';
             error.removeClass('d-none').text(message);
             summary.text('Gagal memuat data');
-            body.html('<tr><td colspan="10" class="text-center text-body-secondary py-4">Tidak ada data yang dapat ditampilkan.</td></tr>');
+            body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4">Tidak ada data yang dapat ditampilkan.</td></tr>');
         });
 };
 
@@ -381,13 +446,13 @@ window.applyInfrastructureFilter = function (scope, filterField, filterValue, ow
         url.search = targetUrl.search;
         window.history.pushState({}, '', url);
 
-        // Segera scroll ke tabel secara instan
-        window.scrollToInfrastructureTable();
-
         $(document).trigger('infrastructure-filter', [{
             filterField: filterField || '',
             filterValue: filterValue || ''
         }]);
+        // The module table is a chart drill-down and is revealed by the
+        // event above. Scroll only after it is visible in the layout.
+        window.scrollToInfrastructureTable();
         return;
     }
 
@@ -417,13 +482,12 @@ $(function () {
             root.find('.infra-alert-90').text(new Intl.NumberFormat('id-ID').format((alerts.within_90 || []).length));
             root.find('.infra-alert-180').text(new Intl.NumberFormat('id-ID').format((alerts.within_180 || []).length));
             root.find('.infra-alert-unknown').text(new Intl.NumberFormat('id-ID').format((alerts.unknown || []).length));
-            const base = { credits: { enabled: false }, exporting: { enabled: false }, title: { text: null } };
+            const base = window.infrastructureChartThemeOptions();
             const charts = [
                 ['performance', 'performance', 'column'], ['status', 'status', 'pie'], ['owner', 'owners', 'pie'],
-                ['source', 'sources', 'pie'], ['status-breakdown', 'status_breakdown', 'bar'],
+                ['source', 'sources', 'pie'],
                 ['renewal', 'renewal_years', 'column'], ['contract-source', 'contract_by_source', 'column'],
                 ['pks-status', 'pks_status', 'pie'], ['lease-status', 'lease_status', 'pie'],
-                ['renewal-status', 'renewal_status', 'column'], ['air-status', 'air_status', 'pie'],
                 ['nop', 'nop', 'pie'], ['vendor', 'vendor', 'column'],
                 ['health', 'health', 'pie'], ['pipeline', 'pipeline', 'bar'],
                 ['aging', 'aging', 'column'], ['geography', 'geography', 'bar']
@@ -443,12 +507,17 @@ $(function () {
                 const isAging = key === 'aging';
                 const series = isPerformance
                     ? ['revenue', 'cost', 'pnl'].map(name => ({ name: name.toUpperCase(), data: source.map(item => item[name]) }))
-                    : [{ name: 'Site', data: source.map(point => ({
+                    : [{ name: isAging ? 'Rata-rata hari' : 'Site', data: source.map(point => ({
                         name: point.name, y: point.y,
-                        custom: { filterField: point.filter_field, filterValue: point.filter_value }
+                        custom: {
+                            filterField: point.filter_field,
+                            filterValue: point.filter_value,
+                            datedCount: point.dated_count,
+                            totalCount: point.count
+                        }
                     })) }];
-                Highcharts.chart(container, {
-                    ...base, chart: { type },
+                Highcharts.chart(container, Highcharts.merge(base, {
+                    chart: { type },
                     xAxis: { type: 'category', categories: isPerformance ? source.map(item => item.label) : undefined },
                     yAxis: { title: { text: isPerformance ? 'Nilai' : (isAging ? 'Hari' : 'Site unik') } },
                     plotOptions: {
@@ -501,21 +570,21 @@ $(function () {
                     },
                     ...(key === 'contract_by_source'
                         ? { tooltip: { pointFormat: '<b>Rp {point.y:,.0f}</b>' } }
-                        : {}),
+                        : (isAging ? {
+                            tooltip: {
+                                formatter: function () {
+                                    const dated = this.point.options.custom?.datedCount || 0;
+                                    const total = this.point.options.custom?.totalCount || 0;
+                                    const value = this.y === null || this.y === undefined ? 'Tanggal proses belum tersedia' : `<b>${this.y} hari</b>`;
+                                    return `${this.key}<br>${value}<br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
+                                }
+                            }
+                        } : {})),
                     series
-                });
+                }));
             });
 
-            const priorityBody = root.find('.infra-priority-table tbody');
-            const priorityRows = data.priority || [];
-            const escapePriority = value => $('<div>').text(value ?? '').html();
-            priorityBody.html(priorityRows.length ? priorityRows.map(item => `<tr class="infra-priority-link" data-site="${escapePriority(item.site_code)}">
-                <td class="fw-semibold">${escapePriority(item.site_code)}<small class="d-block text-muted">${escapePriority(item.site_name || '—')}</small></td>
-                <td>${escapePriority(item.status || '—')}</td><td>${escapePriority(item.pipeline || '—')}</td>
-            </tr>`).join('') : '<tr><td colspan="3" class="text-muted text-center py-3">Tidak ada prioritas.</td></tr>');
-            priorityBody.find('.infra-priority-link').on('click', function () {
-                window.openInfrastructureDrilldown(scope, 'site_code', $(this).data('site'), 'Prioritas ' + $(this).data('site'), ownershipScope);
-            });
+            root.find('.infra-priority-count').text(new Intl.NumberFormat('id-ID').format(data.priority_count || 0));
 
             // Setelah semua chart selesai digambar di DOM, jika ada filter aktif atau hash, pastikan posisi scroll tepat di tabel
             if (window.location.hash === '#infrastructure-data' || new URLSearchParams(window.location.search).has('filter_field') || new URLSearchParams(window.location.search).has('tahun')) {
@@ -535,6 +604,17 @@ $(function () {
             $(this).data('filter-field'),
             $(this).data('filter-value'),
             $(this).find('.small').first().text(),
+            root.data('ownership-scope') || ''
+        );
+    });
+
+    $(document).on('click', '.infra-priority-trigger', function () {
+        const root = $(this).closest('.infra-analytics');
+        window.openInfrastructureDrilldown(
+            root.data('scope'),
+            'priority',
+            '1',
+            'Prioritas Tindakan',
             root.data('ownership-scope') || ''
         );
     });

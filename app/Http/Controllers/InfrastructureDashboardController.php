@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CombatSite;
 use App\Models\SewaLahanRenewal;
 use App\Models\SiteOwner;
+use App\Support\InfrastructureMetrics;
 use App\Support\LeaseStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,10 +60,8 @@ class InfrastructureDashboardController extends Controller
         $combatSites = $uniqueBySite($combat);
         $allSites = $uniqueBySite($all);
 
-        $isOperational = static function ($row): bool {
-            $status = strtolower(trim(($row->status_dokumen ?? '').' '.($row->status_perpanjangan ?? '')));
-            return !preg_match('/dismantle|off ?air|non.?operational|non.?aktif|unlock|relokasi|migrasi/', $status);
-        };
+        $isOperational = static fn ($row): bool => InfrastructureMetrics::operationalBucket($row) === InfrastructureMetrics::ACTIVE;
+        $isOffAir = static fn ($row): bool => InfrastructureMetrics::operationalBucket($row) === InfrastructureMetrics::OFF_AIR;
         $needsAttention = static function ($row): bool {
             $status = strtolower(trim(($row->status_dokumen ?? '').' '.($row->status_perpanjangan ?? '')));
             return (bool) preg_match('/nego|pending|belum|proses|legal|perpanjang|finalisasi/', $status);
@@ -82,21 +81,14 @@ class InfrastructureDashboardController extends Controller
 
         $monthly = [];
         foreach (['jan', 'feb', 'mar', 'apr', 'mei', 'jun'] as $month) {
-            $engMonth = $month === 'mei' ? 'may' : $month;
+            $financials = $allSites->map(
+                fn ($row): array => InfrastructureMetrics::monthlyFinancials($row, $month)
+            );
             $monthly[] = [
                 'label' => ucfirst($month),
-                'revenue' => (float) $allSites->sum(function ($row) use ($month, $engMonth): float {
-                    $details = is_array($row->source_details) ? $row->source_details : [];
-                    return (float) ($row->{"revenue_{$month}_2026"} ?? $details["rev_{$month}_26"] ?? $details["rev_{$engMonth}_26"] ?? 0);
-                }),
-                'cost' => (float) $allSites->sum(function ($row) use ($month, $engMonth): float {
-                    $details = is_array($row->source_details) ? $row->source_details : [];
-                    return (float) ($row->{"cost_{$month}_2026"} ?? $details["cost_{$month}_26"] ?? $details["cost_{$engMonth}_26"] ?? 0);
-                }),
-                'pnl' => (float) $allSites->sum(function ($row) use ($month, $engMonth): float {
-                    $details = is_array($row->source_details) ? $row->source_details : [];
-                    return (float) ($row->{"pnl_{$month}_2026"} ?? $details["pnl_{$month}_26"] ?? $details["pnl_{$engMonth}_26"] ?? 0);
-                }),
+                'revenue' => (float) $financials->sum('revenue'),
+                'cost' => (float) $financials->sum('cost'),
+                'pnl' => (float) $financials->sum('pnl'),
             ];
         }
         $statusBreakdown = $allSites->groupBy(fn ($row) => $this->dimensionKey('status_dokumen', $row->status_dokumen))
@@ -242,13 +234,18 @@ class InfrastructureDashboardController extends Controller
             ->sortByDesc('y')->values();
         $aging = $allSites->groupBy(fn ($row) => $this->pipelineBucket($row))
             ->map(function ($items, $name): array {
-                $values = $items->map(function ($row): ?float {
-                    $details = is_array($row->source_details) ? $row->source_details : [];
-                    $value = $details['process_aging'] ?? $details['aging'] ?? $details['aging_hari'] ?? null;
-                    return is_numeric($value) ? (float) $value : null;
-                })->filter(fn ($value) => $value !== null && $value >= 0);
-                return ['name' => $name, 'y' => $values->count() ? (int) round($values->avg()) : 0, 'count' => $items->unique('site_code')->count(), 'filter_field' => 'pipeline', 'filter_value' => $name];
-            })->filter(fn ($item) => $item['count'] > 0)->sortByDesc('y')->values();
+                $values = $items->map(fn ($row): ?int => InfrastructureMetrics::processAgingDays($row))
+                    ->filter(fn ($value) => $value !== null);
+                return [
+                    'name' => $name,
+                    // Missing process dates are intentionally null, not zero.
+                    'y' => $values->isNotEmpty() ? (int) round($values->avg()) : null,
+                    'count' => $items->unique('site_code')->count(),
+                    'dated_count' => $values->count(),
+                    'filter_field' => 'pipeline',
+                    'filter_value' => $name,
+                ];
+            })->filter(fn ($item) => $item['count'] > 0)->sortByDesc(fn ($item) => $item['y'] ?? -1)->values();
         $geography = $allSites->groupBy(fn ($row) => $this->dimensionKey('geography', $this->geographyBucket($row)))
             ->map(function ($items): array {
                 $name = $this->geographyBucket($items->first());
@@ -256,7 +253,9 @@ class InfrastructureDashboardController extends Controller
             })
             ->reject(fn ($item) => $this->dimensionKey('geography', $item['name']) === $this->dimensionKey('geography', 'Tidak Diisi'))
             ->sortByDesc('y')->values()->take(12)->values();
-        $priority = $allSites->filter(fn ($row) => $needsAttention($row) || $withoutPks($row) || LeaseStatus::fromEndDate($row->end_date_baru ?? $row->end_date_lama) !== LeaseStatus::SAFE)
+        $priorityRows = $allSites->filter(fn ($row) => $needsAttention($row) || $withoutPks($row) || LeaseStatus::fromEndDate($row->end_date_baru ?? $row->end_date_lama) !== LeaseStatus::SAFE);
+        $priorityCount = $priorityRows->count();
+        $priority = $priorityRows
             ->map(function ($row): array {
                 $endDate = $row->end_date_baru ?? $row->end_date_lama;
                 $status = LeaseStatus::fromEndDate($endDate);
@@ -270,6 +269,22 @@ class InfrastructureDashboardController extends Controller
                 ];
             })->take(12)->values();
 
+        // Keep source composition aligned with the active module.  Showing
+        // Combat inside the Sewa Lahan page (and vice versa) made a scoped
+        // dashboard look as though it still represented the full portfolio.
+        $sourceSeries = match ($scope) {
+            'sewa' => collect([
+                ['name' => 'Sewa Lahan', 'y' => $sewaSites->count(), 'filter_field' => 'source', 'filter_value' => 'Sewa Lahan'],
+            ]),
+            'combat' => collect([
+                ['name' => 'Combat', 'y' => $combatSites->count(), 'filter_field' => 'source', 'filter_value' => 'Combat'],
+            ]),
+            default => collect([
+                ['name' => 'Sewa Lahan', 'y' => $sewaSites->count(), 'filter_field' => 'source', 'filter_value' => 'Sewa Lahan'],
+                ['name' => 'Combat', 'y' => $combatSites->count(), 'filter_field' => 'source', 'filter_value' => 'Combat'],
+            ]),
+        };
+
         return response()->json([
             'cards' => [
                 'total' => $allSites->count(),
@@ -277,20 +292,15 @@ class InfrastructureDashboardController extends Controller
                 'active' => $allSites->filter($isOperational)->count(),
                 'contract' => $allSites->filter($needsAttention)->count(),
                 'without_pks' => $allSites->filter($withoutPks)->count(),
-                'off_air' => $allSites->reject($isOperational)->count(),
+                'off_air' => $allSites->filter($isOffAir)->count(),
+                'unknown_status' => $allSites->reject($isOperational)->reject($isOffAir)->count(),
                 'risk_value' => $riskValue,
             ],
-            'status' => [
-                ['name' => 'Operational / Active', 'y' => $allSites->filter($isOperational)->count(), 'filter_field' => 'summary_status', 'filter_value' => 'active'],
-                ['name' => 'Perlu Perhatian (Contract)', 'y' => $allSites->filter($needsAttention)->count(), 'filter_field' => 'summary_status', 'filter_value' => 'contract'],
-                ['name' => 'Tanpa PKS', 'y' => $allSites->filter($withoutPks)->count(), 'filter_field' => 'summary_status', 'filter_value' => 'without_pks'],
-                ['name' => 'Off Air / Non-Operational', 'y' => $allSites->reject($isOperational)->count(), 'filter_field' => 'summary_status', 'filter_value' => 'off_air'],
-            ],
+            // A pie composition must be mutually exclusive.  Contract and
+            // PKS risks remain KPI cards and no longer inflate this series.
+            'status' => $airStatus,
             'performance' => $monthly,
-            'sources' => [
-                ['name' => 'Sewa Lahan', 'y' => $sewaSites->count(), 'filter_field' => 'source', 'filter_value' => 'Sewa Lahan'],
-                ['name' => 'Combat', 'y' => $combatSites->count(), 'filter_field' => 'source', 'filter_value' => 'Combat'],
-            ],
+            'sources' => $sourceSeries,
             'owners' => $ownerCounts->map(fn ($count, $name) => ['name' => $name, 'y' => $count, 'filter_field' => 'ownership', 'filter_value' => $name])->values(),
             'status_breakdown' => $statusBreakdown,
             'renewal_years' => $renewalYears,
@@ -306,6 +316,7 @@ class InfrastructureDashboardController extends Controller
             'aging' => $aging,
             'geography' => $geography,
             'priority' => $priority,
+            'priority_count' => $priorityCount,
             'alerts' => $alertRows,
             'dataset_rows' => [
                 'sewa_lahan' => $sewa->count(),
@@ -391,9 +402,9 @@ class InfrastructureDashboardController extends Controller
                     && today()->startOfDay()->diffInDays($endDate->copy()->startOfDay(), false) >= 0
                     && today()->startOfDay()->diffInDays($endDate->copy()->startOfDay(), false) <= 180,
                 'summary_status' => match ($filterValue) {
-                    'active' => ! preg_match('/dismantle|off ?air|non.?operational|non.?aktif|unlock|relokasi|migrasi/', $statusText),
+                    'active' => $airStatus === InfrastructureMetrics::ACTIVE,
                     'contract' => (bool) preg_match('/nego|pending|belum|proses|legal|perpanjang|finalisasi/', $statusText),
-                    'off_air' => (bool) preg_match('/dismantle|off ?air|non.?operational|non.?aktif|unlock|relokasi|migrasi/', $statusText),
+                    'off_air' => $airStatus === InfrastructureMetrics::OFF_AIR,
                     'without_pks' => blank($row->no_pks_baru) && blank($row->no_pks_lama),
                     default => false,
                 },
@@ -405,6 +416,7 @@ class InfrastructureDashboardController extends Controller
                 'pipeline' => $this->pipelineBucket($row) === $filterValue,
                 'geography' => $this->sameDimension('geography', $this->geographyBucket($row), $filterValue),
                 'ownership' => $this->ownerBucket($row, $ownersBySite) === $filterValue,
+                'priority' => $this->isPriority($row),
                 default => true,
             };
         })->values();
@@ -433,6 +445,8 @@ class InfrastructureDashboardController extends Controller
                 'vendor' => $this->vendorValue($row),
                 'no_pks_baru' => $row->no_pks_baru,
                 'total_harga_baru' => $row->total_harga_baru,
+                'process_started_at' => InfrastructureMetrics::processStartDate($row)?->toDateString(),
+                'process_aging_days' => InfrastructureMetrics::processAgingDays($row),
                 // source_details is an import snapshot.  Keep useful
                 // supplementary values, but do not expose Excel formulas or
                 // raw serial-date cells in the detail modal.
@@ -512,19 +526,12 @@ class InfrastructureDashboardController extends Controller
         // `=IF(LEN(TRIM(...))`).  A formula is source metadata, not a status.
         // Derive the status from the mapped PKS columns so the chart, filter,
         // and detail modal all return a human-readable, stable value.
-        return filled($row->no_pks_baru) || filled($row->no_pks_lama)
-            ? 'Ada PKS'
-            : 'Tanpa PKS';
+        return InfrastructureMetrics::pksStatusLabel($row);
     }
 
     private function airStatusValue($row): string
     {
-        $details = $this->rowDetails($row);
-        $value = filled($details['status'] ?? null)
-            ? $details['status']
-            : ($row->status_dokumen ?? null);
-
-        return $this->dimensionLabel('status', $value);
+        return InfrastructureMetrics::operationalBucket($row);
     }
 
     /**
@@ -619,27 +626,22 @@ class InfrastructureDashboardController extends Controller
 
     private function pipelineBucket($row): string
     {
-        $details = is_array($row->source_details) ? $row->source_details : [];
-        $raw = strtolower(trim((string) ($details['current_stage'] ?? $details['status_perpanjangan'] ?? $row->status_dokumen ?? '')));
-        if ($raw === '') return 'Tidak Diisi';
-        if (str_contains($raw, 'paid') || str_contains($raw, 'bayar')) return 'Paid';
-        if (str_contains($raw, 'drop') || str_contains($raw, 'dismantle') || str_contains($raw, 'relokasi')) return 'Drop';
-        if (str_contains($raw, 'negos')) return 'Negosiasi';
-        if (str_contains($raw, 'bak')) return 'BAK';
-        if (str_contains($raw, 'pending') && str_contains($raw, 'pks')) return 'Pending PKS';
-        if (str_contains($raw, 'pks') || str_contains($raw, 'legal')) return 'PKS';
-        if (str_contains($raw, 'budget')) return 'Budget';
-        if (str_contains($raw, 'finance') || str_contains($raw, 'financ')) return 'Finance';
-        return 'Lainnya';
+        return InfrastructureMetrics::pipelineBucket($row);
     }
 
     private function geographyBucket($row): string
     {
-        $details = is_array($row->source_details) ? $row->source_details : [];
-        foreach (['area', 'city', 'kabupaten', 'region', 'wilayah', 'kota'] as $key) {
-            if (filled($details[$key] ?? null)) return trim((string) $details[$key]);
-        }
-        return 'Tidak Diisi';
+        return InfrastructureMetrics::geographyBucket($row);
+    }
+
+    private function isPriority($row): bool
+    {
+        $status = mb_strtolower(trim(($row->status_dokumen ?? '').' '.($row->status_perpanjangan ?? '')), 'UTF-8');
+        $needsAttention = (bool) preg_match('/nego|pending|belum|proses|legal|perpanjang|finalisasi/u', $status);
+        $withoutPks = blank($row->no_pks_baru) && blank($row->no_pks_lama);
+        $leaseNeedsAttention = LeaseStatus::fromEndDate($row->end_date_baru ?? $row->end_date_lama) !== LeaseStatus::SAFE;
+
+        return $needsAttention || $withoutPks || $leaseNeedsAttention;
     }
 
 }

@@ -13,6 +13,12 @@ Pada development, aplikasi berjalan di Docker Compose:
 
 Aplikasi membaca koneksi default dari `DB_CONNECTION`. Pada Docker development, gunakan MySQL dengan host `mysql`, bukan `localhost` dari dalam container.
 
+Halaman website tidak membaca file Excel atau folder `DATASET` saat request berjalan. Semua dashboard, tabel, filter, chart, dan export membaca tabel MySQL. Folder `DATASET` hanya menjadi sumber opsional untuk command import/rebuild; setelah data diimpor, folder tersebut boleh tidak tersedia tanpa mengganggu website.
+
+Untuk DBeaver dari Windows, buat koneksi MySQL ke `localhost:3306` (atau nilai
+`FORWARD_DB_PORT` pada `.env`), dengan database `DB_DATABASE`. Host `mysql` hanya
+dipakai oleh aplikasi di dalam jaringan Docker.
+
 Perintah Windows dapat dijalankan melalui wrapper:
 
 ```powershell

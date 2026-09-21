@@ -6,6 +6,7 @@ use App\Exports\SewaLahanRenewalExport;
 use App\Http\Requests\UpdateSewaLahanRenewalRequest;
 use App\Models\SewaLahanRenewal;
 use App\Models\SiteOwner;
+use App\Support\InfrastructureMetrics;
 use App\Support\LeaseStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -71,6 +72,9 @@ class SewaLahanRenewalController extends Controller
 
         return $dataTable
             ->addIndexColumn()
+            ->addColumn('lease_duration', fn (SewaLahanRenewal $s) => InfrastructureMetrics::leaseDurationLabel($s))
+            ->addColumn('process_started_at', fn (SewaLahanRenewal $s) => InfrastructureMetrics::processStartDate($s)?->toDateString())
+            ->addColumn('process_aging_days', fn (SewaLahanRenewal $s) => InfrastructureMetrics::processAgingDays($s))
             ->rawColumns($isAdmin ? ['aksi'] : [])
             ->toJson();
     }
@@ -85,13 +89,15 @@ class SewaLahanRenewalController extends Controller
                 : $query->where('tahun_renewal', (int) $value);
         } elseif ($field === 'summary_status') {
             $query->where(function ($subQuery) use ($value): void {
-                $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
+                $status = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.status')), ''))";
                 if ($value === 'active') {
-                    $subQuery->whereRaw("{$status} NOT REGEXP 'dismantle|off[[:space:]]*air|non.?operational|non.?aktif|unlock|relokasi|migrasi'");
+                    $subQuery->whereRaw("{$status} REGEXP 'on[[:space:]]*air|active|operational'")
+                        ->whereRaw("{$status} NOT REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
                 } elseif ($value === 'contract') {
+                    $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
                     $subQuery->whereRaw("{$status} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'");
                 } elseif ($value === 'off_air') {
-                    $subQuery->whereRaw("{$status} REGEXP 'dismantle|off[[:space:]]*air|non.?operational|non.?aktif|unlock|relokasi|migrasi'");
+                    $subQuery->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
                 } elseif ($value === 'without_pks') {
                     $subQuery->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
                         ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
@@ -104,19 +110,20 @@ class SewaLahanRenewalController extends Controller
         } elseif ($field === 'status_masa_sewa') {
             $this->applyLeaseStatusFilter($query, $value);
         } elseif ($field === 'status') {
-            if ($value === 'Tidak Diisi') {
+            $status = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.status')), ''))";
+            if ($value === InfrastructureMetrics::ACTIVE) {
+                $query->whereRaw("{$status} REGEXP 'on[[:space:]]*air|active|operational'")
+                    ->whereRaw("{$status} NOT REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
+            } elseif ($value === InfrastructureMetrics::OFF_AIR) {
+                $query->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
+            } elseif ($value === InfrastructureMetrics::UNKNOWN_STATUS || $value === 'Tidak Diisi') {
                 $query->where(function ($subQuery): void {
                     $subQuery->where(function ($empty): void {
                         $empty->whereNull('source_details->status')->orWhereJsonContains('source_details->status', '');
-                    })->where(function ($empty): void {
-                        $empty->whereNull('status_dokumen')->orWhere('status_dokumen', '');
                     });
                 });
             } else {
-                $query->where(function ($subQuery) use ($value): void {
-                    $subQuery->whereJsonContains('source_details->status', $value)
-                        ->orWhere('status_dokumen', $value);
-                });
+                $query->whereJsonContains('source_details->status', $value);
             }
         } elseif ($field === 'status_dokumen') {
             $value === 'Tidak Diisi'
@@ -124,6 +131,12 @@ class SewaLahanRenewalController extends Controller
                 : $query->where('status_dokumen', $value);
         } elseif ($field === 'site_code') {
             $query->where('site_code', $value);
+        } elseif ($field === 'pipeline') {
+            $this->applyPipelineFilter($query, $value);
+        } elseif ($field === 'geography') {
+            $this->applyGeographyFilter($query, $value);
+        } elseif ($field === 'priority') {
+            $this->applyPriorityFilter($query);
         } elseif ($field === 'lease_window') {
             $endDate = 'COALESCE(end_date_baru, end_date_lama)';
             $query->whereRaw("{$endDate} BETWEEN ? AND ?", [today()->toDateString(), today()->addDays(180)->toDateString()]);
@@ -179,6 +192,51 @@ class SewaLahanRenewalController extends Controller
                 }
             }
         }
+    }
+
+    private function applyPipelineFilter($query, string $value): void
+    {
+        $stage = "LOWER(COALESCE(NULLIF(status_perpanjangan, ''), NULLIF(status_dokumen, ''), ''))";
+
+        match ($value) {
+            'Paid' => $query->whereRaw("{$stage} REGEXP 'paid|bayar'"),
+            'Drop' => $query->whereRaw("{$stage} REGEXP 'drop|dismantle|relokasi'"),
+            'Negosiasi' => $query->whereRaw("{$stage} REGEXP 'negos'"),
+            'BAK' => $query->whereRaw("{$stage} REGEXP 'bak'"),
+            'Pending PKS' => $query->whereRaw("{$stage} REGEXP 'pending.*pks|pks.*pending'"),
+            'PKS' => $query->whereRaw("{$stage} REGEXP 'pks|legal'")
+                ->whereRaw("{$stage} NOT REGEXP 'pending.*pks|pks.*pending'"),
+            'Budget' => $query->whereRaw("{$stage} REGEXP 'budget'"),
+            'Finance' => $query->whereRaw("{$stage} REGEXP 'financ'"),
+            'Tidak Diisi' => $query->whereRaw("{$stage} = ''"),
+            default => $query->whereRaw("{$stage} <> ''")
+                ->whereRaw("{$stage} NOT REGEXP 'paid|bayar|drop|dismantle|relokasi|negos|bak|pks|legal|budget|financ'"),
+        };
+    }
+
+    private function applyGeographyFilter($query, string $value): void
+    {
+        $query->where(function ($location) use ($value): void {
+            foreach (['kabupaten', 'city', 'kota', 'area', 'wilayah'] as $key) {
+                $location->orWhereRaw("TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.{$key}')), '')) = ?", [$value]);
+            }
+        });
+    }
+
+    private function applyPriorityFilter($query): void
+    {
+        $attention = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
+        $endDate = 'COALESCE(end_date_baru, end_date_lama)';
+
+        $query->where(function ($priority) use ($attention, $endDate): void {
+            $priority->whereRaw("{$attention} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'")
+                ->orWhere(function ($withoutPks): void {
+                    $withoutPks->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
+                        ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
+                })
+                ->orWhereNull('end_date_baru')->whereNull('end_date_lama')
+                ->orWhereRaw("{$endDate} <= ?", [today()->addDays(180)->toDateString()]);
+        });
     }
 
     private function applyOwnershipFilter($query, string $value): void
