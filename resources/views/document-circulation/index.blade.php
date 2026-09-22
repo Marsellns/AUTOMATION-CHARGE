@@ -51,11 +51,11 @@
             <div class="col-sm-4 col-md-2 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit">Filter</button><a class="btn btn-outline-secondary" href="{{ route('presales.index') }}" aria-label="Reset filter">↺</a></div>
         </form>
         <div class="table-responsive"><table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Dokumen</th><th>Nomor</th><th>Status</th><th>Tahap saat ini</th><th>Uploader</th><th>Upload</th><th></th></tr></thead>
+            <thead><tr><th>Dokumen</th><th>Nomor</th><th>Status</th><th>Tahap saat ini</th><th>Uploader</th><th>Upload (WIB)</th><th></th></tr></thead>
             <tbody>
             @forelse ($documents as $document)
                 @php($badge = match($document->status) { 'Completed' => 'success', 'Rejected' => 'danger', 'In Progress' => 'primary', default => 'warning' })
-                <tr><td><div class="fw-semibold">{{ $document->document_title }}</div><small class="text-muted">{{ $document->file_name }}</small></td><td>{{ $document->document_number ?: '-' }}</td><td><span class="badge text-bg-{{ $badge }}">{{ $document->status }}</span></td><td>{{ in_array($document->status, ['Pending', 'In Progress'], true) ? $document->currentStepName() : '-' }}</td><td>{{ $document->uploaded_by_name ?: '-' }}</td><td>{{ $document->created_at?->format('d M Y H:i') }}</td><td><a class="btn btn-outline-primary btn-sm" href="{{ route('presales.show', $document) }}">Detail</a></td></tr>
+                <tr><td><div class="fw-semibold">{{ $document->document_title }}</div><small class="text-muted">{{ $document->file_name }}</small></td><td>{{ $document->document_number ?: '-' }}</td><td><span class="badge text-bg-{{ $badge }}">{{ $document->status }}</span></td><td>{{ in_array($document->status, ['Pending', 'In Progress'], true) ? $document->currentStepName() : '-' }}</td><td>{{ $document->uploaded_by_name ?: '-' }}</td><td>{{ \App\Models\DocumentCirculation::formatWib($document->created_at) }}</td><td><a class="btn btn-outline-primary btn-sm" href="{{ route('presales.show', $document) }}">Detail</a></td></tr>
             @empty
                 <tr><td colspan="7" class="text-center text-muted py-5">{{ request()->hasAny(['search', 'status', 'step']) ? 'Tidak ada dokumen yang sesuai filter.' : 'Belum ada dokumen Presales yang diupload.' }}</td></tr>
             @endforelse

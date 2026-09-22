@@ -185,16 +185,11 @@
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-infra" role="button" tabindex="0">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Infrastruktur Assets</span>
-                        <span class="badge text-bg-light border small">8 Modul</span>
+                        <span class="badge text-bg-light border small">{{ number_format($infraDataSourceCount) }} sumber data</span>
                     </div>
                     <div class="stat-number fs-3 mb-1">{{ number_format($infraTotal) }} <span class="fs-6 fw-normal text-secondary">Records</span></div>
-                    <div class="mb-2">
-                        <div class="kpi-progress-bar">
-                            <div class="kpi-progress-fill" style="width: 78%;"></div>
-                        </div>
-                    </div>
                     <div class="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
-                        <span>Sewa Lahan &amp; Combat</span>
+                        <span>Sewa Lahan: <strong>{{ number_format($sewaLahanCount) }}</strong> · Combat: <strong>{{ number_format($combatCount) }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -205,8 +200,7 @@
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">PO HQ &amp; Health</span>
                         <span class="kpi-trend-badge kpi-trend-up">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="currentColor" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/></svg>
-                            99.9% Optimal
+                            {{ $totalAnomalies === 0 ? 'Tanpa Anomali' : number_format($totalAnomalies) . ' Anomali' }}
                         </span>
                     </div>
                     <div class="stat-number fs-3 mb-1">{{ number_format($poCount) }} <span class="fs-6 fw-normal text-secondary">PO HQ</span></div>
@@ -249,45 +243,45 @@
 
                         {{-- User / Module Access Distribution Breakdown --}}
                         <div class="border-top pt-3 mt-2">
-                            <div class="small fw-bold text-body-secondary text-uppercase mb-2 tracking-wider">Module Data Access</div>
+                            <div class="small fw-bold text-body-secondary text-uppercase mb-2 tracking-wider">Komposisi Data per Modul</div>
 
                             <a href="{{ route('pnl.index') }}" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Profit &amp; Loss</span>
-                                    <span class="access-val">45% &rarr;</span>
+                                    <span class="access-val">{{ $moduleDataComposition['pnl']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: 45%; background: #2563eb;"></div>
+                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['pnl']['percentage'] }}%; background: #2563eb;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('electricity.centralized.listrik-pln.index') }}" id="dashboard-pln-link" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Electricity Centralized</span>
-                                    <span class="access-val">28% &rarr;</span>
+                                    <span class="access-val">{{ $moduleDataComposition['electricity']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: 28%; background: #3b82f6;"></div>
+                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['electricity']['percentage'] }}%; background: #3b82f6;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('infrastruktur.sewa-lahan.index') }}" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Infrastruktur Management</span>
-                                    <span class="access-val">19% &rarr;</span>
+                                    <span class="access-val">{{ $moduleDataComposition['infrastructure']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: 19%; background: #60a5fa;"></div>
+                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['infrastructure']['percentage'] }}%; background: #60a5fa;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('po-hq.index') }}" class="text-decoration-none d-block access-link-item mb-1">
                                 <div class="access-row mb-1">
                                     <span class="access-label">PO HQ &amp; Lainnya</span>
-                                    <span class="access-val">8% &rarr;</span>
+                                    <span class="access-val">{{ $moduleDataComposition['po']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: 8%; background: #93c5fd;"></div>
+                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['po']['percentage'] }}%; background: #93c5fd;"></div>
                                 </div>
                             </a>
                         </div>
@@ -1202,12 +1196,7 @@ $(function () {
 
     // 7. Render Error & Anomaly Distribution (Analytics Screen 2) - Click navigates to anomaly module
     function renderErrorDistribution(anomalies, theme) {
-        const data = anomalies?.distribution || [
-            { name: 'Anomali Tagihan PLN', y: 12, color: corpColors.danger },
-            { name: 'Anomali Inbuilding', y: 5, color: corpColors.warning },
-            { name: 'Anomali PnL Site', y: 8, color: corpColors.secondary },
-            { name: 'Data Valid / Normal', y: 4282, color: corpColors.success }
-        ];
+        const data = anomalies?.distribution || [];
 
         upsertChart('errorDistribution', 'chart-error-distribution', {
             chart: { type: 'pie' },

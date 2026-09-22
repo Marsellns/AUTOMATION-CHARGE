@@ -6,32 +6,57 @@
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
         @foreach ([
-            ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary'],
-            ['id' => 'active', 'label' => 'Operational / Active', 'class' => 'success'],
-            ['id' => 'contract', 'label' => 'Perlu Perhatian', 'class' => 'warning'],
-            ['id' => 'without_pks', 'label' => 'Tanpa PKS', 'class' => 'danger'],
-            ['id' => 'off_air', 'label' => 'Off Air / Non-Operational', 'class' => 'secondary'],
+            ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+            ['id' => 'active', 'label' => 'Operational / Active', 'class' => 'success', 'icon' => 'check'],
+            ['id' => 'contract', 'label' => 'Perlu Perhatian', 'class' => 'warning', 'icon' => 'contract'],
+            ['id' => 'without_pks', 'label' => 'Tanpa PKS', 'class' => 'danger', 'icon' => 'alert'],
+            ['id' => 'off_air', 'label' => 'Off Air / Non-Operational', 'class' => 'secondary', 'icon' => 'offline'],
         ] as $card)
             <div class="col-xl-2 col-md-4 col-6">
-                <div class="card h-100 border-{{ $card['class'] }} infra-card-link"
-                     data-filter-field="{{ $card['id'] === 'total' ? '' : 'summary_status' }}"
+                <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
+                     data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
                      role="link" tabindex="0">
-                    <div class="card-body py-2">
-                        <div class="small text-body-secondary">{{ $card['label'] }}</div>
-                        <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
-                        @if ($card['id'] === 'total')
-                            <div class="text-body-tertiary infra-card-records-sub" style="font-size: 0.72rem; line-height: 1.1;"></div>
-                        @endif
+                    <div class="card-body py-2 infra-summary-card-body">
+                        <div>
+                            <div class="small text-body-secondary">{{ $card['label'] }}</div>
+                            <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
+                            @if ($card['id'] === 'total')
+                                <div class="text-body-tertiary infra-card-records-sub" style="font-size: 0.72rem; line-height: 1.1;"></div>
+                            @endif
+                        </div>
+                        <span class="infra-summary-icon" aria-hidden="true">
+                            @switch($card['icon'])
+                                @case('tower')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 7 21M12 3l5 18M7 21h10M8.1 17h7.8M9.3 12h5.4"/><path d="M5.2 5.8a9.5 9.5 0 0 1 0 12.4M18.8 5.8a9.5 9.5 0 0 0 0 12.4"/></svg>
+                                    @break
+                                @case('check')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.1 2.2 2.2 4.8-5"/></svg>
+                                    @break
+                                @case('contract')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 12h6M9 16h3"/><circle cx="16.5" cy="16.5" r="3.5"/><path d="M16.5 14.8v2l1.2.8"/></svg>
+                                    @break
+                                @case('alert')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6zM14 3v5h5"/><path d="M12 12v4M12 19h.01"/></svg>
+                                    @break
+                                @case('offline')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 7 21M12 3l5 18M7 21h10M8.1 17h7.8M9.3 12h5.4"/><path d="m4 4 16 16"/></svg>
+                            @endswitch
+                        </span>
                     </div>
                 </div>
             </div>
         @endforeach
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card h-100 border-info infra-card-link" data-filter-field="summary_status" data-filter-value="contract"
-                 role="link" tabindex="0" title="Buka data yang perlu perhatian"><div class="card-body py-2">
-                <div class="small text-body-secondary">Nilai Risiko</div>
-                <div class="fs-4 fw-bold infra-card-risk_value">—</div>
+            <div class="card h-100 border-info infra-card-link infra-summary-card" data-filter-field="summary_status" data-filter-value="contract"
+                 role="link" tabindex="0" title="Buka data yang perlu perhatian"><div class="card-body py-2 infra-summary-card-body">
+                <div>
+                    <div class="small text-body-secondary">Nilai Risiko</div>
+                    <div class="fs-4 fw-bold infra-card-risk_value">—</div>
+                </div>
+                <span class="infra-summary-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14v11H5zM8 7V5h8v2M8 12h8M12 10v4M10 12h4"/></svg>
+                </span>
             </div></div>
         </div>
     </div>
@@ -62,31 +87,27 @@
             </div>
         </div>
     </div>
-    <div class="row g-3">
+    <div class="row g-3 infra-detail-chart-grid">
         @php($charts = [
-            ['id' => 'performance', 'title' => 'Performance 2026', 'type' => 'column', 'key' => 'performance', 'wide' => true],
             ['id' => 'status', 'title' => 'Komposisi Status Site', 'type' => 'pie', 'key' => 'status'],
             ['id' => 'owner', 'title' => 'Site Owner', 'type' => 'pie', 'key' => 'owners'],
-            ['id' => 'source', 'title' => 'Sumber Data Site', 'type' => 'pie', 'key' => 'sources'],
             ['id' => 'renewal', 'title' => 'Distribusi Tahun Renewal / Justi', 'type' => 'column', 'key' => 'renewal_years'],
-            ['id' => 'contract-source', 'title' => 'Nilai Kontrak Berdasarkan Sumber', 'type' => 'column', 'key' => 'contract_by_source', 'wide' => true],
             ['id' => 'pks-status', 'title' => 'PKS Status', 'type' => 'pie', 'key' => 'pks_status'],
-            ['id' => 'lease-status', 'title' => 'Status Masa Sewa (berdasarkan tanggal akhir)', 'type' => 'pie', 'key' => 'lease_status'],
             ['id' => 'nop', 'title' => 'NOP Site', 'type' => 'pie', 'key' => 'nop'],
             ['id' => 'vendor', 'title' => 'Vendor', 'type' => 'column', 'key' => 'vendor'],
             ['id' => 'health', 'title' => 'Contract Health / Aging Masa Sewa', 'type' => 'pie', 'key' => 'health'],
-            ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline'],
-            ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging'],
-            ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography', 'wide' => true],
+            ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline', 'height' => 320, 'wide_on_overview' => true],
+            ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging', 'height' => 360],
+            ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography', 'height' => 360],
         ])
         @if ($scope === 'all')
-            @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'lease_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
+            @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
         @endif
         @foreach ($charts as $chart)
-            <div class="{{ !empty($chart['wide']) ? 'col-12' : 'col-xl-6' }}">
-                <div class="card h-100">
+            <div class="{{ !empty($chart['wide_on_overview']) && $scope === 'all' ? 'col-12' : 'col-xl-6' }} d-flex">
+                <div class="card h-100 w-100 infra-detail-chart-card">
                     <div class="card-header fw-semibold">{{ $chart['title'] }}</div>
-                    <div class="card-body"><div id="infra-{{ $scope }}-{{ $chart['id'] }}" style="height:320px"></div></div>
+                    <div class="card-body"><div id="infra-{{ $scope }}-{{ $chart['id'] }}" class="infra-detail-chart" style="height:{{ $chart['height'] ?? 320 }}px"></div></div>
                 </div>
             </div>
         @endforeach
@@ -179,7 +200,12 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
         title: { text: null, style: { color: text } },
         subtitle: { style: { color: muted } },
         legend: {
-            itemStyle: { color: text },
+            layout: 'horizontal',
+            align: 'center',
+            verticalAlign: 'bottom',
+            itemDistance: 12,
+            maxHeight: 56,
+            itemStyle: { color: text, fontSize: '0.72rem', fontWeight: '500', textOverflow: 'ellipsis' },
             itemHoverStyle: { color: dark ? '#ffffff' : '#020617' },
             itemHiddenStyle: { color: dark ? '#64748b' : '#94a3b8' }
         },
@@ -204,10 +230,100 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
         plotOptions: {
             series: { dataLabels: { style: { color: text, textOutline: 'none' } } },
             pie: {
+                showInLegend: true,
                 dataLabels: {
+                    enabled: false,
                     color: text,
                     connectorColor: muted,
                     style: { color: text, textOutline: 'none' }
+                }
+            }
+        }
+    };
+};
+
+window.infrastructureShortChartValue = function (value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+
+    return new Intl.NumberFormat('id-ID', {
+        notation: Math.abs(number) >= 1000 ? 'compact' : 'standard',
+        maximumFractionDigits: Number.isInteger(number) ? 0 : 1,
+    }).format(number);
+};
+
+// Pie charts reserve the right side for a compact, always-visible legend.
+// This makes both the count and percentage readable without relying on a
+// hover tooltip, while a long category list falls back to the safer bottom
+// legend instead of crowding the pie.
+window.infrastructurePieLabelOptions = function (pointCount) {
+    const useSideLegend = Number(pointCount) <= 6;
+
+    return {
+        legend: {
+            layout: useSideLegend ? 'vertical' : 'horizontal',
+            align: useSideLegend ? 'right' : 'center',
+            verticalAlign: useSideLegend ? 'middle' : 'bottom',
+            maxHeight: useSideLegend ? 230 : 62,
+            itemDistance: useSideLegend ? 0 : 12,
+            itemMarginBottom: useSideLegend ? 6 : 0,
+            symbolWidth: useSideLegend ? 10 : undefined,
+            labelFormatter: function () {
+                const points = this.series?.data || [];
+                const total = points.reduce((sum, point) => sum + (Number(point.y) || 0), 0);
+                const percentage = total > 0 ? Math.round(((Number(this.y) || 0) / total) * 100) : 0;
+
+                return `${this.name}: ${window.infrastructureShortChartValue(this.y)} (${percentage}%)`;
+            }
+        },
+        plotOptions: {
+            pie: {
+                showInLegend: true,
+                size: useSideLegend ? '76%' : '68%',
+                dataLabels: { enabled: false }
+            }
+        },
+        responsive: [{
+            condition: { maxWidth: 575 },
+            chartOptions: {
+                legend: {
+                    layout: 'horizontal',
+                    align: 'center',
+                    verticalAlign: 'bottom',
+                    maxHeight: 62,
+                    itemDistance: 10,
+                    itemMarginBottom: 0,
+                },
+                plotOptions: { pie: { size: '70%' } }
+            }
+        }]
+    };
+};
+
+// Counts on bars/columns stay small and Highcharts hides a label when there
+// is not enough room, so labels inform without turning dense charts noisy.
+window.infrastructureValueLabelOptions = function (type, pointCount) {
+    const isBar = type === 'bar';
+
+    return {
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    enabled: Number(pointCount) <= 12,
+                    allowOverlap: false,
+                    crop: true,
+                    overflow: 'justify',
+                    inside: false,
+                    align: isBar ? 'left' : 'center',
+                    x: isBar ? 4 : 0,
+                    y: isBar ? 0 : -3,
+                    padding: 1,
+                    formatter: function () {
+                        return this.y === null || this.y === undefined
+                            ? null
+                            : window.infrastructureShortChartValue(this.y);
+                    },
+                    style: { fontSize: '0.68rem', fontWeight: '600', textOutline: 'none' }
                 }
             }
         }
@@ -218,8 +334,15 @@ window.addEventListener('simaster:theme-changed', function (event) {
     if (!window.Highcharts) return;
     const options = window.infrastructureChartThemeOptions(event.detail?.theme);
     Highcharts.charts.filter(Boolean).forEach(function (chart) {
-        if (chart.renderTo?.id?.startsWith('infra-')) {
-            chart.update(options, true, false);
+        if (chart.options.chart?.className?.includes('infra-analytics-chart')) {
+            const type = chart.options.chart.type;
+            const pointCount = type === 'pie'
+                ? (chart.series[0]?.data?.length || 0)
+                : chart.series.reduce((total, series) => total + series.data.length, 0);
+            const labels = type === 'pie'
+                ? window.infrastructurePieLabelOptions(pointCount)
+                : window.infrastructureValueLabelOptions(type, pointCount);
+            chart.update(Highcharts.merge(options, labels), true, false);
         }
     });
 });
@@ -230,6 +353,102 @@ const infrastructureDrilldownEscape = function (value) {
         try { value = JSON.stringify(value); } catch (e) { value = String(value); }
     }
     return $('<div>').text(String(value)).html();
+};
+
+/**
+ * Render diagram batang performa untuk satu site. Filter berada di dalam
+ * pop-up detail: tahun memilih sumber periode dan bulan dapat dipersempit
+ * menjadi tiga batang Revenue/Cost/PnL.
+ */
+window.renderInfrastructureSitePerformance = function (container, performance) {
+    const root = typeof container === 'string' ? document.querySelector(container) : container;
+    const periods = Array.isArray(performance) ? performance : [];
+    if (!root) return;
+
+    if (!periods.length) {
+        root.innerHTML = '<div class="border rounded p-3 text-body-secondary small">Data performance bulanan belum tersedia untuk site ini.</div>';
+        return;
+    }
+
+    const years = [...new Set(periods.map(period => Number(period.year)).filter(Number.isFinite))]
+        .sort((left, right) => right - left);
+    const chartId = `infra-site-performance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    root.innerHTML = `
+        <div class="card border-primary-subtle">
+            <div class="card-header bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <strong>Performance Site</strong>
+                <div class="d-flex gap-2">
+                    <label class="visually-hidden" for="${chartId}-year">Tahun</label>
+                    <select class="form-select form-select-sm" id="${chartId}-year" data-infra-performance-year></select>
+                    <label class="visually-hidden" for="${chartId}-month">Bulan</label>
+                    <select class="form-select form-select-sm" id="${chartId}-month" data-infra-performance-month>
+                        <option value="all">Semua bulan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body"><div id="${chartId}" style="height:280px"></div></div>
+        </div>`;
+
+    const yearSelect = root.querySelector('[data-infra-performance-year]');
+    const monthSelect = root.querySelector('[data-infra-performance-month]');
+    yearSelect.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join('');
+    const syncMonthOptions = function () {
+        const selectedYear = Number(yearSelect.value);
+        const monthOptions = periods
+            .filter(period => Number(period.year) === selectedYear)
+            .map(period => `<option value="${infrastructureDrilldownEscape(`${period.year}:${period.month}`)}">${infrastructureDrilldownEscape(period.label)}</option>`)
+            .join('');
+        monthSelect.innerHTML = `<option value="all">Semua bulan</option>${monthOptions}`;
+    };
+
+    const draw = function () {
+        const selectedYear = Number(yearSelect.value);
+        const selectedMonth = monthSelect.value;
+        const selected = periods
+            .filter(period => Number(period.year) === selectedYear)
+            .filter(period => selectedMonth === 'all' || `${period.year}:${period.month}` === selectedMonth);
+        const options = selectedMonth === 'all'
+            ? {
+                xAxis: { categories: selected.map(period => period.label) },
+                series: ['revenue', 'cost', 'pnl'].map(metric => ({
+                    name: metric === 'pnl' ? 'PnL' : metric[0].toUpperCase() + metric.slice(1),
+                    data: selected.map(period => Number(period[metric] || 0)),
+                })),
+            }
+            : {
+                xAxis: { categories: ['Revenue', 'Cost', 'PnL'] },
+                series: [{
+                    name: selected[0]?.label || 'Performance',
+                    data: [
+                        Number(selected[0]?.revenue || 0),
+                        Number(selected[0]?.cost || 0),
+                        Number(selected[0]?.pnl || 0),
+                    ],
+                }],
+            };
+
+        // A single selected month has three bars and can safely expose its
+        // values.  The all-month view deliberately suppresses labels once
+        // they would crowd the grouped financial bars.
+        const pointCount = selected.length * options.series.length;
+        Highcharts.chart(chartId, Highcharts.merge(window.infrastructureChartThemeOptions(), {
+            chart: { type: 'column', className: 'infra-analytics-chart' },
+            xAxis: options.xAxis,
+            yAxis: { title: { text: 'Nilai (Rp)' } },
+            tooltip: { valuePrefix: 'Rp ', valueDecimals: 0 },
+            plotOptions: { column: { borderRadius: 3 } },
+            series: options.series,
+        }, window.infrastructureValueLabelOptions('column', pointCount)));
+    };
+
+    yearSelect.addEventListener('change', function () {
+        syncMonthOptions();
+        draw();
+    });
+    monthSelect.addEventListener('change', draw);
+    syncMonthOptions();
+    draw();
 };
 
 window.__infraDrilldownState = { rows: [], scope: 'all', title: '' };
@@ -257,7 +476,8 @@ window.showInfrastructureRowDetail = function (row, scope, title) {
         .filter(([, value]) => value !== null && value !== undefined && value !== '')
         .map(([key, value]) => `<tr><th class="w-25">${infrastructureDrilldownEscape(key)}</th><td>${infrastructureDrilldownEscape(value)}</td></tr>`)
         .join('');
-    detail.html(`<div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">Informasi lengkap ${infrastructureDrilldownEscape(row.site_code || '')}</h6><a class="btn btn-sm btn-outline-secondary" href="${sourceUrl}">Buka sumber data</a></div><div class="table-responsive"><table class="table table-bordered table-sm mb-0">${cells}</table></div>`);
+    detail.html(`<div class="d-flex justify-content-between align-items-center mb-3"><h6 class="mb-0">Informasi lengkap ${infrastructureDrilldownEscape(row.site_code || '')}</h6><a class="btn btn-sm btn-outline-secondary" href="${sourceUrl}">Buka sumber data</a></div><div class="table-responsive"><table class="table table-bordered table-sm mb-0">${cells}</table></div><div class="mt-3" id="infra-detail-site-performance"></div>`);
+    window.renderInfrastructureSitePerformance(document.getElementById('infra-detail-site-performance'), row.performance);
     list.addClass('d-none');
     detail.removeClass('d-none');
     back.removeClass('d-none');
@@ -302,9 +522,13 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
     modal.show();
 
     const params = new URLSearchParams({ scope: scope || 'all' });
-    if (filterField && filterValue !== undefined && filterValue !== null && filterValue !== '') {
+    // `all_records` is deliberately value-less: it tells the dashboard endpoint
+    // not to deduplicate Site ID values for the Total Site drill-down.
+    if (filterField && (filterField === 'all_records' || (filterValue !== undefined && filterValue !== null && filterValue !== ''))) {
         params.set('filter_field', filterField);
-        params.set('filter_value', filterValue);
+        if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
+            params.set('filter_value', filterValue);
+        }
     }
     if (ownershipScope === 'Telkomsel' || ownershipScope === 'TP') {
         params.set('ownership_scope', ownershipScope);
@@ -321,7 +545,8 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             const sourceSummary = Object.entries(payload.source_counts || {})
                 .map(([source, count]) => `${source}: ${new Intl.NumberFormat('id-ID').format(count)}`)
                 .join(' · ');
-            summary.text(`${new Intl.NumberFormat('id-ID').format(payload.count || rows.length)} site unik${sourceSummary ? ` (${sourceSummary})` : ''}`);
+            const countLabel = filterField === 'all_records' ? 'baris data' : 'site unik';
+            summary.text(`${new Intl.NumberFormat('id-ID').format(payload.count || rows.length)} ${countLabel}${sourceSummary ? ` (${sourceSummary})` : ''}`);
 
             if (!rows.length) {
                 body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4">Tidak ada data untuk pilihan ini.</td></tr>');
@@ -402,6 +627,17 @@ function dashboardTarget(scope, filterField, filterValue, ownershipScope = '') {
     const combatUrl = @json(route('infrastruktur.combat.index'));
     let target = scope === 'combat' ? combatUrl : sewaUrl;
 
+    // Kartu Total Site memakai jumlah baris data, bukan Site ID unik. Saat
+    // dibuka dari modul Sewa Lahan/Combat, tabel harus mempertahankan seluruh
+    // baris yang sama dan tidak menerima parameter unique_sites.
+    if (filterField === 'all_records') {
+        const params = new URLSearchParams();
+        if (scope === 'sewa' && (ownershipScope === 'Telkomsel' || ownershipScope === 'TP')) {
+            params.set('ownership_scope', ownershipScope);
+        }
+        return target + (params.toString() ? '?' + params.toString() : '');
+    }
+
     if (filterField === 'tahun') {
         const params = new URLSearchParams({ tahun: filterValue, unique_sites: '1' });
         if (scope === 'sewa' && (ownershipScope === 'Telkomsel' || ownershipScope === 'TP')) {
@@ -473,8 +709,8 @@ $(function () {
                 const el = root.find('.infra-card-' + key);
                 if (el.length) el.text(key === 'risk_value' ? 'Rp ' + new Intl.NumberFormat('id-ID').format(value) : new Intl.NumberFormat('id-ID').format(value));
             });
-            if (data.cards.records) {
-                root.find('.infra-card-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.records)} baris data`);
+            if (data.cards.unique_sites !== undefined) {
+                root.find('.infra-card-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.unique_sites)} site unik`);
             }
             const alerts = data.alerts || { expired: [], within_90: [], within_180: [], unknown: [] };
             root[0].__infraAlerts = alerts;
@@ -484,10 +720,8 @@ $(function () {
             root.find('.infra-alert-unknown').text(new Intl.NumberFormat('id-ID').format((alerts.unknown || []).length));
             const base = window.infrastructureChartThemeOptions();
             const charts = [
-                ['performance', 'performance', 'column'], ['status', 'status', 'pie'], ['owner', 'owners', 'pie'],
-                ['source', 'sources', 'pie'],
-                ['renewal', 'renewal_years', 'column'], ['contract-source', 'contract_by_source', 'column'],
-                ['pks-status', 'pks_status', 'pie'], ['lease-status', 'lease_status', 'pie'],
+                ['status', 'status', 'pie'], ['owner', 'owners', 'pie'],
+                ['renewal', 'renewal_years', 'column'], ['pks-status', 'pks_status', 'pie'],
                 ['nop', 'nop', 'pie'], ['vendor', 'vendor', 'column'],
                 ['health', 'health', 'pie'], ['pipeline', 'pipeline', 'bar'],
                 ['aging', 'aging', 'column'], ['geography', 'geography', 'bar']
@@ -503,11 +737,8 @@ $(function () {
                 if (!container) return;
 
                 const source = data[key] || [];
-                const isPerformance = key === 'performance';
                 const isAging = key === 'aging';
-                const series = isPerformance
-                    ? ['revenue', 'cost', 'pnl'].map(name => ({ name: name.toUpperCase(), data: source.map(item => item[name]) }))
-                    : [{ name: isAging ? 'Rata-rata hari' : 'Site', data: source.map(point => ({
+                const series = [{ name: isAging ? 'Rata-rata hari' : 'Site', data: source.map(point => ({
                         name: point.name, y: point.y,
                         custom: {
                             filterField: point.filter_field,
@@ -516,10 +747,13 @@ $(function () {
                             totalCount: point.count
                         }
                     })) }];
+                const labelOptions = type === 'pie'
+                    ? window.infrastructurePieLabelOptions(source.length)
+                    : window.infrastructureValueLabelOptions(type, source.length);
                 Highcharts.chart(container, Highcharts.merge(base, {
-                    chart: { type },
-                    xAxis: { type: 'category', categories: isPerformance ? source.map(item => item.label) : undefined },
-                    yAxis: { title: { text: isPerformance ? 'Nilai' : (isAging ? 'Hari' : 'Site unik') } },
+                    chart: { type, className: 'infra-analytics-chart' },
+                    xAxis: { type: 'category' },
+                    yAxis: { title: { text: isAging ? 'Hari' : 'Site unik' } },
                     plotOptions: {
                         pie: {
                             cursor: 'pointer',
@@ -532,35 +766,14 @@ $(function () {
                                 }
                             },
                             dataLabels: {
-                                enabled: true,
-                                format: '{point.name}: {point.y} ({point.percentage:.1f}%)'
+                                enabled: false
                             }
                         },
                         series: {
-                            cursor: isPerformance ? 'default' : 'pointer',
+                            cursor: 'pointer',
                 point: {
                     events: {
                                     click: function () {
-                                        if (isPerformance) {
-                                            if (scope === 'sewa' || scope === 'combat') {
-                                                window.applyInfrastructureFilter(
-                                                    scope,
-                                                    ownershipScope === 'Telkomsel' || ownershipScope === 'TP' ? 'ownership' : '',
-                                                    ownershipScope === 'Telkomsel' || ownershipScope === 'TP' ? ownershipScope : ''
-                                                );
-                                                return;
-                                            }
-                                            const target = scope === 'combat'
-                                                ? @json(route('infrastruktur.combat.index'))
-                                                : (scope === 'sewa' ? @json(route('infrastruktur.sewa-lahan.index')) : @json(route('infrastruktur.index')));
-                                            const targetUrl = new URL(target, window.location.origin);
-                                            if (ownershipScope === 'Telkomsel' || ownershipScope === 'TP') {
-                                                targetUrl.searchParams.set('filter_field', 'ownership');
-                                                targetUrl.searchParams.set('filter_value', ownershipScope);
-                                            }
-                                            window.location.href = targetUrl.pathname + targetUrl.search + '#infrastructure-data';
-                                            return;
-                                        }
                                         if (!this.options.custom) return;
                                         window.openInfrastructureDrilldown(scope, this.options.custom.filterField, this.options.custom.filterValue, this.options.custom.filterValue || this.options.custom.filterField, ownershipScope);
                                     }
@@ -568,9 +781,7 @@ $(function () {
                             }
                         }
                     },
-                    ...(key === 'contract_by_source'
-                        ? { tooltip: { pointFormat: '<b>Rp {point.y:,.0f}</b>' } }
-                        : (isAging ? {
+                    ...(isAging ? {
                             tooltip: {
                                 formatter: function () {
                                     const dated = this.point.options.custom?.datedCount || 0;
@@ -579,9 +790,9 @@ $(function () {
                                     return `${this.key}<br>${value}<br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
                                 }
                             }
-                        } : {})),
+                        } : {}),
                     series
-                }));
+                }, labelOptions));
             });
 
             root.find('.infra-priority-count').text(new Intl.NumberFormat('id-ID').format(data.priority_count || 0));

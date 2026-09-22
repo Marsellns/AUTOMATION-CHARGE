@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Exports\CombatSiteExport;
 use App\Http\Requests\UpdateCombatSiteRequest;
 use App\Models\CombatSite;
-use App\Models\SiteOwner;
+use App\Support\CombatSourceDetails;
 use App\Support\InfrastructureMetrics;
+use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -73,9 +74,11 @@ class CombatSiteController extends Controller
             ->addColumn('pks_status_label', fn (CombatSite $c) => InfrastructureMetrics::pksStatusLabel($c))
             ->addColumn('process_started_at', fn (CombatSite $c) => InfrastructureMetrics::processStartDate($c)?->toDateString())
             ->addColumn('process_aging_days', fn (CombatSite $c) => InfrastructureMetrics::processAgingDays($c))
+            ->addColumn('performance', fn (CombatSite $c) => InfrastructureMetrics::sitePerformance($c))
             ->addColumn('next_action_label', fn (CombatSite $c) => InfrastructureMetrics::nextActionLabel($c))
             ->addColumn('priority_label', fn (CombatSite $c) => InfrastructureMetrics::priorityLabel($c))
-            ->editColumn('status_dokumen', fn (CombatSite $c) => Str::limit($c->status_dokumen, 50))
+            ->editColumn('source_details', fn (CombatSite $c) => CombatSourceDetails::flattened($c->source_details))
+            ->editColumn('status_dokumen', fn (CombatSite $c) => Str::limit((string) $c->status_dokumen, 50))
             ->rawColumns($isAdmin ? ['aksi'] : [])
             ->toJson();
     }
@@ -90,7 +93,7 @@ class CombatSiteController extends Controller
                 : $query->where('tahun_justi_dirnet', (int) $value);
         } elseif ($field === 'summary_status') {
             $query->where(function ($subQuery) use ($value): void {
-                $status = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.status')), ''))";
+                $status = 'LOWER('.$this->sourceValueExpression('status').')';
                 if ($value === 'active') {
                     $subQuery->whereRaw("{$status} REGEXP 'on[[:space:]]*air|active|operational'")
                         ->whereRaw("{$status} NOT REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
@@ -111,20 +114,16 @@ class CombatSiteController extends Controller
         } elseif ($field === 'status_masa_sewa') {
             $this->applyLeaseStatusFilter($query, $value);
         } elseif ($field === 'status') {
-            $status = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.status')), ''))";
+            $status = 'LOWER('.$this->sourceValueExpression('status').')';
             if ($value === InfrastructureMetrics::ACTIVE) {
                 $query->whereRaw("{$status} REGEXP 'on[[:space:]]*air|active|operational'")
                     ->whereRaw("{$status} NOT REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
             } elseif ($value === InfrastructureMetrics::OFF_AIR) {
                 $query->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
             } elseif ($value === InfrastructureMetrics::UNKNOWN_STATUS || $value === 'Tidak Diisi') {
-                $query->where(function ($subQuery): void {
-                    $subQuery->where(function ($empty): void {
-                        $empty->whereNull('source_details->status')->orWhereJsonContains('source_details->status', '');
-                    });
-                });
+                $query->whereRaw("{$status} = ''");
             } else {
-                $query->whereJsonContains('source_details->status', $value);
+                $query->whereRaw("{$status} = ?", [mb_strtolower(trim($value), 'UTF-8')]);
             }
         } elseif ($field === 'status_dokumen') {
             $value === 'Tidak Diisi'
@@ -143,65 +142,12 @@ class CombatSiteController extends Controller
             $query->whereRaw("{$endDate} BETWEEN ? AND ?", [today()->toDateString(), today()->addDays(180)->toDateString()]);
         } elseif ($field !== '' && $value !== '' && in_array($field, ['pks_status', 'nop', 'vendor', 'ownership'], true)) {
             if ($field === 'vendor') {
-                $query->where(function ($subQuery) use ($value): void {
-                    if ($value === 'Tidak Diisi') {
-                        $subQuery->where(function ($empty): void {
-                            $empty->whereNull('source_details->vendor')->orWhereJsonContains('source_details->vendor', '');
-                        })->where(function ($empty): void {
-                            $empty->whereNull('source_details->tp')->orWhereJsonContains('source_details->tp', '');
-                        });
-                    } else {
-                        $subQuery->whereJsonContains('source_details->vendor', $value)
-                            ->orWhereJsonContains('source_details->tp', $value);
-                    }
-                });
+                $vendor = $this->sourceValueExpression('vendor', 'tp');
+                $value === 'Tidak Diisi'
+                    ? $query->whereRaw("{$vendor} = ''")
+                    : $query->whereRaw('LOWER('.$vendor.') = ?', [mb_strtolower(trim($value), 'UTF-8')]);
             } elseif ($field === 'ownership') {
-                $query->where(function ($subQuery) use ($value): void {
-                    $needle = strtolower(trim($value));
-                    $sourceNeedle = $needle === 'telkomsel' ? '%telkomsel%' : ($needle === 'tp' ? '%tp%' : null);
-                    if ($sourceNeedle !== null) {
-                        $subQuery->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) LIKE ?", [$sourceNeedle])
-                            ->orWhereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) LIKE ?", [$sourceNeedle]);
-                    }
-
-                    $ownerCodes = SiteOwner::query()
-                        ->where(function ($ownerQuery) use ($needle): void {
-                            if ($needle === 'telkomsel') {
-                                $ownerQuery->whereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%telkomsel%'");
-                            } elseif ($needle === 'tp') {
-                                $ownerQuery->whereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%tp%'")
-                                    ->orWhereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%tower%'");
-                            } else {
-                                $ownerQuery->whereNull('site_owner')
-                                    ->orWhere(function ($other) {
-                                        $other->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%telkomsel%'")
-                                            ->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%tp%'")
-                                            ->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%tower%'");
-                                    });
-                            }
-                        })
-                        ->pluck('site_code')
-                        ->filter()
-                        ->values();
-
-                    if ($ownerCodes->isNotEmpty()) {
-                        $subQuery->orWhereIn('site_code', $ownerCodes->all());
-                    }
-
-                    if ($sourceNeedle === null) {
-                        // Any row whose dataset ownership is neither
-                        // Telkomsel nor TP belongs to the fallback bucket,
-                        // including sites that have no SiteOwner lookup row.
-                        $subQuery->orWhere(function ($fallback): void {
-                            $fallback->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%telkomsel%'")
-                                ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%tp%'")
-                                ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%tower%'")
-                                ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%telkomsel%'")
-                                ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%tp%'")
-                                ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%tower%'");
-                        });
-                    }
-                });
+                InfrastructureOwnership::applyBucketFilter($query, $value);
             } elseif ($field === 'pks_status') {
                 if ($value === 'Ada PKS') {
                     $query->where(function ($subQuery): void {
@@ -215,26 +161,25 @@ class CombatSiteController extends Controller
                     $query->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
                         ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
                 } elseif ($value === 'Tidak Diisi') {
-                    $query->where(function ($subQuery): void {
-                        $subQuery->where(function ($empty): void {
-                            $empty->whereNull('source_details->pks_status')->orWhereJsonContains('source_details->pks_status', '');
-                        })->where(function ($empty): void {
+                    $pksStatus = $this->sourceValueExpression('pks_status');
+                    $query->whereRaw("{$pksStatus} = ''")
+                        ->where(function ($empty): void {
                             $empty->whereNull('status_dokumen')->orWhere('status_dokumen', '');
                         });
-                    });
                 } else {
                     $query->where(function ($subQuery) use ($value): void {
-                        $subQuery->whereJsonContains('source_details->pks_status', $value)
+                        $pksStatus = $this->sourceValueExpression('pks_status');
+                        $subQuery->whereRaw('LOWER('.$pksStatus.') = ?', [mb_strtolower(trim($value), 'UTF-8')])
                             ->orWhere('status_dokumen', $value);
                     });
                 }
             } elseif ($field === 'nop') {
+                $nop = $this->normalizedNopExpression();
                 if ($value === 'Tidak Diisi') {
-                    $query->where(function ($subQuery): void {
-                        $subQuery->whereNull('source_details->nop')->orWhereJsonContains('source_details->nop', '');
-                    });
+                    $query->whereRaw("{$nop} = ''");
                 } else {
-                    $query->whereJsonContains('source_details->nop', $value);
+                    $needle = preg_replace('/^NOP[\s-]*/i', '', $value) ?? $value;
+                    $query->whereRaw("{$nop} = ?", [mb_strtoupper(trim($needle), 'UTF-8')]);
                 }
             } else {
                 $query->whereJsonContains("source_details->{$field}", $value);
@@ -266,9 +211,39 @@ class CombatSiteController extends Controller
     {
         $query->where(function ($location) use ($value): void {
             foreach (['kabupaten', 'city', 'kota', 'area', 'wilayah'] as $key) {
-                $location->orWhereRaw("TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.{$key}')), '')) = ?", [$value]);
+                $location->orWhereRaw('LOWER('.$this->sourceValueExpression($key).') = ?', [mb_strtolower(trim($value), 'UTF-8')]);
             }
         });
+    }
+
+    /**
+     * Existing Combat snapshots retain the original DATABASE and
+     * DATABASE_REVENUE sheets under JSON keys.  Resolve those alongside the
+     * legacy flat snapshot so a chart filter always sees the same field as
+     * the dashboard.
+     */
+    private function sourceValueExpression(string ...$keys): string
+    {
+        $expressions = [];
+
+        foreach ($keys as $key) {
+            if (! preg_match('/^[a-z0-9_]+$/', $key)) {
+                throw new \InvalidArgumentException('Invalid Combat source field.');
+            }
+
+            foreach (["$.{$key}", "$.database.{$key}", "$.database_revenue.{$key}"] as $path) {
+                $expressions[] = "NULLIF(NULLIF(NULLIF(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '{$path}')), '')), ''), 'null'), '-')";
+            }
+        }
+
+        return 'COALESCE('.implode(', ', $expressions).", '')";
+    }
+
+    private function normalizedNopExpression(): string
+    {
+        $nop = $this->sourceValueExpression('nop');
+
+        return "UPPER(TRIM(REGEXP_REPLACE({$nop}, '^NOP[[:space:]-]*', '')))";
     }
 
     private function applyPriorityFilter($query): void

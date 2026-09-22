@@ -325,6 +325,80 @@ h1, h2, h3, h4, h5, h6,
     padding: 1rem;
 }
 
+/* Infrastruktur: every chart pair occupies identical columns and cards.
+   The chart itself fills a stable canvas, so no single diagram leaves an
+   oversized empty column beside it. */
+.infra-overview-chart-card .card-body,
+.infra-detail-chart-card .card-body {
+    display: flex;
+}
+
+.infra-overview-chart,
+.infra-detail-chart {
+    width: 100%;
+}
+
+.infra-overview-chart {
+    height: 320px;
+}
+
+/* Ikon kontekstual di kartu ringkasan Infrastruktur. Tata letak data dan
+   target drill-down tetap sama; ikon hanya memperjelas makna setiap metrik. */
+.infra-summary-card-body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.infra-summary-icon {
+    display: inline-flex;
+    flex: 0 0 2.9rem;
+    align-items: center;
+    justify-content: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    color: var(--bs-secondary-color);
+    background: rgba(148, 163, 184, 0.12);
+    border-radius: 0.75rem;
+}
+
+.infra-summary-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.infra-summary-card.border-primary .infra-summary-icon {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.14);
+}
+
+.infra-summary-card.border-success .infra-summary-icon {
+    color: #059669;
+    background: rgba(5, 150, 105, 0.14);
+}
+
+.infra-summary-card.border-warning .infra-summary-icon {
+    color: #ca8a04;
+    background: rgba(202, 138, 4, 0.14);
+}
+
+.infra-summary-card.border-danger .infra-summary-icon {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.14);
+}
+
+.infra-summary-card.border-info .infra-summary-icon {
+    color: #0891b2;
+    background: rgba(8, 145, 178, 0.14);
+}
+
+@media (max-width: 1199.98px) {
+    .infra-detail-chart-grid > .col-xl-6 {
+        width: 100%;
+    }
+}
+
 .pln-customer-summary {
     background: linear-gradient(135deg, var(--neutral-50) 0%, var(--brand-light) 100%);
 }
@@ -2020,6 +2094,24 @@ h1, h2, h3, h4, h5, h6,
     color: var(--brand) !important;
     font-weight: 700;
     background-color: var(--brand-light) !important;
+}
+
+/* Hierarki portfolio Sewa Lahan: Site Telkomsel dan Site TP bukan modul
+   Infrastruktur terpisah, melainkan tampilan terfilter dari Sewa Lahan. */
+.sidebar-submenu-nested {
+    list-style: none;
+    margin: 0.1rem 0 0.25rem 0.8rem;
+    padding: 0.15rem 0 0.15rem 0.8rem;
+    border-left: 1px solid var(--neutral-200);
+}
+
+.sidebar-submenu-nested .sidebar-subitem-link {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.78rem;
+}
+
+[data-bs-theme="dark"] .sidebar-submenu-nested {
+    border-left-color: var(--neutral-700);
 }
 
 [data-bs-theme="dark"] .sidebar-subitem-link.active {

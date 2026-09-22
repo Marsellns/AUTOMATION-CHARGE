@@ -35,6 +35,14 @@ class ConceptSystemMigrationTest extends TestCase
         $this->assertSame('TP', $this->invoke($controller, 'ownerBucket', [
             new SewaLahanRenewal(['site_code' => 'FALLBACK001']), $owners->keyBy('site_code'),
         ]));
+        $this->assertSame('TP', $this->invoke($controller, 'ownerBucket', [
+            new SewaLahanRenewal(['site_code' => 'FALLBACK001', 'source_details' => ['ownership' => 'TP']]),
+            new Collection([new SiteOwner(['site_code' => 'FALLBACK001', 'site_owner' => 'Mitratel'])])->keyBy('site_code'),
+        ]));
+        $this->assertSame('Telkomsel', $this->invoke($controller, 'ownerBucket', [
+            new SewaLahanRenewal(['site_code' => 'FALLBACK001', 'source_details' => ['ownership' => 'null']]),
+            new Collection([new SiteOwner(['site_code' => 'FALLBACK001', 'site_owner' => 'Telkomsel'])])->keyBy('site_code'),
+        ]));
     }
 
     private function invoke(object $object, string $method, array $arguments): mixed

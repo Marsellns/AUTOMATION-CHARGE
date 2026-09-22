@@ -244,8 +244,20 @@ $(function () {
     function esc(v) { return $('<div>').text(v == null || v === '' ? '-' : String(v)).html(); }
     function fmtMoney(v) { return v == null || v === '' ? '-' : new Intl.NumberFormat('id-ID').format(v); }
     function fmtDate(v) { if (!v) return '-'; const d = new Date(v); return isNaN(d) ? esc(v) : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
-    function detailValue(row, ...keys) {
+    function sourceDetails(row) {
         const details = row?.source_details || {};
+        const database = details.database && typeof details.database === 'object' ? details.database : {};
+        const revenue = details.database_revenue && typeof details.database_revenue === 'object' ? details.database_revenue : {};
+        const flat = Object.fromEntries(Object.entries(details)
+            .filter(([key]) => key !== 'database' && key !== 'database_revenue'));
+
+        // Keep the table readable even when a browser receives a pre-fix
+        // response from cache: DATABASE is the master sheet and therefore
+        // overrides the revenue sheet for NOP, TP/Vendor, and Status Site.
+        return { ...revenue, ...database, ...flat };
+    }
+    function detailValue(row, ...keys) {
+        const details = sourceDetails(row);
         for (const key of keys) {
             const value = details[key];
             if (value !== null && value !== undefined && value !== ''
@@ -311,7 +323,7 @@ $(function () {
     ]);
 
     function renderSourceDetails(d) {
-        const details = d.source_details || {};
+        const details = sourceDetails(d);
         const rows = Object.entries(details)
             .filter(([key, value]) => {
                 if (value === null || value === '') return false;
@@ -382,6 +394,7 @@ $(function () {
                 <tr><th>Update By</th><td>${esc(d.update_by)}</td><th>Tanggal</th><td>${fmtDate(d.tanggal)}</td></tr>
             </table>
             ${renderSourceDetails(d)}
+            <div class="mt-3" data-site-performance></div>
         </div>`;
     }
 
@@ -395,6 +408,10 @@ $(function () {
         if (!row) return;
         $('#detail-title').text(row.site_code ?? '');
         $('#detail-body').html(renderDetail(row));
+        window.renderInfrastructureSitePerformance(
+            document.querySelector('#detail-body [data-site-performance]'),
+            row.performance
+        );
         detailModal.show();
     });
 });

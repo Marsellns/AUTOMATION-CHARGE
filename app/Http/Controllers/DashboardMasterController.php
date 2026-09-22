@@ -9,6 +9,7 @@ use App\Models\CombatSite;
 use App\Models\DataSiteUnlock;
 use App\Models\JaknetContract;
 use App\Models\ListrikAll;
+use App\Models\ListrikInbuilding;
 use App\Models\ListrikPln;
 use App\Models\PoHq;
 use App\Models\PaymentPlnMasterMonthly;
@@ -44,14 +45,20 @@ class DashboardMasterController extends Controller
         $listrikCount = ListrikPln::count();
         $totalDayaVa = (int) ListrikPln::sum('daya_va');
 
-        $infraTotal = SewaLahanRenewal::count()
-            + CombatSite::count()
-            + JaknetContract::count()
-            + RecurringIpas::count()
-            + RecurringTagihanIpas::count()
-            + DataSiteUnlock::count()
-            + Bapss::count()
-            + UploadFile::count();
+        $sewaLahanCount = SewaLahanRenewal::count();
+        $combatCount = CombatSite::count();
+        $infraDataSources = [
+            $sewaLahanCount,
+            $combatCount,
+            JaknetContract::count(),
+            RecurringIpas::count(),
+            RecurringTagihanIpas::count(),
+            DataSiteUnlock::count(),
+            Bapss::count(),
+            UploadFile::count(),
+        ];
+        $infraTotal = array_sum($infraDataSources);
+        $infraDataSourceCount = count(array_filter($infraDataSources, static fn (int $count): bool => $count > 0));
 
         // 2. Electricity Tagihan Total
         $totalTagihanPln = (float) StatusPembayaran::sum('harga');
@@ -62,14 +69,32 @@ class DashboardMasterController extends Controller
         $anomaliPnlCount = SiteMonthlyMetric::where('is_anomaly', 1)->count();
         $totalAnomalies = $anomaliPlnCount + $anomaliIbcCount + $anomaliPnlCount;
 
+        $moduleDataCounts = [
+            'pnl' => SiteMonthlyMetric::count(),
+            'electricity' => $listrikCount + ListrikInbuilding::count(),
+            'infrastructure' => $infraTotal,
+            'po' => $poCount,
+        ];
+        $moduleDataTotal = array_sum($moduleDataCounts);
+        $moduleDataComposition = collect($moduleDataCounts)->map(
+            static fn (int $count): array => [
+                'count' => $count,
+                'percentage' => $moduleDataTotal > 0 ? round(($count / $moduleDataTotal) * 100) : 0,
+            ]
+        )->all();
+
         return view('dashboard.master', compact(
             'siteCount',
             'poCount',
             'listrikCount',
             'totalDayaVa',
             'infraTotal',
+            'infraDataSourceCount',
+            'sewaLahanCount',
+            'combatCount',
             'totalTagihanPln',
-            'totalAnomalies'
+            'totalAnomalies',
+            'moduleDataComposition'
         ));
     }
 
@@ -85,8 +110,12 @@ class DashboardMasterController extends Controller
             SiteMonthlyMetric::query()->max('updated_at') ?? 'empty',
             PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
             ListrikAll::query()->max('updated_at') ?? 'empty',
+            ListrikPln::query()->max('updated_at') ?? 'empty',
+            ListrikInbuilding::query()->max('updated_at') ?? 'empty',
+            AnomaliTagihanPln::query()->max('updated_at') ?? 'empty',
+            AnomaliTagihanInbuilding::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.chart-data.v3:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
+        $cacheKey = 'dashboard.chart-data.v4:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
 
         return response()->json(Cache::remember(
             $cacheKey,
@@ -487,108 +516,16 @@ class DashboardMasterController extends Controller
         $anomaliIbcCount = AnomaliTagihanInbuilding::count();
         $anomaliPnlCount = SiteMonthlyMetric::where('is_anomaly', 1)->count();
         $totalAnomalies = $anomaliPlnCount + $anomaliIbcCount + $anomaliPnlCount;
+        $normalPlnCount = max(0, ListrikPln::count() - $anomaliPlnCount);
+        $normalIbcCount = max(0, ListrikInbuilding::count() - $anomaliIbcCount);
+        $normalPnlCount = SiteMonthlyMetric::where('is_anomaly', 0)->count();
 
         $anomaliDistribution = [
-            ['name' => 'Anomali Tagihan PLN', 'y' => max(1, $anomaliPlnCount), 'color' => '#EF4444'],
-            ['name' => 'Anomali Inbuilding', 'y' => max(1, $anomaliIbcCount), 'color' => '#F59E0B'],
-            ['name' => 'Anomali PnL Site', 'y' => max(1, $anomaliPnlCount), 'color' => '#3B82F6'],
-            ['name' => 'Data Valid / Normal', 'y' => max(10, $siteCount - $totalAnomalies), 'color' => '#10B981'],
+            ['name' => 'Anomali Tagihan PLN', 'y' => $anomaliPlnCount, 'color' => '#EF4444'],
+            ['name' => 'Anomali Inbuilding', 'y' => $anomaliIbcCount, 'color' => '#F59E0B'],
+            ['name' => 'Anomali PnL Site', 'y' => $anomaliPnlCount, 'color' => '#3B82F6'],
+            ['name' => 'Data Valid / Normal', 'y' => $normalPlnCount + $normalIbcCount + $normalPnlCount, 'color' => '#10B981'],
         ];
-
-        // --- 8. Module Data & Sparklines ---
-        $poCount = PoHq::count();
-        $listrikCount = ListrikPln::count();
-        $infraTotal = collect($infraBreakdown)->sum('y');
-
-        $activeModules = [
-            [
-                'id' => 'simaster_pnl_db',
-                'name' => 'pnl_analytics_engine',
-                'type' => 'PostgreSQL / PnL Core',
-                'badge' => 'Operational',
-                'badge_class' => 'success',
-                'records' => number_format($siteCount) . ' Sites',
-                'metric_label' => 'Profit Margin',
-                'metric_val' => '94.2%',
-                'sparkline' => [24, 28, 35, 42, 49, 58, 62, 70, 78, 85, 92, 95],
-                'color' => '#10B981'
-            ],
-            [
-                'id' => 'electricity_centralized',
-                'name' => 'electricity_grid_vault',
-                'type' => 'PLN Centralized & IBC',
-                'badge' => 'Active Sync',
-                'badge_class' => 'primary',
-                'records' => number_format($listrikCount) . ' Pelanggan',
-                'metric_label' => 'Total Beban',
-                'metric_val' => '42.8 MVA',
-                'sparkline' => [40, 42, 45, 41, 48, 52, 50, 56, 54, 60, 62, 65],
-                'color' => '#3B82F6'
-            ],
-            [
-                'id' => 'infrastruktur_cluster',
-                'name' => 'infra_registry_store',
-                'type' => 'Sewa Lahan & Assets',
-                'badge' => '8 Modul OK',
-                'badge_class' => 'info',
-                'records' => number_format($infraTotal) . ' Items',
-                'metric_label' => 'Storage Sync',
-                'metric_val' => '99.8%',
-                'sparkline' => [15, 20, 22, 28, 35, 38, 45, 48, 55, 60, 65, 72],
-                'color' => '#6366F1'
-            ],
-            [
-                'id' => 'po_procurement_system',
-                'name' => 'po_hq_procurement',
-                'type' => 'Capex & Opex Engine',
-                'badge' => 'Active',
-                'badge_class' => 'primary',
-                'records' => number_format($poCount) . ' Orders',
-                'metric_label' => 'Approval Rate',
-                'metric_val' => '91.4%',
-                'sparkline' => [10, 15, 20, 18, 25, 30, 28, 35, 40, 42, 48, 50],
-                'color' => '#0EA5E9'
-            ]
-        ];
-
-        // --- 9. Recent Activity Logs ---
-        $recentLogs = [];
-        // Latest POs
-        $latestPo = PoHq::orderBy('id', 'desc')->take(3)->get();
-        foreach ($latestPo as $po) {
-            $recentLogs[] = [
-                'module' => 'PO HQ',
-                'badge_class' => 'primary',
-                'action' => 'Purchase Order #' . ($po->po_number ?? $po->id),
-                'details' => ($po->expense_type ?? 'Capex') . ' - ' . ($po->item_description ?? 'Pengadaan Infrastruktur'),
-                'status' => 'Synced',
-                'time' => 'Baru saja'
-            ];
-        }
-        // Latest Sewa Lahan
-        $latestSewa = SewaLahanRenewal::orderBy('id', 'desc')->take(2)->get();
-        foreach ($latestSewa as $sewa) {
-            $recentLogs[] = [
-                'module' => 'Sewa Lahan',
-                'badge_class' => 'info',
-                'action' => 'Renewal Site ' . ($sewa->site_id ?? 'Site'),
-                'details' => ($sewa->nama_lokasi ?? 'Lokasi') . ' - Sewa Lahan',
-                'status' => 'Verified',
-                'time' => '1 jam lalu'
-            ];
-        }
-        // Latest Listrik
-        $latestPln = ListrikPln::orderBy('id', 'desc')->take(2)->get();
-        foreach ($latestPln as $pln) {
-            $recentLogs[] = [
-                'module' => 'Listrik PLN',
-                'badge_class' => 'warning',
-                'action' => 'ID Pelanggan ' . ($pln->id_pelanggan ?? $pln->id),
-                'details' => ($pln->nama_pelanggan ?? 'PLN') . ' (' . ($pln->daya_va ?? 0) . ' VA)',
-                'status' => 'Monitored',
-                'time' => '2 jam lalu'
-            ];
-        }
 
         $pnlTotal = max(1, (int) ($pnlStatusSummary['profit'] ?? 0) + (int) ($pnlStatusSummary['loss'] ?? 0) + (int) ($pnlStatusSummary['inactive'] ?? 0));
         return response()->json([
@@ -640,14 +577,6 @@ class DashboardMasterController extends Controller
                 'pnl' => $anomaliPnlCount,
                 'distribution' => $anomaliDistribution,
             ],
-            'active_modules' => $activeModules,
-            'recent_logs' => $recentLogs,
-            'system_health' => [
-                'score' => 98.6,
-                'operational_count' => 11,
-                'warning_count' => max(1, min(5, $totalAnomalies)),
-                'critical_count' => 0,
-            ]
         ]);
     }
 

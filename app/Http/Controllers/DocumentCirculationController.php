@@ -80,16 +80,31 @@ class DocumentCirculationController extends Controller
         $file = $request->file('document_file');
         $path = $file->store('document-circulation', 'public');
 
-        $document = DocumentCirculation::create([
-            'document_title' => $validated['document_title'],
-            'document_number' => $validated['document_number'] ?? null,
-            'file_name' => $file->getClientOriginalName(),
-            'file_path' => $path,
-            'status' => 'Pending',
-            'current_step' => 2,
-            'uploaded_by' => $request->user()->id,
-            'uploaded_by_name' => $request->user()->name,
-        ]);
+        $document = DB::transaction(function () use ($validated, $file, $path, $request): DocumentCirculation {
+            $document = DocumentCirculation::create([
+                'document_title' => $validated['document_title'],
+                'document_number' => $validated['document_number'] ?? null,
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'Pending',
+                'current_step' => 2,
+                'uploaded_by' => $request->user()->id,
+                'uploaded_by_name' => $request->user()->name,
+            ]);
+
+            // Step 1 is an audit event as well: it makes upload time and actor
+            // persist alongside every later manager decision.
+            DocumentApproval::create([
+                'document_id' => $document->id,
+                'step' => 1,
+                'approver_id' => $request->user()->id,
+                'approver_name' => $request->user()->name,
+                'action' => 'uploaded',
+                'acted_at' => now(),
+            ]);
+
+            return $document;
+        });
 
         return redirect()->route('presales.show', $document)
             ->with('success', 'Dokumen berhasil diupload dan menunggu Manager NOP.');

@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Exports\SewaLahanRenewalExport;
 use App\Http\Requests\UpdateSewaLahanRenewalRequest;
 use App\Models\SewaLahanRenewal;
-use App\Models\SiteOwner;
 use App\Support\InfrastructureMetrics;
+use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -75,6 +75,7 @@ class SewaLahanRenewalController extends Controller
             ->addColumn('lease_duration', fn (SewaLahanRenewal $s) => InfrastructureMetrics::leaseDurationLabel($s))
             ->addColumn('process_started_at', fn (SewaLahanRenewal $s) => InfrastructureMetrics::processStartDate($s)?->toDateString())
             ->addColumn('process_aging_days', fn (SewaLahanRenewal $s) => InfrastructureMetrics::processAgingDays($s))
+            ->addColumn('performance', fn (SewaLahanRenewal $s) => InfrastructureMetrics::sitePerformance($s))
             ->rawColumns($isAdmin ? ['aksi'] : [])
             ->toJson();
     }
@@ -241,49 +242,7 @@ class SewaLahanRenewalController extends Controller
 
     private function applyOwnershipFilter($query, string $value): void
     {
-        $query->where(function ($subQuery) use ($value): void {
-            $needle = strtolower(trim($value));
-            $sourceNeedle = $needle === 'telkomsel' ? '%telkomsel%' : ($needle === 'tp' ? '%tp%' : null);
-            if ($sourceNeedle !== null) {
-                $subQuery->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) LIKE ?", [$sourceNeedle])
-                    ->orWhereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) LIKE ?", [$sourceNeedle]);
-            }
-
-            $ownerCodes = SiteOwner::query()
-                ->where(function ($ownerQuery) use ($needle): void {
-                    if ($needle === 'telkomsel') {
-                        $ownerQuery->whereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%telkomsel%'");
-                    } elseif ($needle === 'tp') {
-                        $ownerQuery->whereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%tp%'")
-                            ->orWhereRaw("LOWER(COALESCE(site_owner, '')) LIKE '%tower%'");
-                    } else {
-                        $ownerQuery->whereNull('site_owner')
-                            ->orWhere(function ($other) {
-                                $other->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%telkomsel%'")
-                                    ->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%tp%'")
-                                    ->whereRaw("LOWER(COALESCE(site_owner, '')) NOT LIKE '%tower%'");
-                            });
-                    }
-                })
-                ->pluck('site_code')
-                ->filter()
-                ->values();
-
-            if ($ownerCodes->isNotEmpty()) {
-                $subQuery->orWhereIn('site_code', $ownerCodes->all());
-            }
-
-            if ($sourceNeedle === null) {
-                $subQuery->orWhere(function ($fallback): void {
-                    $fallback->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%telkomsel%'")
-                        ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%tp%'")
-                        ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.ownership')), '')) NOT LIKE '%tower%'")
-                        ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%telkomsel%'")
-                        ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%tp%'")
-                        ->whereRaw("LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '$.tp')), '')) NOT LIKE '%tower%'");
-                });
-            }
-        });
+        InfrastructureOwnership::applyBucketFilter($query, $value);
     }
 
     private function applyLeaseStatusFilter($query, string $value): void

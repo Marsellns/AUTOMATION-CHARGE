@@ -28,6 +28,30 @@ class InfrastructureDashboardLogicTest extends TestCase
         $this->assertSame('Tanpa PKS', $this->invoke($controller, 'pksStatusValue', [$noPks]));
     }
 
+    public function test_nested_combat_snapshot_is_used_for_nop_and_vendor_charts(): void
+    {
+        $controller = app(InfrastructureDashboardController::class);
+        $row = new CombatSite(['source_details' => [
+            'database' => ['nop' => 'NOP BEKASI', 'tp' => 'TELKOMSEL'],
+            'database_revenue' => ['nop' => 'NOP LAMA', 'tp' => 'TP LAMA'],
+        ]]);
+
+        $this->assertSame('NOP BEKASI', $this->invoke($controller, 'nopValue', [$row]));
+        $this->assertSame('TELKOMSEL', $this->invoke($controller, 'vendorValue', [$row]));
+    }
+
+    public function test_combat_table_filter_resolves_flat_and_nested_json_paths(): void
+    {
+        $controller = app(\App\Http\Controllers\CombatSiteController::class);
+        $expression = $this->invoke($controller, 'sourceValueExpression', ['status']);
+        $nopExpression = $this->invoke($controller, 'normalizedNopExpression', []);
+
+        $this->assertStringContainsString('$.status', $expression);
+        $this->assertStringContainsString('$.database.status', $expression);
+        $this->assertStringContainsString('$.database_revenue.status', $expression);
+        $this->assertStringContainsString('REGEXP_REPLACE', $nopExpression);
+    }
+
     public function test_popup_suppresses_excel_formulas_and_raw_metric_artifacts(): void
     {
         $controller = app(InfrastructureDashboardController::class);

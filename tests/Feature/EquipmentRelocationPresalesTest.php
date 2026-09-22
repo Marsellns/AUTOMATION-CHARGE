@@ -71,8 +71,17 @@ class EquipmentRelocationPresalesTest extends TestCase
         $this->assertSame('Pending', $document->status);
         $this->assertSame(2, $document->current_step);
         Storage::disk('public')->assertExists($document->file_path);
+        $this->assertDatabaseHas('document_approvals', [
+            'document_id' => $document->id,
+            'step' => 1,
+            'approver_id' => $admin->id,
+            'approver_name' => $admin->name,
+            'action' => 'uploaded',
+        ]);
         $this->actingAs($admin)->get(route('presales.index'))
             ->assertOk()->assertSee('Dokumen Presales Uji');
+        $this->actingAs($admin)->get(route('presales.show', $document))
+            ->assertOk()->assertSee('Riwayat waktu')->assertSee('WIB');
 
         foreach (['manager_nop', 'manager_sq', 'manager_nos', 'manager_nbae'] as $role) {
             $manager = $this->userWithRole($role);
@@ -83,7 +92,7 @@ class EquipmentRelocationPresalesTest extends TestCase
 
         $document->refresh();
         $this->assertSame('Completed', $document->status);
-        $this->assertSame(4, $document->approvals()->count());
+        $this->assertSame(5, $document->approvals()->count());
         $this->actingAs($admin)->get(route('presales.file', $document))->assertOk();
     }
 

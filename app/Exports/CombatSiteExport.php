@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\CombatSite;
+use App\Support\CombatSourceDetails;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -63,9 +64,7 @@ class CombatSiteExport implements FromQuery, WithHeadings, WithMapping
         static $no = 0;
         $no++;
 
-        $d = is_array($row->source_details)
-            ? $row->source_details
-            : (json_decode($row->source_details ?? '[]', true) ?: []);
+        $d = CombatSourceDetails::flattened($row->source_details);
 
         return [
             $no,

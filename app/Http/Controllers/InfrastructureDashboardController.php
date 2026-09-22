@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\CombatSite;
 use App\Models\SewaLahanRenewal;
 use App\Models\SiteOwner;
+use App\Support\CombatSourceDetails;
 use App\Support\InfrastructureMetrics;
+use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,7 +47,7 @@ class InfrastructureDashboardController extends Controller
             // exist there exclusively.
             return $rows
             ->sortByDesc(static function ($row): int {
-                $details = is_array($row->source_details) ? $row->source_details : [];
+                $details = CombatSourceDetails::flattened($row->source_details);
                 $score = (filled($row->status_dokumen) ? 16 : 0)
                     + (filled($row->status_perpanjangan) ? 8 : 0)
                     + (filled($row->end_date_baru ?? $row->end_date_lama) ? 4 : 0)
@@ -79,18 +81,6 @@ class InfrastructureDashboardController extends Controller
             $ownerCounts->put($bucket, $ownerCounts->get($bucket, 0) + 1);
         }
 
-        $monthly = [];
-        foreach (['jan', 'feb', 'mar', 'apr', 'mei', 'jun'] as $month) {
-            $financials = $allSites->map(
-                fn ($row): array => InfrastructureMetrics::monthlyFinancials($row, $month)
-            );
-            $monthly[] = [
-                'label' => ucfirst($month),
-                'revenue' => (float) $financials->sum('revenue'),
-                'cost' => (float) $financials->sum('cost'),
-                'pnl' => (float) $financials->sum('pnl'),
-            ];
-        }
         $statusBreakdown = $allSites->groupBy(fn ($row) => $this->dimensionKey('status_dokumen', $row->status_dokumen))
             ->map(function ($rows): array {
                 $name = $this->dimensionLabel('status_dokumen', $rows->first()?->status_dokumen);
@@ -287,8 +277,11 @@ class InfrastructureDashboardController extends Controller
 
         return response()->json([
             'cards' => [
-                'total' => $allSites->count(),
-                'records' => $all->count(),
+                // Kartu utama menyatakan jumlah baris snapshot yang benar-
+                // benar tersimpan. Jumlah Site ID unik tetap disediakan
+                // sebagai keterangan agar kedua angka tidak tertukar.
+                'total' => $all->count(),
+                'unique_sites' => $allSites->count(),
                 'active' => $allSites->filter($isOperational)->count(),
                 'contract' => $allSites->filter($needsAttention)->count(),
                 'without_pks' => $allSites->filter($withoutPks)->count(),
@@ -299,7 +292,6 @@ class InfrastructureDashboardController extends Controller
             // A pie composition must be mutually exclusive.  Contract and
             // PKS risks remain KPI cards and no longer inflate this series.
             'status' => $airStatus,
-            'performance' => $monthly,
             'sources' => $sourceSeries,
             'owners' => $ownerCounts->map(fn ($count, $name) => ['name' => $name, 'y' => $count, 'filter_field' => 'ownership', 'filter_value' => $name])->values(),
             'status_breakdown' => $statusBreakdown,
@@ -323,6 +315,7 @@ class InfrastructureDashboardController extends Controller
                 'combat' => $combat->count(),
                 'sewa_sites' => $sewaSites->count(),
                 'combat_sites' => $combatSites->count(),
+                'total_records' => $all->count(),
                 'total_sites' => $allSites->count(),
             ],
         ]);
@@ -366,11 +359,13 @@ class InfrastructureDashboardController extends Controller
             )->values();
         }
 
-        // The combined dashboard treats a Site ID as one portfolio site,
-        // while a source drill-down intentionally preserves the two modules.
-        // This keeps the Total Site card and its drill-down on the same basis
-        // without changing the 43 Sewa / 77 Combat source counts.
-        $records = $this->uniqueDetailRecords($records, $filterField !== 'source');
+        // Semua diagram operasional dihitung dari Site ID unik. Kartu Total
+        // Site adalah pengecualian yang sengaja menampilkan jumlah baris
+        // snapshot, sehingga drill-down `all_records` juga mempertahankan
+        // setiap baris tanpa menghapus duplikasi historis.
+        if ($filterField !== 'all_records') {
+            $records = $this->uniqueDetailRecords($records, $filterField !== 'source');
+        }
 
         if ($filterField === 'source') {
             $records = $records->filter(fn (array $record): bool => $record['source'] === $filterValue);
@@ -385,7 +380,7 @@ class InfrastructureDashboardController extends Controller
             $year = $row->tahun_renewal ?? $row->tahun_justi_dirnet;
             $airStatus = $this->airStatusValue($row);
 
-            if ($filterField === '' || $filterField === 'source') {
+            if ($filterField === '' || $filterField === 'source' || $filterField === 'all_records') {
                 return true;
             }
 
@@ -423,7 +418,7 @@ class InfrastructureDashboardController extends Controller
 
         $data = $records->map(function (array $record) use ($ownersBySite): array {
             $row = $record['row'];
-            $details = is_array($row->source_details) ? $row->source_details : [];
+            $details = $this->rowDetails($row);
             $endDate = $row->end_date_baru ?? $row->end_date_lama;
             $daysRemaining = $endDate === null
                 ? null
@@ -447,6 +442,7 @@ class InfrastructureDashboardController extends Controller
                 'total_harga_baru' => $row->total_harga_baru,
                 'process_started_at' => InfrastructureMetrics::processStartDate($row)?->toDateString(),
                 'process_aging_days' => InfrastructureMetrics::processAgingDays($row),
+                'performance' => InfrastructureMetrics::sitePerformance($row),
                 // source_details is an import snapshot.  Keep useful
                 // supplementary values, but do not expose Excel formulas or
                 // raw serial-date cells in the detail modal.
@@ -500,7 +496,7 @@ class InfrastructureDashboardController extends Controller
 
     private function rowDetails($row): array
     {
-        return is_array($row->source_details) ? $row->source_details : [];
+        return CombatSourceDetails::flattened($row->source_details);
     }
 
     private function nopValue($row): string
@@ -583,7 +579,7 @@ class InfrastructureDashboardController extends Controller
         return $records
             ->sortByDesc(function (array $record): int {
                 $row = $record['row'];
-                $details = is_array($row->source_details) ? $row->source_details : [];
+                $details = $this->rowDetails($row);
                 $score = (filled($row->status_dokumen) ? 16 : 0)
                     + (filled($row->status_perpanjangan) ? 8 : 0)
                     + (filled($row->end_date_baru ?? $row->end_date_lama) ? 4 : 0)
@@ -598,16 +594,7 @@ class InfrastructureDashboardController extends Controller
 
     private function ownerBucket($row, Collection $ownersBySite): string
     {
-        $details = is_array($row->source_details) ? $row->source_details : [];
-        $owner = $ownersBySite->get(strtoupper(trim((string) $row->site_code)));
-        $rawLabel = filled($details['ownership'] ?? null)
-            ? $details['ownership']
-            : (filled($details['tp'] ?? null) ? $details['tp'] : ($owner?->site_owner ?? ''));
-        $label = strtolower(trim((string) $rawLabel));
-
-        return str_contains($label, 'telkomsel')
-            ? 'Telkomsel'
-            : (str_contains($label, 'tp') || str_contains($label, 'tower') ? 'TP' : 'Lainnya / Tidak Terpetakan');
+        return InfrastructureOwnership::bucketForRow($row, $ownersBySite);
     }
 
     /**

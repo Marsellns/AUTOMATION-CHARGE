@@ -175,9 +175,13 @@
                         <div class="collapse {{ $isInfrastruktur ? 'show' : '' }}" id="collapseInfrastruktur">
                             @php($sewaOwnershipScope = strtolower(trim((string) (request('ownership_scope') ?: (request('filter_field') === 'ownership' ? request('filter_value') : '')))))
                             <ul class="sidebar-submenu">
-                                <li><a class="sidebar-subitem-link {{ request()->routeIs('infrastruktur.sewa-lahan.*') && !in_array($sewaOwnershipScope, ['telkomsel', 'tp'], true) ? 'active' : '' }}" href="{{ route('infrastruktur.sewa-lahan.index') }}">Sewa Lahan</a></li>
-                                <li><a class="sidebar-subitem-link {{ $sewaOwnershipScope === 'telkomsel' ? 'active' : '' }}" href="{{ route('concept.site-telkomsel') }}">Site Telkomsel</a></li>
-                                <li><a class="sidebar-subitem-link {{ $sewaOwnershipScope === 'tp' ? 'active' : '' }}" href="{{ route('concept.site-tp') }}">Site TP</a></li>
+                                <li class="sidebar-submodule">
+                                    <a class="sidebar-subitem-link {{ request()->routeIs('infrastruktur.sewa-lahan.*') && !in_array($sewaOwnershipScope, ['telkomsel', 'tp'], true) ? 'active' : '' }}" href="{{ route('infrastruktur.sewa-lahan.index') }}">Sewa Lahan</a>
+                                    <ul class="sidebar-submenu-nested" aria-label="Submodul Sewa Lahan">
+                                        <li><a class="sidebar-subitem-link {{ $sewaOwnershipScope === 'telkomsel' ? 'active' : '' }}" href="{{ route('infrastruktur.sewa-lahan.index', ['ownership_scope' => 'Telkomsel']) }}">Site Telkomsel</a></li>
+                                        <li><a class="sidebar-subitem-link {{ $sewaOwnershipScope === 'tp' ? 'active' : '' }}" href="{{ route('infrastruktur.sewa-lahan.index', ['ownership_scope' => 'TP']) }}">Site TP</a></li>
+                                    </ul>
+                                </li>
                                 <li><a class="sidebar-subitem-link {{ request()->routeIs('infrastruktur.combat.*') ? 'active' : '' }}" href="{{ route('infrastruktur.combat.index') }}">Combat</a></li>
                                 <li><a class="sidebar-subitem-link {{ request()->routeIs('infrastruktur.recurring-ipas.*') ? 'active' : '' }}" href="{{ route('infrastruktur.recurring-ipas.index') }}">Recurring (ANT &amp; Ipas)</a></li>
                                 <li><a class="sidebar-subitem-link {{ request()->routeIs('infrastruktur.recurring-tagihan-ipas.*') ? 'active' : '' }}" href="{{ route('infrastruktur.recurring-tagihan-ipas.index') }}">Recurring (Tagihan Ipas)</a></li>

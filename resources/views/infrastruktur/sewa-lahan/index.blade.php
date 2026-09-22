@@ -368,6 +368,7 @@ $(function () {
                 <tr><th>Update By</th><td>${esc(d.update_by)}</td><th>Tgl Update</th><td>${fmtDate(d.tgl_update)}</td></tr>
             </table>
             ${renderSourceDetails(d)}
+            <div class="mt-3" data-site-performance></div>
         </div>`;
     }
 
@@ -381,6 +382,10 @@ $(function () {
         if (!row) return;
         $('#detail-title').text(row.site_code ?? '');
         $('#detail-body').html(renderDetail(row));
+        window.renderInfrastructureSitePerformance(
+            document.querySelector('#detail-body [data-site-performance]'),
+            row.performance
+        );
         detailModal.show();
     });
 });

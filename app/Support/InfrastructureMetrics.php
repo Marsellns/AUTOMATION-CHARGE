@@ -22,6 +22,22 @@ final class InfrastructureMetrics
     public const OFF_AIR = 'Off Air / Non-Operational';
     public const UNKNOWN_STATUS = 'Status Site Tidak Diisi';
 
+    /** @var array<string, array{label: string, aliases: array<int, string>}> */
+    private const PERFORMANCE_MONTHS = [
+        'jan' => ['label' => 'Januari', 'aliases' => ['jan', 'january', 'januari']],
+        'feb' => ['label' => 'Februari', 'aliases' => ['feb', 'february', 'februari']],
+        'mar' => ['label' => 'Maret', 'aliases' => ['mar', 'march', 'maret']],
+        'apr' => ['label' => 'April', 'aliases' => ['apr', 'april']],
+        'mei' => ['label' => 'Mei', 'aliases' => ['mei', 'may']],
+        'jun' => ['label' => 'Juni', 'aliases' => ['jun', 'june', 'juni']],
+        'jul' => ['label' => 'Juli', 'aliases' => ['jul', 'july', 'juli']],
+        'ags' => ['label' => 'Agustus', 'aliases' => ['ags', 'agu', 'aug', 'august', 'agustus']],
+        'sep' => ['label' => 'September', 'aliases' => ['sep', 'september']],
+        'okt' => ['label' => 'Oktober', 'aliases' => ['okt', 'oct', 'october', 'oktober']],
+        'nov' => ['label' => 'November', 'aliases' => ['nov', 'november']],
+        'des' => ['label' => 'Desember', 'aliases' => ['des', 'dec', 'december', 'desember']],
+    ];
+
     public static function leaseDurationLabel(object $row): ?string
     {
         $details = self::details($row);
@@ -206,6 +222,68 @@ final class InfrastructureMetrics
         ];
     }
 
+    /**
+     * Performance per-site yang siap ditampilkan pada pop-up detail.
+     *
+     * Data Combat tersimpan pada kolom flat 2026 dan/atau snapshot JSON;
+     * beberapa workbook lama memakai singkatan `rev_jan_26`. Metode ini
+     * menerima keduanya, lalu hanya mengembalikan periode yang benar-benar
+     * memiliki nilai. Tidak ada nilai yang dibuat-buat untuk Sewa Lahan jika
+     * workbook sumber memang tidak menyimpan metrik bulanan.
+     *
+     * @return array<int, array{year: int, month: string, label: string, revenue: float|null, cost: float|null, pnl: float|null}>
+     */
+    public static function sitePerformance(object $row): array
+    {
+        $values = [];
+        $details = self::details($row);
+
+        // Source details lebih dulu, lalu atribut tabel menjadi nilai utama
+        // bila keduanya menyimpan periode yang sama.
+        foreach ([$details, self::rowAttributes($row)] as $source) {
+            foreach ($source as $key => $value) {
+                $period = self::performancePeriodFromKey((string) $key);
+                if ($period === null) {
+                    continue;
+                }
+
+                $amount = self::moneyValue($value);
+                if ($amount === null) {
+                    continue;
+                }
+
+                [$metric, $month, $year] = $period;
+                $values[$year][$month] ??= [
+                    'year' => $year,
+                    'month' => $month,
+                    'label' => self::PERFORMANCE_MONTHS[$month]['label'],
+                    'revenue' => null,
+                    'cost' => null,
+                    'pnl' => null,
+                ];
+                $values[$year][$month][$metric] = $amount;
+            }
+        }
+
+        ksort($values);
+        $periods = [];
+        foreach ($values as $months) {
+            foreach (array_keys(self::PERFORMANCE_MONTHS) as $month) {
+                if (! isset($months[$month])) {
+                    continue;
+                }
+
+                $period = $months[$month];
+                if ($period['revenue'] !== null && $period['cost'] !== null) {
+                    $period['pnl'] = $period['revenue'] - $period['cost'];
+                }
+                $periods[] = $period;
+            }
+        }
+
+        return $periods;
+    }
+
     public static function moneyValue(mixed $value): ?float
     {
         if ($value === null || $value === '') {
@@ -306,6 +384,51 @@ final class InfrastructureMetrics
         }
 
         return $details;
+    }
+
+    /** @return array<string, mixed> */
+    private static function rowAttributes(object $row): array
+    {
+        if (method_exists($row, 'getAttributes')) {
+            return $row->getAttributes();
+        }
+
+        return get_object_vars($row);
+    }
+
+    /** @return array{0: string, 1: string, 2: int}|null */
+    private static function performancePeriodFromKey(string $key): ?array
+    {
+        $normalized = mb_strtolower(trim($key), 'UTF-8');
+        $normalized = preg_replace('/[^a-z0-9]+/u', '_', $normalized) ?? '';
+        $normalized = trim($normalized, '_');
+
+        if (! preg_match('/^(revenue|rev|cost|pnl|margin|profit)_([a-z]+)_(\d{2}|20\d{2})$/', $normalized, $matches)) {
+            return null;
+        }
+
+        $metric = match ($matches[1]) {
+            'revenue', 'rev' => 'revenue',
+            'cost' => 'cost',
+            default => 'pnl',
+        };
+        $month = null;
+        foreach (self::PERFORMANCE_MONTHS as $monthKey => $definition) {
+            if (in_array($matches[2], $definition['aliases'], true)) {
+                $month = $monthKey;
+                break;
+            }
+        }
+        if ($month === null) {
+            return null;
+        }
+
+        $year = (int) $matches[3];
+        $year = $year < 100 ? 2000 + $year : $year;
+
+        return $year >= 2000 && $year <= 2100
+            ? [$metric, $month, $year]
+            : null;
     }
 
     private static function firstFilled(array $values): ?string

@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
 class DocumentCirculation extends Model
 {
+    /** Time zone used whenever an audit timestamp is shown to a user. */
+    public const DISPLAY_TIMEZONE = 'Asia/Jakarta';
+
     protected $table = 'document_circulations';
 
     protected $fillable = [
@@ -50,5 +54,22 @@ class DocumentCirculation extends Model
     public function currentStepName(): string
     {
         return self::STEPS[$this->current_step] ?? 'Selesai';
+    }
+
+    /**
+     * Timestamps are kept in the application's canonical time zone and are
+     * converted only at the presentation boundary, so the audit trail remains
+     * consistent even when the server time zone changes.
+     */
+    public static function formatWib(?CarbonInterface $timestamp): string
+    {
+        if ($timestamp === null) {
+            return '-';
+        }
+
+        return $timestamp->copy()
+            ->timezone(self::DISPLAY_TIMEZONE)
+            ->locale('id')
+            ->translatedFormat('d F Y, H:i') . ' WIB';
     }
 }

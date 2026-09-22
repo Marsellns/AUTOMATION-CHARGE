@@ -108,4 +108,38 @@ class InfrastructureMetricsTest extends TestCase
             'pnl' => 55250269.0,
         ], InfrastructureMetrics::monthlyFinancials($row, 'jan'));
     }
+
+    public function test_site_performance_keeps_periods_for_the_detail_popup_and_derives_pnl(): void
+    {
+        $row = new CombatSite([
+            'source_details' => [
+                'database_revenue' => [
+                    'rev_feb_25' => '750,000',
+                    'cost_feb_25' => '500,000',
+                ],
+            ],
+        ]);
+        $row->setAttribute('revenue_jan_2026', 1000000);
+        $row->setAttribute('cost_jan_2026', 600000);
+        $row->setAttribute('pnl_jan_2026', 10);
+
+        $this->assertSame([
+            [
+                'year' => 2025,
+                'month' => 'feb',
+                'label' => 'Februari',
+                'revenue' => 750000.0,
+                'cost' => 500000.0,
+                'pnl' => 250000.0,
+            ],
+            [
+                'year' => 2026,
+                'month' => 'jan',
+                'label' => 'Januari',
+                'revenue' => 1000000.0,
+                'cost' => 600000.0,
+                'pnl' => 400000.0,
+            ],
+        ], InfrastructureMetrics::sitePerformance($row));
+    }
 }

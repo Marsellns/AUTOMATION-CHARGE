@@ -57,6 +57,14 @@ test('infrastructure source formulas are replaced by derived display fields', ()
     assert.match(combat, /startsWith\('='\)/);
 });
 
+test('Combat table flattens the canonical workbook snapshot for its visible dimensions', () => {
+    const combat = read('resources/views/infrastruktur/combat/index.blade.php');
+
+    assert.match(combat, /function sourceDetails\(row\)/);
+    assert.match(combat, /\{ \.\.\.revenue, \.\.\.database, \.\.\.flat \}/);
+    assert.match(combat, /const details = sourceDetails\(row\)/);
+});
+
 test('main-module filters opt into the shared compact drawer', () => {
     const expectedViews = [
         'resources/views/dashboard/master.blade.php',
@@ -91,6 +99,17 @@ test('main-module filters opt into the shared compact drawer', () => {
     assert.doesNotMatch(filtersCss, /\.simaster-filter-drawer\s*\{[\s\S]*?height: 100%/);
 });
 
+test('Site Telkomsel and Site TP are nested under the Sewa Lahan portfolio', () => {
+    const layout = read('resources/views/layouts/app.blade.php');
+    const css = read('public/css/simaster.css');
+
+    assert.match(layout, /class="sidebar-submodule"/);
+    assert.match(layout, /class="sidebar-submenu-nested" aria-label="Submodul Sewa Lahan"/);
+    assert.match(layout, /route\('infrastruktur\.sewa-lahan\.index', \['ownership_scope' => 'Telkomsel'\]\)/);
+    assert.match(layout, /route\('infrastruktur\.sewa-lahan\.index', \['ownership_scope' => 'TP'\]\)/);
+    assert.match(css, /\.sidebar-submenu-nested/);
+});
+
 test('changed inline browser scripts remain valid JavaScript after Blade values are rendered', () => {
     const bladeToJavaScript = source => source
         .replace(/@json\(route\('[^']+'\)\)/g, '"/generated-url"')
@@ -101,6 +120,7 @@ test('changed inline browser scripts remain valid JavaScript after Blade values 
         .filter(source => source.trim());
 
     for (const file of [
+        'resources/views/infrastruktur/index.blade.php',
         'resources/views/infrastruktur/partials/analytics.blade.php',
         'resources/views/infrastruktur/sewa-lahan/index.blade.php',
         'resources/views/infrastruktur/combat/index.blade.php',
