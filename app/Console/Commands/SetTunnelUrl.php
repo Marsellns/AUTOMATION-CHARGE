@@ -40,18 +40,30 @@ class SetTunnelUrl extends Command
 
         file_put_contents($path, $updated);
 
-        // Skema https -> cookie sesi harus dikirim secure.
+        // Saat URL tunnel menggunakan HTTPS, cookie dan seluruh URL yang
+        // dibuat Laravel juga harus HTTPS. Ini mencegah mixed content ketika
+        // ngrok meneruskan trafik ke server lokal melalui HTTP.
         $secure = str_starts_with($url, 'https://') ? 'true' : 'false';
-        $contents = file_get_contents($path);
-        if (preg_match('/^SESSION_SECURE_COOKIE=.*$/m', $contents)) {
-            file_put_contents($path, preg_replace('/^SESSION_SECURE_COOKIE=.*$/m', 'SESSION_SECURE_COOKIE=' . $secure, $contents));
-        } else {
-            file_put_contents($path, file_get_contents($path) . "SESSION_SECURE_COOKIE={$secure}\n");
-        }
+        $this->setEnvironmentValue($path, 'SESSION_SECURE_COOKIE', $secure);
+        $this->setEnvironmentValue($path, 'APP_FORCE_HTTPS', $secure);
 
-        $this->info("APP_URL diset ke {$url} (SESSION_SECURE_COOKIE={$secure}).");
-        $this->line('.env dibaca ulang otomatis per request — tidak perlu restart.');
+        $this->info("APP_URL diset ke {$url} (SESSION_SECURE_COOKIE={$secure}, APP_FORCE_HTTPS={$secure}).");
+        $this->line('Restart aplikasi bila server atau konfigurasi berjalan dalam proses jangka panjang.');
 
         return self::SUCCESS;
+    }
+
+    private function setEnvironmentValue(string $path, string $key, string $value): void
+    {
+        $contents = file_get_contents($path);
+        $pattern = '/^' . preg_quote($key, '/') . '=.*$/m';
+
+        if (preg_match($pattern, $contents)) {
+            file_put_contents($path, preg_replace($pattern, $key . '=' . $value, $contents));
+
+            return;
+        }
+
+        file_put_contents($path, $contents . "\n{$key}={$value}\n");
     }
 }

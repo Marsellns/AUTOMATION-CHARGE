@@ -29,6 +29,7 @@ class PaymentPlnExport implements FromQuery, WithHeadings, WithMapping, WithCust
         private readonly ?int $bulan = null,
         private readonly ?int $tahun = null,
         private readonly ?string $status = null,
+        private readonly ?string $nop = null,
     ) {}
 
     public function query(): Builder
@@ -45,6 +46,18 @@ class PaymentPlnExport implements FromQuery, WithHeadings, WithMapping, WithCust
 
         if ($this->status !== null && in_array($this->status, ['Done', 'Pending'])) {
             $query->where('status', $this->status);
+        }
+
+        if ($this->nop !== null) {
+            $query->whereExists(function ($nopQuery) {
+                $nopQuery->selectRaw('1')
+                    ->from('listrik_pln as payment_nop_listrik')
+                    ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                    ->whereRaw(
+                        "REPLACE(REPLACE(UPPER(TRIM(payment_nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                        [strtoupper(trim($this->nop))]
+                    );
+            });
         }
 
         return $query;

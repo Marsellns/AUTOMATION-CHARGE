@@ -3,13 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Services\ElectricityAnomalyNotificationService;
+use App\Support\ElectricityAmountParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportCentralizedSubmodulesDataset extends Command
 {
-    protected $signature = 'dataset:import-centralized-submodules';
+    protected $signature = 'dataset:import-centralized-submodules
+                            {--skip-notifications : Jangan kirim notifikasi/email anomali setelah refresh snapshot}';
 
     protected $description = 'Import datasets for Anomali Tagihan, Bongkar Rampung Mandiri, and Listrik All';
 
@@ -42,11 +44,11 @@ class ImportCentralizedSubmodulesDataset extends Command
             ->map(fn ($anomaly): array => (array) $anomaly)
             ->all();
 
-        if ($anomalies !== []) {
+        if ($anomalies !== [] && ! $this->option('skip-notifications')) {
             $sent = app(ElectricityAnomalyNotificationService::class)->send('Centralized PLN', $anomalies);
             $this->info($sent
                 ? '✓ Notifikasi kenaikan listrik >50% berhasil dikirim.'
-                : '✓ Notifikasi tidak dikirim ulang karena data anomali sama.');
+                : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per hari.');
         }
 
         return self::SUCCESS;
@@ -118,8 +120,8 @@ class ImportCentralizedSubmodulesDataset extends Command
                     $siteName = trim((string) ($r[3] ?? ''));
                     $bulanStr = strtolower(trim((string) ($r[4] ?? '')));
                     $tahunRaw = trim((string) ($r[5] ?? $year));
-                    $hargaPrev = (float) str_replace([',', ' '], '', (string) ($r[6] ?? 0));
-                    $hargaCurr = (float) str_replace([',', ' '], '', (string) ($r[7] ?? 0));
+                    $hargaPrev = ElectricityAmountParser::parseOrZero($r[6] ?? 0);
+                    $hargaCurr = ElectricityAmountParser::parseOrZero($r[7] ?? 0);
                     $kenaikanPersen = (float) str_replace([',', ' ', '%'], '', (string) ($r[8] ?? 0));
 
                     if ($idPelanggan === '' && $siteId === '') {
@@ -276,22 +278,6 @@ class ImportCentralizedSubmodulesDataset extends Command
 
     private function parseAmount(mixed $value): float
     {
-        $value = trim((string) $value);
-        if ($value === '' || $value === '-') {
-            return 0;
-        }
-
-        $value = preg_replace('/[^0-9,.\-]/u', '', $value);
-        if (str_contains($value, ',') && str_contains($value, '.')) {
-            $value = strrpos($value, ',') > strrpos($value, '.')
-                ? str_replace('.', '', str_replace(',', '.', $value))
-                : str_replace(',', '', $value);
-        } elseif (str_contains($value, '.')) {
-            $value = preg_match('/\.\d{3}$/', $value) ? str_replace('.', '', $value) : $value;
-        } elseif (str_contains($value, ',')) {
-            $value = preg_match('/,\d{3}$/', $value) ? str_replace(',', '', $value) : str_replace(',', '.', $value);
-        }
-
-        return is_numeric($value) ? (float) $value : 0;
+        return ElectricityAmountParser::parseOrZero($value);
     }
 }

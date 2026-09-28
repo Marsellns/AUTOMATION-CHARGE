@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ListrikPln;
+use App\Support\ElectricityAmountParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -116,38 +117,6 @@ class ImportPaymentPlnMasterDataset extends Command
 
     private function parseAmount(mixed $value): ?float
     {
-        if ($value === null || trim((string) $value) === '') {
-            return null;
-        }
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        $value = preg_replace('/[^0-9,.\-]/', '', (string) $value);
-        $lastComma = strrpos($value, ',');
-        $lastDot = strrpos($value, '.');
-
-        if ($lastComma !== false && $lastDot !== false) {
-            $decimalSeparator = $lastComma > $lastDot ? ',' : '.';
-            $fraction = substr($value, strrpos($value, $decimalSeparator) + 1);
-            if (strlen($fraction) <= 2) {
-                $value = str_replace($decimalSeparator === ',' ? '.' : ',', '', $value);
-                $value = str_replace($decimalSeparator, '.', $value);
-            } else {
-                $value = str_replace([',', '.'], '', $value);
-            }
-        } elseif ($lastComma !== false) {
-            $fraction = substr($value, $lastComma + 1);
-            $value = strlen($fraction) === 3
-                ? str_replace(',', '', $value)
-                : str_replace(',', '.', $value);
-        } elseif ($lastDot !== false) {
-            $fraction = substr($value, $lastDot + 1);
-            if (strlen($fraction) === 3) {
-                $value = str_replace('.', '', $value);
-            }
-        }
-
-        return is_numeric($value) ? (float) $value : null;
+        return ElectricityAmountParser::parse($value);
     }
 }

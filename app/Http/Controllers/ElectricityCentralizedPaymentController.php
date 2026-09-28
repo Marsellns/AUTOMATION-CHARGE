@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\PaymentPlnExport;
 use App\Imports\Electricity\CentralizedPaymentImport;
+use App\Models\ListrikPln;
 use App\Models\PaymentPln;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,8 +55,16 @@ class ElectricityCentralizedPaymentController extends Controller
 
         $selectedBulan = $request->integer('bulan') ?: null;
         $selectedTahun = $request->integer('tahun') ?: null;
+        $selectedNop = $this->normalizeNop($request->query('nop'));
+        $nops = ListrikPln::query()
+            ->whereNotNull('nop')
+            ->whereRaw("TRIM(nop) <> ''")
+            ->selectRaw("DISTINCT TRIM(REPLACE(REPLACE(UPPER(nop), 'NOP ', ''), 'NOP-', '')) as nop")
+            ->orderBy('nop')
+            ->pluck('nop')
+            ->all();
 
-        return view('electricity.centralized.payment.index', compact('years', 'selectedBulan', 'selectedTahun'));
+        return view('electricity.centralized.payment.index', compact('years', 'nops', 'selectedBulan', 'selectedTahun', 'selectedNop'));
     }
 
     /**
@@ -74,6 +83,8 @@ class ElectricityCentralizedPaymentController extends Controller
         if ($request->filled('tahun') && is_numeric($request->tahun)) {
             $query->where('tahun', (int) $request->tahun);
         }
+
+        $this->applyNopFilter($query, $this->normalizeNop($request->query('nop')));
 
         // Filter Status (Done / Pending)
         if ($request->filled('status') && in_array($request->status, ['Done', 'Pending'])) {
@@ -104,10 +115,14 @@ class ElectricityCentralizedPaymentController extends Controller
         $bulan = $request->filled('bulan') ? (int) $request->bulan : null;
         $tahun = $request->filled('tahun') ? (int) $request->tahun : null;
         $status = $request->filled('status') ? (string) $request->status : null;
+        $nop = $this->normalizeNop($request->query('nop'));
 
-        $filename = 'payment_pln_' . ($status ? strtolower($status) . '_' : '') . now()->format('Ymd_His') . '.xlsx';
+        $filename = 'payment_pln_'
+            .($status ? strtolower($status).'_' : '')
+            .($nop ? strtolower(str_replace(' ', '_', $nop)).'_' : '')
+            .now()->format('Ymd_His').'.xlsx';
 
-        return (new PaymentPlnExport($bulan, $tahun, $status))->download($filename);
+        return (new PaymentPlnExport($bulan, $tahun, $status, $nop))->download($filename);
     }
 
     public function upload(Request $request)
@@ -134,9 +149,34 @@ class ElectricityCentralizedPaymentController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['payment_file' => 'File Payment gagal diproses: '.$e->getMessage()]);
+            return back()->withErrors(['payment_file' => 'File Payment gagal diproses. Periksa format file atau hubungi administrator.']);
         }
 
         return back()->with('success', 'Upload Payment '.$validated['status'].' berhasil dan data website telah diperbarui.');
+    }
+
+    private function normalizeNop(mixed $value): ?string
+    {
+        $nop = strtoupper(trim((string) $value));
+        $nop = preg_replace('/^NOP[\s-]+/', '', $nop) ?? $nop;
+
+        return $nop !== '' && $nop !== 'ALL' ? $nop : null;
+    }
+
+    private function applyNopFilter($query, ?string $nop): void
+    {
+        if ($nop === null) {
+            return;
+        }
+
+        $query->whereExists(function ($nopQuery) use ($nop) {
+            $nopQuery->selectRaw('1')
+                ->from('listrik_pln as payment_nop_listrik')
+                ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                ->whereRaw(
+                    "REPLACE(REPLACE(UPPER(TRIM(payment_nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                    [$nop]
+                );
+        });
     }
 }

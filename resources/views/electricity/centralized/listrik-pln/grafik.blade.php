@@ -147,6 +147,7 @@
 $(function () {
     const dataApiUrl = @json(route('electricity.centralized.listrik-pln.grafik-data', $listrikPln));
     const popupModal = new bootstrap.Modal('#detailBulanModal');
+    const palette = window.SimasterChartPalette;
 
     let chartInstance = null;
     let currentDetails = [];
@@ -154,14 +155,7 @@ $(function () {
     function initChart(labels, values) {
         const ctx = document.getElementById('tagihanChart').getContext('2d');
 
-        // Gradient color palette brand SIMASTER
-        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
-        gradient.addColorStop(0, 'rgba(225, 29, 72, 0.85)');
-        gradient.addColorStop(1, 'rgba(225, 29, 72, 0.15)');
-
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 350);
-        hoverGradient.addColorStop(0, 'rgba(225, 29, 72, 1)');
-        hoverGradient.addColorStop(1, 'rgba(225, 29, 72, 0.35)');
+        const barColors = labels.map((_, index) => palette.series[index % palette.series.length]);
 
         if (chartInstance) {
             chartInstance.destroy();
@@ -178,10 +172,10 @@ $(function () {
                 datasets: [{
                     label: 'Nominal Tagihan (Rp)',
                     data: values,
-                    backgroundColor: gradient,
-                    hoverBackgroundColor: hoverGradient,
-                    borderColor: '#E11D48',
-                    borderWidth: 1.5,
+                    backgroundColor: barColors,
+                    hoverBackgroundColor: barColors,
+                    borderColor: barColors,
+                    borderWidth: 0,
                     borderRadius: 6,
                     borderSkipped: false,
                     maxBarThickness: 45,
@@ -206,7 +200,14 @@ $(function () {
                         borderWidth: 1,
                         callbacks: {
                             label: function (context) {
-                                return ' Tagihan: Rp ' + new Intl.NumberFormat('id-ID').format(context.raw || 0);
+                                const percentage = window.SimasterChartMetrics.format(
+                                    window.SimasterChartMetrics.chartJs(context)
+                                );
+
+                                return [
+                                    ' Tagihan: Rp ' + new Intl.NumberFormat('id-ID').format(context.raw || 0),
+                                    ' Persentase total tagihan: ' + percentage,
+                                ];
                             },
                         }
                     }

@@ -122,6 +122,7 @@
 <script>
 $(function () {
     const exportBaseUrl = @json(route('electricity.centralized.listrik-all.export-excel'));
+    const palette = window.SimasterChartPalette;
 
     const columns = [
         { data: 'DT_RowIndex', name: 'no', orderable: false, searchable: false },
@@ -250,6 +251,7 @@ $(function () {
 
         miniChart = Highcharts.chart('modal-listrik-chart', {
             chart: { type: 'column', backgroundColor: 'transparent' },
+            colors: palette.series,
             title: { text: null },
             credits: { enabled: false },
             xAxis: {
@@ -271,14 +273,14 @@ $(function () {
                 borderColor: isDark ? '#334155' : '#CBD5E1',
                 style: { color: isDark ? '#F8FAFC' : '#1E293B' },
                 formatter: function () {
-                    return `<b>${this.x}</b>: ${fmtRupiah(this.y)}`;
+                    const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(this.point));
+                    return `<b>${this.x}</b>: ${fmtRupiah(this.y)}<br>Persentase total tagihan: <b>${percentage}</b>`;
                 }
             },
+            plotOptions: { column: { borderWidth: 0, colorByPoint: true, borderRadius: 3 } },
             series: [{
                 name: 'Tagihan Listrik',
-                data: chartData,
-                color: '#ED0226',
-                borderRadius: 3
+                data: chartData
             }]
         });
     });

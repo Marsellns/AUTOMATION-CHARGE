@@ -220,7 +220,7 @@ class ElectricityCentralizedListrikAllController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['listrik_all_file' => 'File Listrik All gagal diproses: '.$e->getMessage()]);
+            return back()->withErrors(['listrik_all_file' => 'File Listrik All gagal diproses. Periksa format file atau hubungi administrator.']);
         }
 
         return back()->with('success', 'Upload Listrik All berhasil dan data website telah diperbarui.');

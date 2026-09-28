@@ -7,8 +7,10 @@ use App\Models\InbuildingAll;
 use App\Models\ListrikInbuilding;
 use App\Models\PaymentIbc;
 use App\Services\ElectricityAnomalyNotificationService;
+use App\Support\ElectricityAmountParser;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -23,6 +25,8 @@ class ImportInbuildingDataset extends Command
     public function handle(): int
     {
         $this->info('Memulai import dataset Inbuilding...');
+
+        return DB::transaction(function (): int {
 
         // 1. Import Listrik Inbuilding. Data Inbuilding Export adalah master
         // atribut, sedangkan Tracker Payment menambah site Inbuilding terbaru
@@ -43,7 +47,7 @@ class ImportInbuildingDataset extends Command
                 $dayaRaw = trim((string) ($r[9] ?? ''));
                 $daya = (int) preg_replace('/[^\d]/', '', $dayaRaw);
 
-                $hargaKwh = $this->parseHarga($r[10] ?? 0);
+                $hargaKwh = $this->parseHargaPerKwh($r[10] ?? 0);
                 $tanggal = $this->parseTanggal($r[12] ?? null);
 
                 $recordsBySite[$siteId] = [
@@ -72,7 +76,7 @@ class ImportInbuildingDataset extends Command
             }
 
             $records = array_values($recordsBySite);
-            ListrikInbuilding::truncate();
+            ListrikInbuilding::query()->delete();
             foreach (array_chunk($records, 100) as $chunk) {
                 ListrikInbuilding::insert($chunk);
             }
@@ -80,7 +84,7 @@ class ImportInbuildingDataset extends Command
         }
 
         // 2. Import Payment IBC Done & Pending
-        PaymentIbc::truncate();
+        PaymentIbc::query()->delete();
 
         $bulanMap = [
             'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
@@ -130,7 +134,8 @@ class ImportInbuildingDataset extends Command
                         $jumlahTagihan = $this->parseHarga($r[6] ?? 0);
                         $tglUpdate = $this->parseTanggal($r[9] ?? null);
 
-                        $paymentRecords[] = [
+                        $paymentKey = strtoupper($statusName).'|'.$yearName.'|'.$bulanNum.'|'.strtoupper($siteId);
+                        $paymentRecords[$paymentKey] = [
                             'site_id' => $siteId,
                             'site_name' => trim((string) ($r[2] ?? '')),
                             'nama_bm' => trim((string) ($r[3] ?? '')),
@@ -151,7 +156,7 @@ class ImportInbuildingDataset extends Command
         }
 
         if (!empty($paymentRecords)) {
-            foreach (array_chunk($paymentRecords, 200) as $chunk) {
+            foreach (array_chunk(array_values($paymentRecords), 200) as $chunk) {
                 PaymentIbc::insert($chunk);
             }
             $this->info("✓ Selesai mengimpor " . count($paymentRecords) . " data Payment IBC.");
@@ -159,7 +164,7 @@ class ImportInbuildingDataset extends Command
 
         // 3. Generate Inbuilding All (12 Bulan Pivot Matrix)
         $this->info('Membuat matriks Inbuilding All 12 bulan...');
-        InbuildingAll::truncate();
+        InbuildingAll::query()->delete();
 
         $allSites = ListrikInbuilding::all();
         $yearsList = [2024, 2025, 2026];
@@ -210,7 +215,7 @@ class ImportInbuildingDataset extends Command
 
         // 4. Generate Anomali Tagihan Inbuilding
         $this->info('Mendeteksi anomali kenaikan tagihan inbuilding...');
-        AnomaliTagihanInbuilding::truncate();
+        AnomaliTagihanInbuilding::query()->delete();
 
         $anomaliRows = [];
         $sitesGrouped = PaymentIbc::orderBy('tahun')->orderBy('bulan')->get()->groupBy('site_id');
@@ -259,60 +264,49 @@ class ImportInbuildingDataset extends Command
             ));
 
             if ($alertRows !== [] && !$this->option('skip-notifications')) {
-                app(ElectricityAnomalyNotificationService::class)->send('Inbuilding', $alertRows);
-                $this->info('✓ Notifikasi kenaikan listrik >50% berhasil dikirim.');
+                $sent = app(ElectricityAnomalyNotificationService::class)->send('Inbuilding', $alertRows);
+                $this->info($sent
+                    ? '✓ Notifikasi kenaikan listrik >50% berhasil dikirim.'
+                    : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per hari.');
             }
         }
 
-        return self::SUCCESS;
+            return self::SUCCESS;
+        });
     }
 
     private function parseHarga($raw): float
     {
-        if ($raw === null || $raw === '') return 0.0;
-        if (is_numeric($raw)) return (float) $raw;
+        return ElectricityAmountParser::parseOrZero($raw);
+    }
 
-        $str = trim((string) $raw);
-        $str = preg_replace('/[^0-9,\.\-]/u', '', $str);
-
-        if ($str === '' || $str === '-' || $str === '-.' || $str === '-,') {
+    private function parseHargaPerKwh(mixed $raw): float
+    {
+        if ($raw === null || $raw === '') {
             return 0.0;
         }
 
-        $negative = str_starts_with($str, '-');
-        $str = ltrim($str, '-');
-
-        if (str_contains($str, ',') && str_contains($str, '.')) {
-            $lastComma = strrpos($str, ',');
-            $lastDot = strrpos($str, '.');
-
-            if ($lastComma > $lastDot) {
-                $str = str_replace('.', '', $str);
-                $str = str_replace(',', '.', $str);
-            } else {
-                $str = str_replace(',', '', $str);
-            }
-        } elseif (str_contains($str, ',')) {
-            $commaPos = strrpos($str, ',');
-            $afterComma = substr($str, $commaPos + 1);
-
-            if (strlen($afterComma) === 3 && preg_match('/^\d{3}$/', $afterComma)) {
-                $str = str_replace(',', '', $str);
-            } else {
-                $str = str_replace(',', '.', $str);
-            }
-        } elseif (str_contains($str, '.')) {
-            $dotPos = strrpos($str, '.');
-            $afterDot = substr($str, $dotPos + 1);
-
-            if (strlen($afterDot) === 3 && preg_match('/^\d{3}$/', $afterDot)) {
-                $str = str_replace('.', '', $str);
-            }
+        if (is_numeric($raw)) {
+            return (float) $raw;
         }
 
-        $normalized = $negative ? '-' . $str : $str;
+        $value = preg_replace('/[^0-9,.\-]/u', '', trim((string) $raw));
+        if ($value === null || in_array($value, ['', '-', '-.', '-,'], true)) {
+            return 0.0;
+        }
 
-        return is_numeric($normalized) ? (float) $normalized : 0.0;
+        if (str_contains($value, ',') && str_contains($value, '.')) {
+            if (strrpos($value, ',') > strrpos($value, '.')) {
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } elseif (str_contains($value, ',')) {
+            $value = str_replace(',', '.', $value);
+        }
+
+        return is_numeric($value) ? (float) $value : 0.0;
     }
 
     private function parseTanggal($raw): ?string

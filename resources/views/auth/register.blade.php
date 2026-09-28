@@ -28,7 +28,7 @@
                     <div class="mb-3">
                         <label for="requested_role" class="form-label">Role yang diminta</label>
                         <select id="requested_role" name="requested_role" class="form-select" required>
-                            <option value="viewer" @selected(old('requested_role', 'viewer') === 'viewer')>Viewer (akses lihat)</option>
+                            <option value="viewer" @selected(old('requested_role', 'viewer') === 'viewer')>Viewer (perlu persetujuan)</option>
                             <option value="admin" @selected(old('requested_role') === 'admin')>Admin (akses penuh, perlu persetujuan)</option>
                             <option value="manager_nop" @selected(old('requested_role') === 'manager_nop')>Manager NOP (approval Presales)</option>
                             <option value="manager_sq" @selected(old('requested_role') === 'manager_sq')>Manager SQ (approval Presales)</option>
@@ -37,7 +37,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
+                        <label for="password" class="form-label">Password (minimal 12 karakter, huruf besar, angka, dan simbol)</label>
                         <input type="password" id="password" name="password" class="form-control" required>
                     </div>
                     <div class="mb-3">

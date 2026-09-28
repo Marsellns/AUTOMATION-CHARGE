@@ -79,7 +79,7 @@ class ElectricityCentralizedBoramController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['boram_file' => 'File Bongkar Rampung gagal diproses: '.$e->getMessage()]);
+            return back()->withErrors(['boram_file' => 'File Bongkar Rampung gagal diproses. Periksa format file atau hubungi administrator.']);
         }
 
         return back()->with('success', 'Upload Bongkar Rampung berhasil dan data website telah diperbarui.');

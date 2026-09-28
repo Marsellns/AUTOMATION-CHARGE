@@ -2,6 +2,7 @@
 
 namespace App\Imports\Electricity;
 
+use App\Support\ElectricityAmountParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -80,16 +81,6 @@ class CentralizedListrikAllImport implements ToCollection
 
     private function number(mixed $value): float
     {
-        if (is_numeric($value)) return (float) $value;
-        $value = preg_replace('/[^0-9,.-]/', '', (string) $value);
-        if (str_contains($value, ',') && str_contains($value, '.')) {
-            $value = str_replace('.', '', $value);
-            $value = str_replace(',', '.', $value);
-        } elseif (str_contains($value, '.')) {
-            $value = preg_match('/\.\d{3}$/', $value) ? str_replace('.', '', $value) : $value;
-        } else {
-            $value = str_replace(',', '.', $value);
-        }
-        return is_numeric($value) ? (float) $value : 0;
+        return ElectricityAmountParser::parseOrZero($value);
     }
 }

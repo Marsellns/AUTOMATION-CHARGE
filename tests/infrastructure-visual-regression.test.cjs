@@ -7,13 +7,22 @@ const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('equipment relocation uses self-contained SVG icons', () => {
-    const view = read('resources/views/rru/index.blade.php');
-    const script = read('public/assets/js/equipment-relocation.js');
+    const view = read('resources/views/equipment-relocation/index.blade.php');
+    const script = read('public/assets/equipment-relocation/js/index.js');
 
     assert.doesNotMatch(view, /fa-solid/);
     assert.doesNotMatch(script, /fa-solid/);
     assert.match(view, /class="er-icon"/);
     assert.match(script, /class="er-icon"/);
+});
+
+test('infrastructure ownership chart is labelled Site Owner', () => {
+    const analytics = read('resources/views/infrastruktur/partials/analytics.blade.php');
+
+    assert.match(analytics, /\['id' => 'vendor', 'title' => 'Site Owner', 'type' => 'column', 'key' => 'vendor'\]/);
+    assert.doesNotMatch(analytics, /\['id' => 'vendor', 'title' => 'Vendor'/);
+    assert.match(analytics, /\$isOwnershipSubmodule/);
+    assert.match(analytics, /!in_array\(\$chart\['key'\], \['owners', 'vendor'\], true\)/);
 });
 
 test('infrastructure charts explicitly follow the application theme', () => {

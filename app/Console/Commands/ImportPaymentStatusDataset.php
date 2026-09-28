@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ListrikPln;
 use App\Models\StatusPembayaran;
+use App\Support\ElectricityAmountParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -72,12 +73,12 @@ class ImportPaymentStatusDataset extends Command
                             continue;
                         }
 
-                        $batch[] = [
+                        $batch[$idPelanggan] = [
                             'listrik_pln_id' => $plnMap[$idPelanggan],
                             'id_pelanggan'   => $idPelanggan,
                             'bulan'          => $bulan,
                             'tahun'          => $tahun,
-                            'harga'          => $this->parseHarga($hargaRaw),
+                            'harga'          => ElectricityAmountParser::parseOrZero($hargaRaw),
                             'remark'         => 'Lunas (Payment Done)',
                             'update_by'      => $updateBy ?: 'System Import',
                             'tanggal'        => $this->parseTanggal($tanggalRaw, $bulan, $tahun),
@@ -86,7 +87,7 @@ class ImportPaymentStatusDataset extends Command
                         ];
                     }
 
-                    foreach (array_chunk($batch, 1000) as $chunk) {
+                    foreach (array_chunk(array_values($batch), 1000) as $chunk) {
                         DB::table('status_pembayaran')->insert($chunk);
                         $totalInserted += count($chunk);
                     }
@@ -98,34 +99,6 @@ class ImportPaymentStatusDataset extends Command
 
         $this->info("✓ Selesai! Berhasil mengimpor {$totalInserted} data status pembayaran.");
         return self::SUCCESS;
-    }
-
-    private function parseHarga($raw): float
-    {
-        if ($raw === null || $raw === '') return 0.0;
-
-        if (is_numeric($raw)) {
-            $num = (float) $raw;
-            // Jika angka < 10000 dan memiliki pecahan desimal (akibat penulisan titik ribuan di Excel misal 467.216 -> Rp 467.216)
-            if ($num > 0 && $num < 10000 && floor($num) != $num) {
-                $num = round($num * 1000);
-            }
-            return $num;
-        }
-
-        $str = trim((string) $raw);
-        $str = str_replace(['Rp', 'RP', 'rp', ' ', "\xc2\xa0"], '', $str);
-
-        if (str_contains($str, '.') && str_contains($str, ',')) {
-            $str = str_replace('.', '', $str);
-            $str = str_replace(',', '.', $str);
-        } elseif (str_contains($str, '.')) {
-            $str = str_replace('.', '', $str);
-        } elseif (str_contains($str, ',')) {
-            $str = str_replace(',', '.', $str);
-        }
-
-        return is_numeric($str) ? (float) $str : 0.0;
     }
 
     private function parseTanggal(mixed $raw, int $bulan, int $tahun): string

@@ -75,8 +75,9 @@ test('main-module filters opt into the shared compact drawer', () => {
         'resources/views/electricity/centralized/listrik-pln/index.blade.php',
         'resources/views/electricity/centralized/payment/index.blade.php',
         'resources/views/electricity/inbuilding/payment/index.blade.php',
+        'resources/views/electricity/dashboard/index.blade.php',
         'resources/views/po-varcost/index.blade.php',
-        'resources/views/document-circulation/index.blade.php',
+        'resources/views/presales/index.blade.php',
         'resources/views/data-potensi/data-site/index.blade.php',
     ];
 

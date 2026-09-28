@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DocumentApproval;
 use App\Models\DocumentCirculation;
+use App\Services\PresalesDocumentNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
-class DocumentCirculationController extends Controller
+class PresalesController extends Controller
 {
     public function index(Request $request): View
     {
@@ -50,7 +51,7 @@ class DocumentCirculationController extends Controller
             ->groupBy('current_step')
             ->pluck('total', 'current_step');
 
-        return view('document-circulation.index', [
+        return view('presales.index', [
             'documents' => $documents,
             'stats' => $stats,
             'byStep' => $byStep,
@@ -64,7 +65,7 @@ class DocumentCirculationController extends Controller
     {
         abort_unless($this->canUpload(), 403, 'Role Anda belum diberi akses upload Presales.');
 
-        return view('document-circulation.create');
+        return view('presales.create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -78,7 +79,9 @@ class DocumentCirculationController extends Controller
         ]);
 
         $file = $request->file('document_file');
-        $path = $file->store('document-circulation', 'public');
+        // Dokumen Presales bersifat internal. Simpan di disk privat dan
+        // akseskan hanya melalui endpoint terautentikasi di bawah ini.
+        $path = $file->store('document-circulation', 'private');
 
         $document = DB::transaction(function () use ($validated, $file, $path, $request): DocumentCirculation {
             $document = DocumentCirculation::create([
@@ -114,7 +117,7 @@ class DocumentCirculationController extends Controller
     {
         $document->load(['uploader', 'approvals.approver']);
 
-        return view('document-circulation.show', [
+        return view('presales.show', [
             'document' => $document,
             'steps' => DocumentCirculation::STEPS,
             'canAct' => $this->canActOn($document),
@@ -124,28 +127,33 @@ class DocumentCirculationController extends Controller
 
     public function file(DocumentCirculation $document): StreamedResponse
     {
-        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
+        abort_unless(Storage::disk('private')->exists($document->file_path), 404);
 
-        return Storage::disk('public')->response($document->file_path, $document->file_name, [
+        return Storage::disk('private')->response($document->file_path, $document->file_name, [
             'Content-Type' => 'application/pdf',
         ]);
     }
 
-    public function updateStatus(Request $request, DocumentCirculation $document): RedirectResponse
+    public function updateStatus(
+        Request $request,
+        DocumentCirculation $document,
+        PresalesDocumentNotificationService $notificationService,
+    ): RedirectResponse
     {
         $validated = $request->validate([
             'action' => ['required', 'in:approve,reject'],
             'comments' => ['nullable', 'required_if:action,reject', 'string', 'max:2000'],
+            'confirm_rejection' => ['nullable', 'required_if:action,reject', 'accepted'],
         ]);
 
-        $message = DB::transaction(function () use ($document, $request, $validated): string {
+        $message = DB::transaction(function () use ($document, $request, $validated, $notificationService): string {
             $locked = DocumentCirculation::query()->lockForUpdate()->findOrFail($document->id);
             abort_unless($this->canActOn($locked), 403, 'Dokumen ini bukan pada tahap approval role Anda.');
 
             $step = (int) $locked->current_step;
             $action = $validated['action'] === 'approve' ? 'approved' : 'rejected';
 
-            DocumentApproval::create([
+            $approval = DocumentApproval::create([
                 'document_id' => $locked->id,
                 'step' => $step,
                 'approver_id' => $request->user()->id,
@@ -161,7 +169,9 @@ class DocumentCirculationController extends Controller
                     'rejected_reason' => $validated['comments'],
                 ]);
 
-                return 'Dokumen ditolak dan riwayat approval tersimpan.';
+                $notificationService->sendRejectionReminder($locked, $approval, $request->user());
+
+                return 'Dokumen ditolak. Pihak terkait telah menerima notifikasi.';
             }
 
             $nextStep = min(5, $step + 1);

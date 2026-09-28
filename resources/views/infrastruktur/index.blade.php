@@ -111,19 +111,22 @@ $(function () {
 
         Highcharts.chart('infra-status-chart', themed(Highcharts.merge({
             chart: { type: 'pie', className: 'infra-analytics-chart' },
-            plotOptions: { pie: { dataLabels: { enabled: false } }, series: clickOptions },
+            plotOptions: { pie: { borderWidth: 0, dataLabels: { enabled: false } }, series: clickOptions },
             series: [{ name: 'Site', data: drilldown(data.status) }]
         }, window.infrastructurePieLabelOptions(data.status.length))));
         Highcharts.chart('infra-owner-chart', themed(Highcharts.merge({
             chart: { type: 'pie', className: 'infra-analytics-chart' },
-            plotOptions: { pie: { innerSize: '55%', dataLabels: { enabled: false } }, series: clickOptions },
+            plotOptions: { pie: { innerSize: '55%', borderWidth: 0, dataLabels: { enabled: false } }, series: clickOptions },
             series: [{ name: 'Site', data: drilldown(data.owners) }]
         }, window.infrastructurePieLabelOptions(data.owners.length))));
         Highcharts.chart('infra-renewal-chart', themed(Highcharts.merge({
             chart: { type: 'column', className: 'infra-analytics-chart' },
             xAxis: { type: 'category' },
             yAxis: { title: { text: 'Site unik' } },
-            plotOptions: { series: sewaRenewalClickOptions },
+            plotOptions: {
+                series: sewaRenewalClickOptions,
+                column: { borderWidth: 0, colorByPoint: true }
+            },
             series: [{ name: 'Site', data: drilldown(data.renewal_years) }]
         }, window.infrastructureValueLabelOptions('column', data.renewal_years.length))));
     }).fail(function (xhr) {

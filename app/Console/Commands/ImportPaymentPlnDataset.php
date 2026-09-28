@@ -2,8 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ListrikPln;
-use App\Models\PaymentPln;
+use App\Support\ElectricityAmountParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -30,11 +29,13 @@ class ImportPaymentPlnDataset extends Command
         }
 
         $years = ['2025', '2026'];
-        $totalInserted = 0;
+        $totalInserted = DB::transaction(function () use ($baseDir, $years): int {
+            // DELETE berada di dalam transaksi agar snapshot lama otomatis
+            // kembali jika pembacaan atau insert salah satu workbook gagal.
+            DB::table('payment_pln')->delete();
+            $totalInserted = 0;
 
-        DB::table('payment_pln')->truncate();
-
-        foreach ($years as $year) {
+            foreach ($years as $year) {
             $yearDir = $baseDir . '/' . $year;
             if (!is_dir($yearDir)) continue;
 
@@ -79,12 +80,16 @@ class ImportPaymentPlnDataset extends Command
                         ? (int) str_replace([',', '.'], '', (string)$dayaRaw)
                         : null;
 
-                    $harga = $this->parseHarga($hargaRaw);
+                    $harga = ElectricityAmountParser::parseOrZero($hargaRaw);
 
-                    // Buat sebagian kecil (misal baris kelipatan 35 di bulan terbaru 2026) sebagai 'Pending' agar data Done dan Pending keduanya ada untuk filter
-                    $status = ($tahun === 2026 && $bulan >= 5 && ($i % 35 === 0)) ? 'Pending' : 'Done';
+                    // Seluruh file pada folder ini adalah sumber Payment Done.
+                    // Status Pending hanya boleh berasal dari file/upload Pending.
+                    $status = 'Done';
+                    $key = strtoupper($idPelanggan).'|'.strtoupper($siteId);
 
-                    $batch[] = [
+                    // Snapshot sumber kadang berisi baris identik ganda. Satu ID
+                    // pelanggan/site hanya dihitung sekali pada periode yang sama.
+                    $batch[$key] = [
                         'id_pelanggan'   => $idPelanggan,
                         'site_id'        => $siteId,
                         'site_name'      => $siteName,
@@ -104,38 +109,19 @@ class ImportPaymentPlnDataset extends Command
                 }
 
                 if (!empty($batch)) {
-                    foreach (array_chunk($batch, 1000) as $chunk) {
+                    foreach (array_chunk(array_values($batch), 1000) as $chunk) {
                         DB::table('payment_pln')->insert($chunk);
                         $totalInserted += count($chunk);
                     }
                 }
             }
-        }
+            }
+
+            return $totalInserted;
+        });
 
         $this->info("✓ Selesai! Berhasil mengimpor {$totalInserted} data Payment PLN.");
+
         return self::SUCCESS;
-    }
-
-    private function parseHarga($raw): float
-    {
-        if ($raw === null || $raw === '') return 0.0;
-        if (is_numeric($raw)) return (float) $raw;
-
-        $str = trim((string) $raw);
-        $str = str_replace(['Rp', 'RP', 'rp', ' ', "\xc2\xa0"], '', $str);
-
-        if (str_contains($str, '.') && str_contains($str, ',')) {
-            $str = str_replace('.', '', $str);
-            $str = str_replace(',', '.', $str);
-        } elseif (str_contains($str, '.')) {
-            $parts = explode('.', $str);
-            if (count($parts) > 2 || (count($parts) === 2 && strlen($parts[1]) === 3)) {
-                $str = str_replace('.', '', $str);
-            }
-        } elseif (str_contains($str, ',')) {
-            $str = str_replace(',', '.', $str);
-        }
-
-        return is_numeric($str) ? (float) $str : 0.0;
     }
 }

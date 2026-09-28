@@ -209,6 +209,7 @@
                         </a>
                         <div class="collapse {{ $isElectricity ? 'show' : '' }}" id="collapseElectricity">
                             <ul class="sidebar-submenu">
+                                <li><a class="sidebar-subitem-link {{ request()->routeIs('electricity.dashboard') ? 'active' : '' }}" href="{{ route('electricity.dashboard') }}">Dashboard Electricity</a></li>
                                 <li class="sidebar-subgroup-header">Centralized</li>
                                 <li><a class="sidebar-subitem-link {{ request()->routeIs('electricity.centralized.listrik-pln.*') ? 'active' : '' }}" href="{{ route('electricity.centralized.listrik-pln.index') }}">Listrik PLN</a></li>
                                 <li><a class="sidebar-subitem-link {{ request()->routeIs('electricity.centralized.payment.*') ? 'active' : '' }}" href="{{ route('electricity.centralized.payment.index') }}">Payment</a></li>
@@ -1103,6 +1104,76 @@
                 });
             });
         });
+    </script>
+
+    <script>
+        // Palet bersama untuk seluruh diagram. Kombinasi warna sengaja dibuat
+        // cukup lembut untuk pemakaian lama, tetapi tetap mudah dibedakan.
+        window.SimasterChartPalette = Object.freeze({
+            series: Object.freeze([
+                '#3B82F6', // blue
+                '#14B8A6', // teal
+                '#8B5CF6', // violet
+                '#F59E0B', // amber
+                '#F97316', // coral
+                '#D977A8', // rose
+                '#06B6D4', // cyan
+                '#6366F1', // indigo
+            ]),
+            financial: Object.freeze({
+                revenue: '#3B82F6',
+                cost: '#F97316',
+                profit: '#14B8A6',
+                loss: '#E76F51',
+                inactive: '#94A3B8',
+            }),
+            status: Object.freeze({
+                active: '#14B8A6',
+                warning: '#F59E0B',
+                pending: '#8B5CF6',
+                neutral: '#94A3B8',
+            }),
+        });
+
+        // Semua tooltip diagram menggunakan kontribusi terhadap total nilai
+        // pada seri yang sama. Nilai absolut dipakai sebagai penyebut agar
+        // diagram yang memuat laba/rugi tetap menghasilkan persentase jelas.
+        window.SimasterChartMetrics = Object.freeze({
+            share(value, values) {
+                const numericValue = Number(value);
+                const total = (values || []).reduce((sum, item) => {
+                    const candidate = item && typeof item === 'object' ? item.y : item;
+                    const numeric = Number(candidate);
+                    return Number.isFinite(numeric) ? sum + Math.abs(numeric) : sum;
+                }, 0);
+
+                if (!Number.isFinite(numericValue) || total === 0) return null;
+
+                return (Math.abs(numericValue) / total) * 100;
+            },
+            format(percentage, digits = 1) {
+                if (percentage === null || percentage === undefined) return '—';
+
+                return `${Number(percentage).toLocaleString('id-ID', {
+                    maximumFractionDigits: digits,
+                })}%`;
+            },
+            highcharts(point) {
+                return this.share(point?.y, point?.series?.data || []);
+            },
+            chartJs(context) {
+                return this.share(context?.raw, context?.dataset?.data || []);
+            },
+            apex(value, options) {
+                const series = options?.w?.globals?.series || [];
+                const currentSeries = series?.[options?.seriesIndex];
+
+                // Bar/line menyimpan data per-seri (array bersarang), sedangkan
+                // pie/donut ApexCharts memberi daftar nilai datar.
+                return this.share(value, Array.isArray(currentSeries) ? currentSeries : series);
+            },
+        });
+
     </script>
 
     @stack('scripts')

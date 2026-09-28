@@ -182,6 +182,7 @@ $(function () {
     const initialPeriod = @json($selectedPeriod).split('-').map(Number);
     const initialAllMonths = @json($selectedAllMonths ?? false);
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const palette = window.SimasterChartPalette;
     let growthChart = null;
     let categoryChart = null;
     let chartRequest = null;
@@ -313,7 +314,9 @@ $(function () {
                 formatter: function () {
                     let content = `<strong>${this.x}</strong><br/>`;
                     this.points.forEach((point) => {
-                        content += `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${formatMiliar(point.y)}</b><br/>`;
+                        const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(point));
+                        content += `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${formatMiliar(point.y)}</b> ` +
+                            `(<b>${percentage}</b> dari total ${point.series.name})<br/>`;
                     });
                     return content;
                 }
@@ -321,13 +324,13 @@ $(function () {
             legend: { itemStyle: { color: textColor, fontSize: '11px' } },
             plotOptions: { column: { borderRadius: 4, borderWidth: 0 } },
             series: [
-                { name: 'Revenue', data: pnl.revenue || [], color: '#2563EB' },
-                { name: 'Cost', data: pnl.cost || [], color: '#F97316' },
+                { name: 'Revenue', data: pnl.revenue || [], color: palette.financial.revenue },
+                { name: 'Cost', data: pnl.cost || [], color: palette.financial.cost },
                 {
                     name: 'Net PnL',
                     data: (pnl.profit_loss || []).map((value) => ({
                         y: Number(value) || 0,
-                        color: Number(value) > 0 ? '#16A34A' : '#DC2626'
+                        color: Number(value) > 0 ? palette.financial.profit : palette.financial.loss
                     }))
                 }
             ]
@@ -352,7 +355,19 @@ $(function () {
                 }
             },
             legend: { itemStyle: { color: textColor, fontSize: '11px' } },
-            series: [{ name: 'Total Site', data: res.pnl_status || [] }]
+            series: [{
+                name: 'Total Site',
+                data: (res.pnl_status || []).map((point, index) => ({
+                    ...point,
+                    color: point.name === 'Profit Site'
+                        ? palette.financial.profit
+                        : (point.name === 'Loss Site'
+                            ? palette.financial.loss
+                            : (point.name === 'Tidak Aktif'
+                                ? palette.financial.inactive
+                                : palette.series[index % palette.series.length]))
+                }))
+            }]
         });
     }
 
@@ -585,7 +600,9 @@ $(function () {
                         let s = `<strong>${this.x}</strong><br/>`;
                         this.points.forEach(point => {
                             const color = point.color;
-                            s += `<span style="color:${color}">\u25CF</span> ${point.series.name}: <b>${fmtRupiah(point.y)}</b><br/>`;
+                            const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(point));
+                            s += `<span style="color:${color}">\u25CF</span> ${point.series.name}: <b>${fmtRupiah(point.y)}</b> ` +
+                                `(<b>${percentage}</b> dari total ${point.series.name})<br/>`;
                         });
                         return s;
                     }
@@ -599,9 +616,9 @@ $(function () {
                     }
                 },
                 series: [
-                    { name: 'Revenue', data: revData, color: '#3B82F6' },
-                    { name: 'Cost', data: costData, color: '#EF4444' },
-                    { name: 'Net PnL', data: pnlData, color: '#10B981', negativeColor: '#F87171' }
+                    { name: 'Revenue', data: revData, color: palette.financial.revenue },
+                    { name: 'Cost', data: costData, color: palette.financial.cost },
+                    { name: 'Net PnL', data: pnlData, color: palette.financial.profit, negativeColor: palette.financial.loss }
                 ]
             });
         }

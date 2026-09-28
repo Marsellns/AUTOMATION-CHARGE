@@ -11,7 +11,10 @@ use Illuminate\Support\Facades\Route;
 | Format response JSON; tidak ada Blade view.
 */
 
-Route::middleware('throttle:60,1')->prefix('dashboard')->group(function () {
+// Dashboard memuat data finansial per site. Karena UI memakai sesi web
+// yang sama, tambahkan middleware `web` sebelum `auth` agar cookie sesi
+// dapat dibaca pada endpoint yang tetap berawalan /api.
+Route::middleware(['web', 'auth', 'throttle:60,1'])->prefix('dashboard')->group(function () {
     // Route custom selalu didaftarkan lebih dulu untuk menghindari
     // shadowing oleh segmen {param} (pelajaran dari modul PO HQ).
     Route::get('/periods', [DashboardController::class, 'periods']);

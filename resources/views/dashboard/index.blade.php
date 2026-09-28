@@ -170,12 +170,14 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
 <script>
 $(function () {
+    const palette = window.SimasterChartPalette;
+
     // ====== Palet status (dipertahankan konsisten di seluruh modul) ======
     const COLORS = {
-        profit: '#2563EB',   // biru  — Profit
-        loss: '#EA580C',     // oranye gelap — Loss (bukan merah generik)
-        inactive: '#94A3B8', // abu netral — Tidak Aktif
-        anomaly: '#F59E0B',  // amber — peringatan anomali
+        profit: palette.financial.profit,
+        loss: palette.financial.loss,
+        inactive: palette.financial.inactive,
+        anomaly: palette.status.warning,
     };
     const STATUS_DEFS = [
         { key: 'Profit', label: 'Profit', color: COLORS.profit },
@@ -258,7 +260,17 @@ $(function () {
                         },
                     },
                 },
-                tooltip: { y: { formatter: (v) => `${fmt.format(v)} site` } },
+                tooltip: {
+                    y: {
+                        formatter: (value, options) => {
+                            const percentage = window.SimasterChartMetrics.format(
+                                window.SimasterChartMetrics.apex(value, options)
+                            );
+
+                            return `${fmt.format(value)} site (${percentage} dari total)`;
+                        },
+                    },
+                },
             });
             donut.render();
         } else {
@@ -644,7 +656,17 @@ $(function () {
             dataLabels: { enabled: false },
             xaxis: { labels: { rotate: -45, style: { fontSize: '10px' } } },
             yaxis: { labels: { formatter: (v) => fmt.format(v) } },
-            tooltip: { y: { formatter: (v) => fmt.format(v) } },
+            tooltip: {
+                y: {
+                    formatter: (value, options) => {
+                        const percentage = window.SimasterChartMetrics.format(
+                            window.SimasterChartMetrics.apex(value, options)
+                        );
+
+                        return `${fmt.format(value)} (${percentage} dari total nilai)`;
+                    },
+                },
+            },
         };
 
         if (!trendChart) {

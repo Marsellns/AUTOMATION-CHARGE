@@ -6,7 +6,7 @@ use App\Exports\AnomaliTagihanInbuildingExport;
 use App\Exports\AnomaliTagihanPlnExport;
 use App\Models\User;
 use App\Notifications\ElectricityAnomalyNotification;
-use Illuminate\Support\Facades\Cache;
+use App\Support\DailyNotificationGate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Excel as ExcelFormat;
@@ -25,37 +25,38 @@ class ElectricityAnomalyNotificationService
             return false;
         }
 
-        usort($anomalies, static function (array $left, array $right): int {
-            return strcmp(
-                serialize([$left['id'] ?? null, $left['site_id'] ?? null, $left['tahun'] ?? null, $left['bulan'] ?? null]),
-                serialize([$right['id'] ?? null, $right['site_id'] ?? null, $right['tahun'] ?? null, $right['bulan'] ?? null])
-            );
-        });
-
         $recipient = config('mail.electricity_alert_to');
-        $signature = hash('sha256', $source.'|'.json_encode($anomalies, JSON_THROW_ON_ERROR));
-        $sentKey = 'electricity-alert:'.$signature;
+        $topic = 'electricity-'.mb_strtolower(trim($source), 'UTF-8');
+        $delivered = false;
+        $websiteClaim = DailyNotificationGate::reserve('website', $topic);
 
-        if (Cache::has($sentKey)) {
-            Log::info('Notifikasi anomali listrik tidak dikirim ulang karena datanya sama.', [
+        if ($websiteClaim !== null) {
+            try {
+                $this->notifyWebsite(
+                    $source,
+                    count($anomalies),
+                    str_starts_with(strtolower($source), 'centralized')
+                        ? route('electricity.centralized.anomali.index')
+                        : route('electricity.inbuilding.anomali.index'),
+                    str_starts_with(strtolower($source), 'centralized')
+                        ? route('electricity.centralized.anomali.export-excel')
+                        : route('electricity.inbuilding.anomali.export-excel')
+                );
+                $delivered = true;
+            } catch (\Throwable $exception) {
+                DailyNotificationGate::release($websiteClaim);
+                Log::error('Notifikasi website anomali listrik gagal dikirim.', [
+                    'source' => $source,
+                    'anomaly_count' => count($anomalies),
+                    'exception' => $exception,
+                ]);
+            }
+        } else {
+            Log::info('Notifikasi website anomali listrik tidak dikirim ulang pada hari yang sama.', [
                 'source' => $source,
                 'anomaly_count' => count($anomalies),
             ]);
-
-            return false;
         }
-
-        $this->notifyWebsite(
-            $source,
-            count($anomalies),
-            str_starts_with(strtolower($source), 'centralized')
-                ? route('electricity.centralized.anomali.index')
-                : route('electricity.inbuilding.anomali.index'),
-            str_starts_with(strtolower($source), 'centralized')
-                ? route('electricity.centralized.anomali.export-excel')
-                : route('electricity.inbuilding.anomali.export-excel')
-        );
-        Cache::put($sentKey, true, now()->addMinutes(16));
 
         if (! is_string($recipient) || trim($recipient) === '') {
             Log::warning('Email anomali listrik tidak dikirim karena penerima belum dikonfigurasi.', [
@@ -63,7 +64,17 @@ class ElectricityAnomalyNotificationService
                 'anomaly_count' => count($anomalies),
             ]);
 
-            return false;
+            return $delivered;
+        }
+
+        $emailClaim = DailyNotificationGate::reserve('email', $topic);
+        if ($emailClaim === null) {
+            Log::info('Email anomali listrik tidak dikirim ulang pada hari yang sama.', [
+                'source' => $source,
+                'anomaly_count' => count($anomalies),
+            ]);
+
+            return $delivered;
         }
 
         $export = str_starts_with(strtolower($source), 'centralized')
@@ -88,6 +99,7 @@ class ElectricityAnomalyNotificationService
                     ]);
             });
         } catch (\Throwable $exception) {
+            DailyNotificationGate::release($emailClaim);
             Log::error('Email anomali listrik gagal dikirim.', [
                 'source' => $source,
                 'recipient' => $recipient,
@@ -95,7 +107,7 @@ class ElectricityAnomalyNotificationService
                 'exception' => $exception,
             ]);
 
-            return false;
+            return $delivered;
         }
 
         return true;

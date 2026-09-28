@@ -41,10 +41,6 @@
                 </div>
             </div>
         </div>
-
-        <p class="text-body-secondary small text-center mt-3">
-            Demo: admin@example.com / viewer@example.com — password: password
-        </p>
     </div>
 </body>
 </html>

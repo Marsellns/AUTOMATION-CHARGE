@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Nama eksplisit untuk dokumen aplikasi yang tidak boleh diekspos
+        // melalui symbolic link public/storage.
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

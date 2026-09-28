@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS URL Generation
+    |--------------------------------------------------------------------------
+    |
+    | Enable this only when the application is published through an HTTPS
+    | terminating proxy, such as ngrok. It keeps generated asset, form, and
+    | redirect URLs on HTTPS even when the local application server receives
+    | the proxied request over HTTP.
+    |
+    */
+
+    'force_https' => (bool) env('APP_FORCE_HTTPS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

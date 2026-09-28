@@ -6,6 +6,11 @@ tersebut dan menggabungkannya dengan perubahan relokasi di tabel
 `equipment_relocations`. Aplikasi tidak bergantung pada folder sumber
 inventaris saat berjalan.
 
+Kode modul dikelompokkan berdasarkan domain: controller berada di
+`app/Http/Controllers/EquipmentRelocationController.php`, tampilan berada di
+`resources/views/equipment-relocation/`, dan aset statis berada di
+`public/assets/equipment-relocation/`.
+
 Untuk memperbarui inventaris dari file acuan:
 
 ```powershell

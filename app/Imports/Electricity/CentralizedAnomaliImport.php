@@ -2,6 +2,7 @@
 
 namespace App\Imports\Electricity;
 
+use App\Support\ElectricityAmountParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -18,8 +19,8 @@ class CentralizedAnomaliImport implements ToCollection
             if ($id === '' && $siteId === '') {
                 continue;
             }
-            $previous = $this->number($r[6] ?? 0);
-            $current = $this->number($r[7] ?? 0);
+            $previous = ElectricityAmountParser::parseOrZero($r[6] ?? 0);
+            $current = ElectricityAmountParser::parseOrZero($r[7] ?? 0);
             $batch[] = [
                 'id_pelanggan' => $id,
                 'site_id' => $siteId,

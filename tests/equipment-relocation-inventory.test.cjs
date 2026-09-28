@@ -32,7 +32,7 @@ test('snapshot preserves the reference inventory and chart totals', () => {
 });
 
 test('browser loader merges monitoring once and uses local snapshot', async () => {
-    const source = fs.readFileSync(path.join(root, 'public/assets/js/equipment-relocation-data.js'), 'utf8');
+    const source = fs.readFileSync(path.join(root, 'public/assets/equipment-relocation/js/data.js'), 'utf8');
     const firstKey = snapshot.rows[0][column.uniq_key];
     const calls = [];
     const context = {

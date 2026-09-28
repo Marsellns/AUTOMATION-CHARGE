@@ -14,6 +14,7 @@ use App\Http\Controllers\DataPotensiSiteController;
 use App\Http\Controllers\DataPotensiSiteOwnerController;
 use App\Http\Controllers\ElectricityCentralizedController;
 use App\Http\Controllers\ElectricityCentralizedListrikPlnController;
+use App\Http\Controllers\ElectricityDashboardController;
 use App\Http\Controllers\ElectricityInbuildingController;
 use App\Http\Controllers\JaknetContractController;
 use App\Http\Controllers\PnlViewController;
@@ -22,12 +23,12 @@ use App\Http\Controllers\PoVarcostController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RecurringIpasController;
 use App\Http\Controllers\RecurringTagihanIpasController;
-use App\Http\Controllers\RruController;
+use App\Http\Controllers\EquipmentRelocationController;
 use App\Http\Controllers\SewaLahanRenewalController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\InfrastructureUploadController;
 use App\Http\Controllers\InfrastructureDashboardController;
-use App\Http\Controllers\DocumentCirculationController;
+use App\Http\Controllers\PresalesController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -61,33 +62,35 @@ Route::middleware('auth')->group(function () {
 
     // Profit & Loss (P & L) Khusus: Halaman Tabel Data PnL Site & Financial Analytics
     Route::get('/pnl', [PnlViewController::class, 'index'])->name('pnl.index');
-    Route::get('/pnl/upload', [PnlViewController::class, 'uploadPage'])->name('pnl.upload');
-    Route::post('/pnl/upload', [PnlViewController::class, 'upload'])->name('pnl.upload.store');
+    Route::get('/pnl/upload', [PnlViewController::class, 'uploadPage'])->name('pnl.upload')->middleware('role:admin');
+    Route::post('/pnl/upload', [PnlViewController::class, 'upload'])->name('pnl.upload.store')->middleware('role:admin');
     Route::get('/pnl/template', [PnlViewController::class, 'downloadTemplate'])->name('pnl.template');
     Route::get('/pnl/data', [PnlViewController::class, 'data'])->name('pnl.data');
     Route::get('/pnl/export-excel', [PnlViewController::class, 'exportExcel'])->name('pnl.export-excel');
     Route::get('/pnl/site-history/{site}', [PnlViewController::class, 'siteHistory'])->name('pnl.site-history');
 
-    Route::get('/equipment-relocation', [RruController::class, 'index'])->name('equipment-relocation.index');
-    Route::get('/equipment-relocation/relocation-data', [RruController::class, 'relocationData'])->name('equipment-relocation.relocation-data');
-    Route::post('/equipment-relocation/relocation-data', [RruController::class, 'saveRelocation'])->name('equipment-relocation.relocation-data.store');
-    Route::delete('/equipment-relocation/relocation-data', [RruController::class, 'deleteRelocation'])->name('equipment-relocation.relocation-data.destroy');
+    Route::get('/equipment-relocation', [EquipmentRelocationController::class, 'index'])->name('equipment-relocation.index');
+    Route::get('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'relocationData'])->name('equipment-relocation.relocation-data');
+    Route::post('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'saveRelocation'])->name('equipment-relocation.relocation-data.store');
+    Route::delete('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'deleteRelocation'])->name('equipment-relocation.relocation-data.destroy');
+    Route::get('/equipment-relocation/export-excel', [EquipmentRelocationController::class, 'exportExcel'])->name('equipment-relocation.export-excel');
+    Route::post('/equipment-relocation/import-excel', [EquipmentRelocationController::class, 'importExcel'])->name('equipment-relocation.import-excel');
     Route::redirect('/rru', '/equipment-relocation')->name('rru.index');
 
     // Presales adalah alur sirkulasi dan persetujuan dokumen dari sistem acuan.
     Route::prefix('po-monitoring/presales')->name('presales.')->group(function () {
-        Route::get('/', [DocumentCirculationController::class, 'index'])->name('index');
-        Route::get('/create', [DocumentCirculationController::class, 'create'])->name('create');
-        Route::post('/', [DocumentCirculationController::class, 'store'])->name('store');
-        Route::get('/{document}/file', [DocumentCirculationController::class, 'file'])->name('file');
-        Route::get('/{document}', [DocumentCirculationController::class, 'show'])->name('show');
-        Route::post('/{document}/status', [DocumentCirculationController::class, 'updateStatus'])->name('status');
+        Route::get('/', [PresalesController::class, 'index'])->name('index');
+        Route::get('/create', [PresalesController::class, 'create'])->name('create');
+        Route::post('/', [PresalesController::class, 'store'])->name('store');
+        Route::get('/{document}/file', [PresalesController::class, 'file'])->name('file');
+        Route::get('/{document}', [PresalesController::class, 'show'])->name('show');
+        Route::post('/{document}/status', [PresalesController::class, 'updateStatus'])->name('status');
     });
     Route::get('/po-monitoring/document-circulation', fn () => redirect()->route('presales.index'));
     Route::get('/po-monitoring/document-circulation/create', fn () => redirect()->route('presales.create'));
     Route::get('/po-monitoring/document-circulation/{document}', fn ($document) => redirect()->route('presales.show', $document));
-    Route::post('/po-monitoring/document-circulation', [DocumentCirculationController::class, 'store']);
-    Route::post('/po-monitoring/document-circulation/{document}/status', [DocumentCirculationController::class, 'updateStatus']);
+    Route::post('/po-monitoring/document-circulation', [PresalesController::class, 'store']);
+    Route::post('/po-monitoring/document-circulation/{document}/status', [PresalesController::class, 'updateStatus']);
 
     // Sumber data DataTables — WAJIB dideklarasikan sebelum resource agar
     // tidak tertangkap oleh route /po-hq/{po_hq}.
@@ -187,6 +190,9 @@ Route::middleware('auth')->group(function () {
         Route::get('bapss/data', [BapssController::class, 'data'])->name('bapss.data');
         Route::get('bapss/export-excel', [BapssController::class, 'exportExcel'])->name('bapss.export-excel');
         Route::get('bapss/export-csv', [BapssController::class, 'exportCsv'])->name('bapss.export-csv');
+        Route::get('bapss/{bapss}/file/{type}', [BapssController::class, 'file'])
+            ->whereIn('type', ['bapss', 'dismantle'])
+            ->name('bapss.file');
         Route::get('bapss/{bapss}', [BapssController::class, 'show'])->name('bapss.show');
         Route::resource('bapss', BapssController::class)
             ->only(['index', 'edit', 'update', 'destroy'])
@@ -195,6 +201,7 @@ Route::middleware('auth')->group(function () {
 
         // -- Upload File PDF --
         Route::get('upload-file/data', [UploadFileController::class, 'data'])->name('upload-file.data');
+        Route::get('upload-file/{uploadFile}/file', [UploadFileController::class, 'file'])->name('upload-file.file');
         Route::resource('upload-file', UploadFileController::class)
             ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
             ->parameters(['upload-file' => 'uploadFile'])
@@ -221,6 +228,9 @@ Route::middleware('auth')->group(function () {
     // Electricity Management
     // ────────────────────────────────────────────────────────────────
     Route::prefix('electricity')->name('electricity.')->group(function () {
+
+        Route::get('/', [ElectricityDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard-data', [ElectricityDashboardController::class, 'data'])->name('dashboard.data');
 
         // -- Centralized: Listrik PLN --
         Route::prefix('centralized')->name('centralized.')->group(function () {
@@ -300,9 +310,9 @@ Route::middleware('auth')->group(function () {
             Route::post('listrik-all/upload', [\App\Http\Controllers\ElectricityCentralizedListrikAllController::class, 'upload'])->name('listrik-all.upload')->middleware('role:admin');
 
             // Upload Data Flagging
-            Route::get('upload-flagging', [ElectricityCentralizedController::class, 'showUploadFlagging'])->name('upload-flagging');
-            Route::post('upload-flagging', [ElectricityCentralizedController::class, 'uploadFlagging'])->name('upload-flagging.store');
-            Route::get('template-flagging', [ElectricityCentralizedController::class, 'downloadTemplateFlagging'])->name('template-flagging');
+            Route::get('upload-flagging', [ElectricityCentralizedController::class, 'showUploadFlagging'])->name('upload-flagging')->middleware('role:admin');
+            Route::post('upload-flagging', [ElectricityCentralizedController::class, 'uploadFlagging'])->name('upload-flagging.store')->middleware('role:admin');
+            Route::get('template-flagging', [ElectricityCentralizedController::class, 'downloadTemplateFlagging'])->name('template-flagging')->middleware('role:admin');
         });
 
         // -- Inbuilding --

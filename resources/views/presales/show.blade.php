@@ -95,14 +95,35 @@
             <div class="card mb-3">
                 <div class="card-body">
                     <h2 class="h6">Tindakan {{ $document->currentStepName() }}</h2>
-                    <form method="POST" action="{{ route('presales.status', $document) }}">
+                    <form id="presalesStatusForm" method="POST" action="{{ route('presales.status', $document) }}">
                         @csrf
-                        <textarea class="form-control mb-2" name="comments" rows="3" placeholder="Komentar persetujuan / alasan penolakan (wajib jika ditolak)">{{ old('comments') }}</textarea>
+                        <input type="hidden" name="action" id="presalesAction" value="approve">
+                        <input type="hidden" name="confirm_rejection" id="presalesRejectConfirmation" value="">
+                        <textarea class="form-control mb-2" name="comments" id="presalesComments" rows="3" placeholder="Komentar persetujuan / alasan penolakan (wajib jika ditolak)">{{ old('comments') }}</textarea>
                         <div class="d-flex gap-2">
                             <button name="action" value="approve" class="btn btn-success">Setujui &amp; teruskan</button>
-                            <button name="action" value="reject" class="btn btn-outline-danger">Tolak</button>
+                            <button type="button" class="btn btn-outline-danger" id="presalesRejectTrigger">Tolak</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <div class="modal fade" id="presalesRejectModal" tabindex="-1" aria-labelledby="presalesRejectModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title fs-5" id="presalesRejectModalLabel">Konfirmasi penolakan dokumen</h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-2">Apakah Anda yakin ingin menolak dokumen ini?</p>
+                            <p class="small text-muted mb-0">Penolakan akan menghentikan alur approval dan mengirim notifikasi ke pengunggah serta manager Presales terkait.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="button" class="btn btn-danger" id="presalesRejectConfirm">Ya, tolak dokumen</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         @endif
@@ -163,3 +184,39 @@
     </div>
 </div>
 @endsection
+
+@if ($canAct)
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('presalesStatusForm');
+    const action = document.getElementById('presalesAction');
+    const confirmation = document.getElementById('presalesRejectConfirmation');
+    const comments = document.getElementById('presalesComments');
+    const rejectTrigger = document.getElementById('presalesRejectTrigger');
+    const rejectConfirm = document.getElementById('presalesRejectConfirm');
+    const modalElement = document.getElementById('presalesRejectModal');
+
+    if (!form || !action || !confirmation || !comments || !rejectTrigger || !rejectConfirm || !modalElement) return;
+
+    rejectTrigger.addEventListener('click', () => {
+        if (comments.value.trim() === '') {
+            comments.setCustomValidity('Alasan penolakan wajib diisi.');
+            comments.reportValidity();
+            comments.setCustomValidity('');
+            comments.focus();
+            return;
+        }
+
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    });
+
+    rejectConfirm.addEventListener('click', () => {
+        action.value = 'reject';
+        confirmation.value = '1';
+        form.requestSubmit();
+    });
+});
+</script>
+@endpush
+@endif

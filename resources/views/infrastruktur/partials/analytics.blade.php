@@ -2,6 +2,7 @@
          data-scope="{{ $scope }}"
          data-ownership-scope="{{ $scope === 'sewa' ? (request('ownership_scope') ?: (request('filter_field') === 'ownership' ? request('filter_value') : '')) : '' }}"
          @if ($scope === 'all') id="infrastructure-data" @endif>
+    @php($isOwnershipSubmodule = $scope === 'sewa' && in_array(strtolower(trim((string) (request('ownership_scope') ?: (request('filter_field') === 'ownership' ? request('filter_value') : '')))), ['telkomsel', 'tp'], true))
     <h2 class="h5 mb-3">Analitik {{ $scope === 'sewa' ? 'Sewa Lahan' : ($scope === 'combat' ? 'Combat' : 'Detail Infrastruktur') }}</h2>
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
@@ -94,7 +95,7 @@
             ['id' => 'renewal', 'title' => 'Distribusi Tahun Renewal / Justi', 'type' => 'column', 'key' => 'renewal_years'],
             ['id' => 'pks-status', 'title' => 'PKS Status', 'type' => 'pie', 'key' => 'pks_status'],
             ['id' => 'nop', 'title' => 'NOP Site', 'type' => 'pie', 'key' => 'nop'],
-            ['id' => 'vendor', 'title' => 'Vendor', 'type' => 'column', 'key' => 'vendor'],
+            ['id' => 'vendor', 'title' => 'Site Owner', 'type' => 'column', 'key' => 'vendor'],
             ['id' => 'health', 'title' => 'Contract Health / Aging Masa Sewa', 'type' => 'pie', 'key' => 'health'],
             ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline', 'height' => 320, 'wide_on_overview' => true],
             ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging', 'height' => 360],
@@ -102,6 +103,10 @@
         ])
         @if ($scope === 'all')
             @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
+        @endif
+        @if ($isOwnershipSubmodule)
+            {{-- Portfolio TP/Telkomsel sudah memiliki cakupan owner tunggal. --}}
+            @php($charts = array_values(array_filter($charts, fn ($chart) => !in_array($chart['key'], ['owners', 'vendor'], true))))
         @endif
         @foreach ($charts as $chart)
             <div class="{{ !empty($chart['wide_on_overview']) && $scope === 'all' ? 'col-12' : 'col-xl-6' }} d-flex">
@@ -190,6 +195,7 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
     const grid = dark ? '#334155' : '#e2e8f0';
 
     return {
+        colors: window.SimasterChartPalette.series,
         credits: { enabled: false },
         exporting: { enabled: false },
         chart: {
@@ -225,11 +231,27 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
         tooltip: {
             backgroundColor: dark ? '#1f2937' : '#ffffff',
             borderColor: grid,
-            style: { color: text }
+            style: { color: text },
+            formatter: function () {
+                const point = this.point || this;
+                const tooltipOptions = point.series.chart.options.tooltip || {};
+                const rawValue = Number(point.y) || 0;
+                const formattedValue = `${tooltipOptions.valuePrefix || ''}${window.infrastructureShortChartValue(rawValue)}${tooltipOptions.valueSuffix || ''}`;
+                const percentage = window.SimasterChartMetrics.highcharts(point);
+                const label = point.name || this.key || this.x || point.series.name;
+
+                return `<b>${label}</b><br>${point.series.name}: <b>${formattedValue}</b><br>` +
+                    `Persentase total: <b>${window.SimasterChartMetrics.format(percentage)}</b>`;
+            }
         },
         plotOptions: {
-            series: { dataLabels: { style: { color: text, textOutline: 'none' } } },
+            // Semua outline bawaan dimatikan khusus grafik Infrastruktur.
+            // Ini menghilangkan garis hitam pada irisan pie maupun batang.
+            series: { borderWidth: 0, dataLabels: { style: { color: text, textOutline: 'none' } } },
+            column: { borderWidth: 0 },
+            bar: { borderWidth: 0 },
             pie: {
+                borderWidth: 0,
                 showInLegend: true,
                 dataLabels: {
                     enabled: false,
@@ -437,7 +459,13 @@ window.renderInfrastructureSitePerformance = function (container, performance) {
             xAxis: options.xAxis,
             yAxis: { title: { text: 'Nilai (Rp)' } },
             tooltip: { valuePrefix: 'Rp ', valueDecimals: 0 },
-            plotOptions: { column: { borderRadius: 3 } },
+            plotOptions: {
+                column: {
+                    borderRadius: 3,
+                    borderWidth: 0,
+                    colorByPoint: selectedMonth !== 'all'
+                }
+            },
             series: options.series,
         }, window.infrastructureValueLabelOptions('column', pointCount)));
     };
@@ -756,6 +784,7 @@ $(function () {
                     yAxis: { title: { text: isAging ? 'Hari' : 'Site unik' } },
                     plotOptions: {
                         pie: {
+                            borderWidth: 0,
                             cursor: 'pointer',
                             point: {
                                 events: {
@@ -779,7 +808,9 @@ $(function () {
                                     }
                                 }
                             }
-                        }
+                        },
+                        column: { borderWidth: 0, colorByPoint: true },
+                        bar: { borderWidth: 0, colorByPoint: true }
                     },
                     ...(isAging ? {
                             tooltip: {
@@ -787,7 +818,8 @@ $(function () {
                                     const dated = this.point.options.custom?.datedCount || 0;
                                     const total = this.point.options.custom?.totalCount || 0;
                                     const value = this.y === null || this.y === undefined ? 'Tanggal proses belum tersedia' : `<b>${this.y} hari</b>`;
-                                    return `${this.key}<br>${value}<br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
+                                    const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(this.point));
+                                    return `${this.key}<br>${value}<br>Persentase total: <b>${percentage}</b><br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
                                 }
                             }
                         } : {}),

@@ -102,7 +102,7 @@ class ElectricityCentralizedAnomaliController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['anomali_file' => 'File Anomali Tagihan gagal diproses: '.$e->getMessage()]);
+            return back()->withErrors(['anomali_file' => 'File Anomali Tagihan gagal diproses. Periksa format file atau hubungi administrator.']);
         }
 
         return back()->with('success', 'Upload Anomali Tagihan berhasil dan data website telah diperbarui.');

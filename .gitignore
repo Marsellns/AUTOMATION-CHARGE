@@ -36,6 +36,7 @@ Thumbs.db
 /public/data/equipment_inventory.json
 /public/data/equipment_relocation_inventory.json
 /storage/app/backups/
+/exports/
 
 # Screenshots
 *.png

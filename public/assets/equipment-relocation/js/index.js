@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const chartAvailable = typeof Chart !== "undefined";
     const chartTextColor = () => document.documentElement.getAttribute("data-bs-theme") === "dark" ? "#d4dde8" : "#475569";
     const chartGridColor = () => document.documentElement.getAttribute("data-bs-theme") === "dark" ? "#425062" : "#e2e8f0";
+    const chartPalette = window.SimasterChartPalette;
+    const chartColor = index => chartPalette.series[index % chartPalette.series.length];
 
     if (!chartAvailable) {
         console.warn(
@@ -817,7 +819,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                             data: ruCounts,
 
                             backgroundColor:
-                                "#3b9ddd",
+                                chartColor(0),
+
+                            borderWidth: 0,
 
                             borderRadius: 6,
 
@@ -834,7 +838,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                             data: bbpCounts,
 
                             backgroundColor:
-                                "#8b5cf6",
+                                chartColor(2),
+
+                            borderWidth: 0,
 
                             borderRadius: 6,
 
@@ -1450,10 +1456,10 @@ document.addEventListener("DOMContentLoaded", async function () {
                             data: values,
 
                             backgroundColor: [
-                                "#f97316",
-                                "#eab308",
-                                "#3b9ddd",
-                                "#16a34a"
+                                chartPalette.financial.inactive,
+                                chartPalette.status.warning,
+                                chartPalette.status.pending,
+                                chartPalette.status.active
                             ],
 
                             borderColor:
@@ -1567,7 +1573,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     function createSafeTypeChart({
         canvasId,
         group,
-        color
+        colorOffset
     }) {
 
         if (!chartAvailable) {
@@ -1708,7 +1714,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                             data: values,
 
                             backgroundColor:
-                                color,
+                                labels.map((_, index) => chartColor(index + colorOffset)),
+
+                            borderWidth: 0,
 
                             borderRadius: 6,
 
@@ -1884,8 +1892,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 group:
                     "BBP",
 
-                color:
-                    "#8b5cf6"
+                colorOffset: 2
             });
     }
 
@@ -1908,8 +1915,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 group:
                     "RU",
 
-                color:
-                    "#3b9ddd"
+                colorOffset: 0
             });
     }
 

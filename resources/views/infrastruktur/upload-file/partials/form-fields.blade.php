@@ -9,7 +9,7 @@
         <small class="text-body-secondary">Hanya file .pdf, maks 10 MB.</small>
         @if (isset($file) && $file->file_path)
             <div class="mt-1">
-                <small class="text-body-secondary">File saat ini: <a href="{{ asset('storage/' . $file->file_path) }}" target="_blank">{{ basename($file->file_path) }}</a></small>
+            <small class="text-body-secondary">File saat ini: <a href="{{ route('infrastruktur.upload-file.file', $file) }}" target="_blank" rel="noopener">{{ basename($file->file_path) }}</a></small>
             </div>
         @endif
     </div>

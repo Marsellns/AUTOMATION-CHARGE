@@ -1,62 +1,22 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Presales;
 
 use App\Models\DocumentCirculation;
-use App\Models\EquipmentRelocation;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Permission\Models\Role;
+use Tests\Concerns\CreatesUsersWithRoles;
 use Tests\TestCase;
 
-class EquipmentRelocationPresalesTest extends TestCase
+class PresalesWorkflowTest extends TestCase
 {
+    use CreatesUsersWithRoles;
     use RefreshDatabase;
-
-    private function userWithRole(string $role): User
-    {
-        Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
-        $user = User::factory()->create();
-        $user->assignRole($role);
-
-        return $user;
-    }
-
-    public function test_equipment_inventory_can_be_monitored_updated_and_cleared(): void
-    {
-        $admin = $this->userWithRole('admin');
-        $viewer = $this->userWithRole('viewer');
-        $snapshot = json_decode(file_get_contents(public_path('data/equipment_relocation_inventory.json')), true);
-        $key = $snapshot['rows'][0][0];
-
-        $this->actingAs($admin)->get(route('equipment-relocation.index'))
-            ->assertOk()->assertSee('Equipment Relocation')->assertSee('chart.umd.min.js');
-        $this->actingAs($viewer)->postJson(route('equipment-relocation.relocation-data.store'), [
-            'donor_uniq_key' => $key,
-        ])->assertForbidden();
-
-        $this->actingAs($admin)->postJson(route('equipment-relocation.relocation-data.store'), [
-            'donor_uniq_key' => $key,
-            'pic' => 'NOP BEKASI',
-            'progress' => 'ON GOING',
-        ])->assertOk()->assertJsonPath('data.progress', 'ON GOING');
-
-        $this->assertDatabaseHas('equipment_relocations', [
-            'donor_uniq_key' => $key,
-            'pic' => 'NOP BEKASI',
-            'progress' => 'ON GOING',
-        ]);
-        $this->actingAs($admin)->deleteJson(route('equipment-relocation.relocation-data.destroy'), [
-            'donor_uniq_key' => $key,
-        ])->assertOk()->assertJsonPath('deleted', true);
-        $this->assertSame(0, EquipmentRelocation::count());
-    }
 
     public function test_presales_upload_and_manager_approval_flow(): void
     {
-        Storage::fake('public');
+        Storage::fake('private');
         $admin = $this->userWithRole('admin');
         $this->actingAs($admin)->get('/po-monitoring/document-circulation')
             ->assertRedirect(route('presales.index'));
@@ -70,7 +30,7 @@ class EquipmentRelocationPresalesTest extends TestCase
         $document = DocumentCirculation::firstOrFail();
         $this->assertSame('Pending', $document->status);
         $this->assertSame(2, $document->current_step);
-        Storage::disk('public')->assertExists($document->file_path);
+        Storage::disk('private')->assertExists($document->file_path);
         $this->assertDatabaseHas('document_approvals', [
             'document_id' => $document->id,
             'step' => 1,
@@ -101,6 +61,9 @@ class EquipmentRelocationPresalesTest extends TestCase
         $admin = $this->userWithRole('admin');
         $nop = $this->userWithRole('manager_nop');
         $sq = $this->userWithRole('manager_sq');
+        $nos = $this->userWithRole('manager_nos');
+        $nbae = $this->userWithRole('manager_nbae');
+        $viewer = $this->userWithRole('viewer');
         $document = DocumentCirculation::create([
             'document_title' => 'Dokumen untuk penolakan',
             'document_number' => 'PRE-002',
@@ -121,11 +84,26 @@ class EquipmentRelocationPresalesTest extends TestCase
         $this->actingAs($nop)->post(route('presales.status', $document), [
             'action' => 'reject',
             'comments' => 'Nomor dokumen perlu diperbaiki.',
+        ])->assertSessionHasErrors('confirm_rejection');
+        $this->actingAs($nop)->post(route('presales.status', $document), [
+            'action' => 'reject',
+            'comments' => 'Nomor dokumen perlu diperbaiki.',
+            'confirm_rejection' => '1',
         ])->assertRedirect();
 
         $document->refresh();
         $this->assertSame('Rejected', $document->status);
         $this->assertSame('Nomor dokumen perlu diperbaiki.', $document->rejected_reason);
+        $this->assertSame(1, $admin->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $sq->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $nos->fresh()->unreadNotifications()->count());
+        $this->assertSame(1, $nbae->fresh()->unreadNotifications()->count());
+        $this->assertSame(0, $nop->fresh()->notifications()->count());
+        $this->assertSame(0, $viewer->fresh()->notifications()->count());
+        $notification = $admin->fresh()->unreadNotifications()->firstOrFail();
+        $this->assertSame('presales_document_rejected', $notification->data['type']);
+        $this->assertSame($document->id, $notification->data['document_id']);
+        $this->assertSame('Nomor dokumen perlu diperbaiki.', $notification->data['rejection_reason']);
         $this->actingAs($nop)->post(route('presales.status', $document), [
             'action' => 'approve',
         ])->assertForbidden();

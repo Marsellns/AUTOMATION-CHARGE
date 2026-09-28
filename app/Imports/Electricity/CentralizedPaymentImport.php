@@ -2,6 +2,7 @@
 
 namespace App\Imports\Electricity;
 
+use App\Support\ElectricityAmountParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -25,7 +26,8 @@ class CentralizedPaymentImport implements ToCollection
                 continue;
             }
 
-            $batch[] = [
+            $key = strtoupper($id).'|'.strtoupper($siteId);
+            $batch[$key] = [
                 'id_pelanggan' => $id,
                 'site_id' => $siteId,
                 'site_name' => $this->text($r[3] ?? null),
@@ -33,7 +35,7 @@ class CentralizedPaymentImport implements ToCollection
                 'phasa' => $this->text($r[5] ?? null),
                 'gol_tarif' => $this->text($r[6] ?? null),
                 'unit_pln' => $this->text($r[7] ?? null),
-                'harga' => $this->number($r[8] ?? 0),
+                'harga' => ElectricityAmountParser::parseOrZero($r[8] ?? 0),
                 'update_by' => $this->text($r[9] ?? null) ?: 'System Import',
                 'tanggal_status' => $this->date($r[10] ?? null) ?: sprintf('%04d-%02d-15', $this->tahun, $this->bulan),
                 'status' => $this->status,
@@ -44,7 +46,7 @@ class CentralizedPaymentImport implements ToCollection
             ];
         }
 
-        foreach (array_chunk($batch, 500) as $chunk) {
+        foreach (array_chunk(array_values($batch), 500) as $chunk) {
             DB::table('payment_pln')->insert($chunk);
         }
     }
@@ -59,23 +61,6 @@ class CentralizedPaymentImport implements ToCollection
     {
         $value = preg_replace('/[^0-9-]/', '', (string) $value);
         return $value === '' || $value === '-' ? null : (int) $value;
-    }
-
-    private function number(mixed $value): float
-    {
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-        $value = preg_replace('/[^0-9,.-]/', '', (string) $value);
-        if (str_contains($value, '.') && str_contains($value, ',')) {
-            $value = str_replace('.', '', $value);
-            $value = str_replace(',', '.', $value);
-        } elseif (str_contains($value, '.')) {
-            $value = preg_match('/\.\d{3}$/', $value) ? str_replace('.', '', $value) : $value;
-        } else {
-            $value = str_replace(',', '.', $value);
-        }
-        return is_numeric($value) ? (float) $value : 0;
     }
 
     private function date(mixed $value): ?string

@@ -27,6 +27,7 @@ Schedule::call(function () {
 })->everyMinute()->name('dashboard-keepalive')->withoutOverlapping();
 
 Schedule::command('notifications:send-scheduled')
-    ->everyFifteenMinutes()
+    ->dailyAt((string) config('notifications.daily_at', '08:00'))
+    ->timezone((string) config('notifications.timezone', 'Asia/Jakarta'))
     ->name('scheduled-notifications')
     ->withoutOverlapping();

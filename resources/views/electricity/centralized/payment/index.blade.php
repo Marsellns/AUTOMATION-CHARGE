@@ -92,6 +92,16 @@
                 </select>
             </div>
 
+            <div class="d-flex align-items-center gap-2">
+                <label for="filter-nop" class="form-label mb-0 small fw-semibold text-nowrap">NOP:</label>
+                <select id="filter-nop" class="form-select form-select-sm" style="min-width: 150px;">
+                    <option value="">Semua NOP</option>
+                    @foreach ($nops as $nop)
+                        <option value="{{ $nop }}" @selected($selectedNop === $nop)>{{ $nop }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Download Excel --}}
             <a href="{{ route('electricity.centralized.payment.export-excel') }}" id="btn-export" class="btn btn-sm btn-outline-brand ms-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M.5 9.9a.5.5 0 0 1 .5.1v2.5A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5V10a.5.5 0 0 1 1 0v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5V10a.5.5 0 0 1 .5-.1"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
@@ -179,6 +189,7 @@ $(function () {
                 d.status = $('#filter-status').val();
                 d.bulan = $('#filter-bulan').val();
                 d.tahun = $('#filter-tahun').val();
+                d.nop = $('#filter-nop').val();
             }
         },
         columns: columns,
@@ -191,7 +202,7 @@ $(function () {
     });
 
     // Auto-reload on filter change
-    $('#filter-status, #filter-bulan, #filter-tahun').on('change', function () {
+    $('#filter-status, #filter-bulan, #filter-tahun, #filter-nop').on('change', function () {
         table.draw();
         updateExportLink();
     });
@@ -201,6 +212,7 @@ $(function () {
             status: $('#filter-status').val() || '',
             bulan: $('#filter-bulan').val() || '',
             tahun: $('#filter-tahun').val() || '',
+            nop: $('#filter-nop').val() || '',
         });
         $('#btn-export').attr('href', exportBaseUrl + '?' + params.toString());
     }

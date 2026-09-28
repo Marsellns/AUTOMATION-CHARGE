@@ -355,6 +355,7 @@ $(function () {
     const isAdmin = @json(auth()->user()->hasRole('admin'));
     const dataUrl = @json(route('electricity.inbuilding.listrik-inbuilding.data'));
     const updateBaseUrl = @json(url('electricity/inbuilding/listrik-inbuilding'));
+    const palette = window.SimasterChartPalette;
 
     let columns = [
         { data: 'DT_RowIndex', name: 'no', orderable: false, searchable: false },
@@ -567,10 +568,11 @@ $(function () {
                 bar: {
                     borderRadius: 6,
                     columnWidth: '55%',
+                    distributed: true,
                     dataLabels: { position: 'top' }
                 }
             },
-            colors: ['#ED0226'],
+            colors: labels.map((_, index) => palette.series[index % palette.series.length]),
             dataLabels: {
                 enabled: false
             },
@@ -592,8 +594,13 @@ $(function () {
             tooltip: {
                 theme: isDark ? 'dark' : 'light',
                 y: {
-                    formatter: function (val) {
-                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                    formatter: function (val, options) {
+                        const percentage = window.SimasterChartMetrics.format(
+                            window.SimasterChartMetrics.apex(val, options)
+                        );
+
+                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(val)
+                            + ' (' + percentage + ' dari total tagihan)';
                     }
                 }
             }

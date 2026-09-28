@@ -4,13 +4,26 @@
 
 @section('page-title', 'Equipment Relocation')
 
+@php
+    $canEditRelocation = auth()->user()->hasRole('admin') || auth()->user()->getRoleNames()->contains(
+        fn ($role) => str_starts_with(strtolower($role), 'manager_') || str_starts_with(strtolower($role), 'manager ')
+    );
+@endphp
+
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/equipment-relocation.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/equipment-relocation/css/index.css') }}">
 @endpush
 
 @section('content')
 
 <div class="page-content" id="equipmentRelocationPage" style="width:100%;">
+
+    @if ($errors->has('relocation_file'))
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            {{ $errors->first('relocation_file') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
 
     <!-- =====================================================
          PAGE HEADER
@@ -29,6 +42,31 @@
         </div>
 
         <div class="header-actions">
+
+            <a
+                class="btn-secondary"
+                href="{{ route('equipment-relocation.export-excel') }}"
+            >
+                <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></svg>
+                Download Excel
+            </a>
+
+            @if ($canEditRelocation)
+                <form method="POST" action="{{ route('equipment-relocation.import-excel') }}" enctype="multipart/form-data">
+                    @csrf
+                    <input
+                        type="file"
+                        id="erImportExcelFile"
+                        name="relocation_file"
+                        accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        hidden
+                    >
+                    <button type="button" class="btn-secondary" id="erImportExcelButton">
+                        <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/><path d="m8 8 4-4 4 4"/></svg>
+                        Upload Excel
+                    </button>
+                </form>
+            @endif
 
             <button
                 type="button"
@@ -399,7 +437,7 @@
                     id="erExportData"
                 >
                     <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></svg>
-                    Export Data
+                    Export Inventory CSV
                 </button>
 
             </div>
@@ -634,9 +672,20 @@
             save: @json(route('equipment-relocation.relocation-data.store')),
             destroy: @json(route('equipment-relocation.relocation-data.destroy'))
         };
-        window.__equipmentRelocationCanEdit = @json(auth()->user()->hasRole('admin') || auth()->user()->getRoleNames()->contains(fn ($role) => str_starts_with(strtolower($role), 'manager_') || str_starts_with(strtolower($role), 'manager ')));
+        window.__equipmentRelocationCanEdit = @json($canEditRelocation);
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
-    <script src="{{ asset('assets/js/equipment-relocation-data.js') }}"></script>
-    <script src="{{ asset('assets/js/equipment-relocation.js') }}"></script>
+    <script src="{{ asset('assets/equipment-relocation/js/data.js') }}"></script>
+    <script src="{{ asset('assets/equipment-relocation/js/index.js') }}"></script>
+    <script>
+        document.getElementById('erImportExcelButton')?.addEventListener('click', () => {
+            document.getElementById('erImportExcelFile')?.click();
+        });
+
+        document.getElementById('erImportExcelFile')?.addEventListener('change', event => {
+            if (event.target.files?.length) {
+                event.target.form?.submit();
+            }
+        });
+    </script>
 @endpush

@@ -25,14 +25,14 @@
         <label class="form-label fw-semibold">Upload PDF BAPSS</label>
         <input type="file" name="pdf_bapss_file" class="form-control form-control-sm" accept=".pdf">
         @if ($bapss->pdf_bapss && $bapss->pdf_bapss !== '-')
-            <small class="text-body-secondary">File saat ini: <a href="{{ asset('storage/' . $bapss->pdf_bapss) }}" target="_blank">{{ basename($bapss->pdf_bapss) }}</a></small>
+            <small class="text-body-secondary">File saat ini: <a href="{{ route('infrastruktur.bapss.file', [$bapss, 'bapss']) }}" target="_blank" rel="noopener">{{ basename($bapss->pdf_bapss) }}</a></small>
         @endif
     </div>
     <div class="col-md-6">
         <label class="form-label fw-semibold">Upload PDF BA Dismantle</label>
         <input type="file" name="pdf_ba_dismantle_file" class="form-control form-control-sm" accept=".pdf">
         @if ($bapss->pdf_ba_dismantle && $bapss->pdf_ba_dismantle !== '-')
-            <small class="text-body-secondary">File saat ini: <a href="{{ asset('storage/' . $bapss->pdf_ba_dismantle) }}" target="_blank">{{ basename($bapss->pdf_ba_dismantle) }}</a></small>
+            <small class="text-body-secondary">File saat ini: <a href="{{ route('infrastruktur.bapss.file', [$bapss, 'dismantle']) }}" target="_blank" rel="noopener">{{ basename($bapss->pdf_ba_dismantle) }}</a></small>
         @endif
     </div>
 </div>

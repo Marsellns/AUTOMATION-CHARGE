@@ -61,7 +61,7 @@ class DashboardMasterController extends Controller
         $infraDataSourceCount = count(array_filter($infraDataSources, static fn (int $count): bool => $count > 0));
 
         // 2. Electricity Tagihan Total
-        $totalTagihanPln = (float) StatusPembayaran::sum('harga');
+        $totalTagihanPln = (float) PaymentPln::sum('harga');
 
         // 3. Module Health & Counts
         $anomaliPlnCount = AnomaliTagihanPln::count();
@@ -109,13 +109,14 @@ class DashboardMasterController extends Controller
         $sourceVersion = implode('|', [
             SiteMonthlyMetric::query()->max('updated_at') ?? 'empty',
             PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
+            PaymentPln::query()->max('updated_at') ?? 'empty',
             ListrikAll::query()->max('updated_at') ?? 'empty',
             ListrikPln::query()->max('updated_at') ?? 'empty',
             ListrikInbuilding::query()->max('updated_at') ?? 'empty',
             AnomaliTagihanPln::query()->max('updated_at') ?? 'empty',
             AnomaliTagihanInbuilding::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.chart-data.v4:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
+        $cacheKey = 'dashboard.chart-data.v5:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
 
         return response()->json(Cache::remember(
             $cacheKey,
@@ -441,29 +442,45 @@ class DashboardMasterController extends Controller
         ];
 
         // --- 4. Tagihan listrik untuk periode terpilih (dalam Miliar Rupiah) ---
-        $plnBaseQuery = StatusPembayaran::query()
+        // Gunakan tabel Payment PLN karena tabel ini memuat seluruh baris file
+        // bulanan. status_pembayaran hanya memuat rekening yang berhasil
+        // dipetakan ke master dan tidak boleh menjadi sumber total dashboard.
+        $plnBaseQuery = PaymentPln::query()
             ->where('tahun', $tahun)
             ->when($bulan !== null, fn ($query) => $query->where('bulan', $bulan))
             ->when($nop !== null, function ($query) use ($nop) {
-                $query
-                    ->join('listrik_pln as nop_listrik', 'nop_listrik.id', '=', 'status_pembayaran.listrik_pln_id')
-                    ->whereRaw('UPPER(TRIM(nop_listrik.nop)) = ?', [strtoupper($nop)]);
+                $query->whereExists(function ($nopQuery) use ($nop) {
+                    $nopQuery->selectRaw('1')
+                        ->from('listrik_pln as nop_listrik')
+                        ->whereRaw('UPPER(TRIM(nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                        ->whereRaw(
+                            "REPLACE(REPLACE(UPPER(TRIM(nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                            [strtoupper($nop)]
+                        );
+                });
             });
 
         $totalPlnTagihan = (float) (clone $plnBaseQuery)->sum('harga');
 
         $plnByMonth = (clone $plnBaseQuery)
-            ->selectRaw('bulan, SUM(harga) as total')
+            ->selectRaw('bulan, SUM(harga) as total, COUNT(*) as records')
+            ->selectRaw('COUNT(DISTINCT UPPER(TRIM(site_id))) as site_count')
             ->groupBy('bulan')
-            ->pluck('total', 'bulan')
-            ->toArray();
+            ->get()
+            ->keyBy('bulan');
 
         $plnPelangganCount = ListrikPln::query()
-            ->when($nop !== null, fn ($q) => $q->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)]))
+            ->when($nop !== null, fn ($q) => $q->whereRaw(
+                "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                [strtoupper($nop)]
+            ))
             ->count();
 
         $plnTotalDaya = (int) ListrikPln::query()
-            ->when($nop !== null, fn ($q) => $q->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)]))
+            ->when($nop !== null, fn ($q) => $q->whereRaw(
+                "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                [strtoupper($nop)]
+            ))
             ->sum('daya_va');
 
         $plnKpi = [
@@ -476,10 +493,18 @@ class DashboardMasterController extends Controller
         $plnMonths = $bulan === null ? range(1, 12) : [$bulan];
         $plnLabels = [];
         $plnValues = [];
+        $plnAmounts = [];
+        $plnSiteCounts = [];
+        $plnRecordCounts = [];
         $plnPeriods = [];
         foreach ($plnMonths as $month) {
+            $monthSummary = $plnByMonth->get($month);
+            $monthAmount = (float) ($monthSummary->total ?? 0);
             $plnLabels[] = ($plnMonthsLabels[$month - 1] ?? $month) . ' ' . $tahun;
-            $plnValues[] = round(((float) ($plnByMonth[$month] ?? 0)) / 1000000000, 2);
+            $plnValues[] = round($monthAmount / 1000000000, 2);
+            $plnAmounts[] = round($monthAmount, 2);
+            $plnSiteCounts[] = (int) ($monthSummary->site_count ?? 0);
+            $plnRecordCounts[] = (int) ($monthSummary->records ?? 0);
             $plnPeriods[] = ['bulan' => $month, 'tahun' => $tahun];
         }
 
@@ -547,6 +572,9 @@ class DashboardMasterController extends Controller
             'pln' => [
                 'labels' => $plnLabels,
                 'values' => $plnValues,
+                'amounts' => $plnAmounts,
+                'site_counts' => $plnSiteCounts,
+                'record_counts' => $plnRecordCounts,
                 'year'   => $tahun,
                 'periods' => $plnPeriods,
             ],
@@ -602,7 +630,10 @@ class DashboardMasterController extends Controller
                     $siteQuery->selectRaw('1')
                         ->from('listrik_pln')
                         ->whereRaw('UPPER(TRIM(listrik_pln.site_id)) = UPPER(TRIM(payment_pln_master_monthly.site_id))')
-                        ->whereRaw('UPPER(TRIM(listrik_pln.nop)) = ?', [strtoupper($nop)]);
+                        ->whereRaw(
+                            "REPLACE(REPLACE(UPPER(TRIM(listrik_pln.nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                            [strtoupper($nop)]
+                        );
                 });
             })
             ->whereNotExists(function ($query) use ($validated) {
@@ -654,10 +685,11 @@ class DashboardMasterController extends Controller
 
     private function electricityPaymentSummary(int $tahun, ?int $bulan, ?string $nop): array
     {
-        $sourceVersion = PaymentPlnMasterMonthly::query()->max('updated_at')
-            ?? PaymentPln::query()->max('updated_at')
-            ?? 'empty';
-        $cacheKey = 'dashboard.electricity-payment.v3:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
+        $sourceVersion = implode('|', [
+            PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
+            PaymentPln::query()->max('updated_at') ?? 'empty',
+        ]);
+        $cacheKey = 'dashboard.electricity-payment.v4:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
 
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($tahun, $bulan, $nop): array {
             return $this->buildElectricityPaymentSummary($tahun, $bulan, $nop);
@@ -671,7 +703,10 @@ class DashboardMasterController extends Controller
         $nopSiteIds = $nop === null
             ? null
             : ListrikPln::query()
-                ->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)])
+                ->whereRaw(
+                    "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                    [strtoupper($nop)]
+                )
                 ->pluck('site_id')
                 ->map(fn ($siteId) => trim((string) $siteId))
                 ->filter()
@@ -689,7 +724,10 @@ class DashboardMasterController extends Controller
                 $query->whereNull('status_aktif_site')
                     ->orWhereRaw("LOWER(TRIM(status_aktif_site)) <> 'tidak aktif'");
             })
-            ->when($nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)]))
+            ->when($nop !== null, fn ($query) => $query->whereRaw(
+                "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                [strtoupper($nop)]
+            ))
             ->count();
         $masterStats = PaymentPlnMasterMonthly::query()
             ->where('tahun', $tahun)
@@ -745,7 +783,10 @@ class DashboardMasterController extends Controller
                         $query->whereNull('status_aktif_site')
                             ->orWhereRaw("LOWER(TRIM(status_aktif_site)) <> 'tidak aktif'");
                     })
-                    ->when($nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)]));
+                    ->when($nop !== null, fn ($query) => $query->whereRaw(
+                        "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                        [strtoupper($nop)]
+                    ));
                 $paidQuery = StatusPembayaran::query()
                     ->where('tahun', $tahun)
                     ->where('bulan', $month)
@@ -753,7 +794,10 @@ class DashboardMasterController extends Controller
                         $query->where(function ($statusQuery) {
                             $statusQuery->whereNull('status_aktif_site')
                                 ->orWhereRaw("LOWER(TRIM(status_aktif_site)) <> 'tidak aktif'");
-                        })->when($nop !== null, fn ($nopQuery) => $nopQuery->whereRaw('UPPER(TRIM(nop)) = ?', [strtoupper($nop)]));
+                        })->when($nop !== null, fn ($nopQuery) => $nopQuery->whereRaw(
+                            "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                            [strtoupper($nop)]
+                        ));
                     });
                 $activeCount = (clone $activeQuery)->count();
                 $paid = (clone $paidQuery)->distinct('listrik_pln_id')->count('listrik_pln_id');

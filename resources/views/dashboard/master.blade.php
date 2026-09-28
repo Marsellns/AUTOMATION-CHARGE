@@ -299,6 +299,12 @@
                             <h2 class="enterprise-card-title">Distribusi Site Owner</h2>
                             <span class="text-body-secondary small" id="site-owner-caption"></span>
                         </div>
+                        <a href="{{ route('data-potensi.site-owner.export-excel') }}"
+                           id="site-owner-export"
+                           class="btn btn-sm btn-outline-brand">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1" aria-hidden="true"><path d="M.5 9.9a.5.5 0 0 1 .5.1v2.5A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5V10a.5.5 0 0 1 1 0v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5V10a.5.5 0 0 1 .5-.1"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
+                            Download Excel
+                        </a>
                     </div>
                     <div class="enterprise-card-body">
                         <div class="site-owner-layout">
@@ -390,7 +396,7 @@
                 <div class="enterprise-card h-100 chart-card">
                     <div class="enterprise-card-header">
                         <div>
-                            <h2 class="enterprise-card-title">Peak Usage &amp; Electricity Billing</h2>
+                            <h2 class="enterprise-card-title">Monthly Electricity Billing</h2>
                         </div>
                         <span class="badge text-bg-light border small">Listrik Centralized</span>
                     </div>
@@ -423,8 +429,15 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle small mb-1">Detail Site Kontributor</span>
                         <h5 class="modal-title" id="drawer-title">Daftar Site</h5>
                     </div>
-
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{{ route('data-potensi.site-owner.export-excel') }}"
+                           id="site-owner-detail-export"
+                           class="btn btn-sm btn-outline-brand d-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1" aria-hidden="true"><path d="M.5 9.9a.5.5 0 0 1 .5.1v2.5A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5V10a.5.5 0 0 1 1 0v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5V10a.5.5 0 0 1 .5-.1"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
+                            Download Excel
+                        </a>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
                 </div>
                 <div class="px-3 pt-3">
                     <div class="position-relative">
@@ -492,6 +505,7 @@ $(function () {
         pnl: "{{ route('pnl.index') }}",
         pnlData: "{{ route('pnl.data') }}",
         pln: "{{ route('electricity.centralized.listrik-pln.index') }}",
+        payment: "{{ route('electricity.centralized.payment.index') }}",
         plnAnomali: "{{ route('electricity.centralized.anomali.index') }}",
         ibcAnomali: "{{ route('electricity.inbuilding.anomali.index') }}",
         sewaLahan: "{{ route('infrastruktur.sewa-lahan.index') }}",
@@ -501,7 +515,8 @@ $(function () {
         jaknet: "{{ route('infrastruktur.jaknet.index') }}",
         bapss: "{{ route('infrastruktur.bapss.index') }}",
         uploadFile: "{{ route('infrastruktur.upload-file.index') }}",
-        poHq: "{{ route('po-hq.index') }}"
+        poHq: "{{ route('po-hq.index') }}",
+        siteOwnerExport: "{{ route('data-potensi.site-owner.export-excel') }}"
     };
 
     const monthNames = [
@@ -520,17 +535,20 @@ $(function () {
     const chartDataCache = new Map();
     let currentTab = 'overview';
 
-    // Corporate Blue Palette Definition
+    const palette = window.SimasterChartPalette;
+
+    // Warna peran tetap konsisten, sementara pie dan bar satu-seri memakai
+    // palet bersama yang lebih bervariasi.
     const corpColors = {
-        primary: '#2563eb',
+        primary: palette.financial.revenue,
         primaryDark: '#1d4ed8',
-        secondary: '#3b82f6',
-        accent: '#60a5fa',
+        secondary: palette.series[1],
+        accent: palette.series[2],
         light: '#93c5fd',
         soft: '#dbeafe',
-        success: '#10b981',
-        danger: '#ef4444',
-        warning: '#f59e0b',
+        success: palette.financial.profit,
+        danger: palette.financial.loss,
+        warning: palette.status.warning,
         slate: '#64748b'
     };
 
@@ -603,6 +621,7 @@ $(function () {
     function applyHighchartsTheme() {
         const theme = getThemeStyles();
         Highcharts.setOptions({
+            colors: palette.series,
             chart: {
                 style: { fontFamily: 'system-ui, -apple-system, sans-serif' },
                 backgroundColor: 'transparent',
@@ -616,7 +635,16 @@ $(function () {
                 borderColor: theme.tooltipBorder,
                 borderRadius: 8,
                 shadow: true,
-                style: { color: theme.tooltipText, fontSize: '12px' }
+                style: { color: theme.tooltipText, fontSize: '12px' },
+                formatter: function () {
+                    const point = this.point || this;
+                    const value = Number(point.y) || 0;
+                    const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(point));
+                    const label = point.name || this.key || this.x || point.series.name;
+
+                    return `<b>${label}</b><br><span style="color:${point.color}">●</span> ${point.series.name}: ` +
+                        `<b>${value.toLocaleString('id-ID')}</b><br>Persentase total: <b>${percentage}</b>`;
+                }
             }
         });
     }
@@ -636,8 +664,8 @@ $(function () {
         window.location.href = `${routesMap.pnl}?${params.toString()}`;
     }
 
-    // Helper to navigate to Listrik PLN with params
-    function navigateToPln(tahun, bulan, nop) {
+    // Buka rincian pembayaran pada periode yang sama dengan batang grafik.
+    function navigateToElectricityPayments(tahun, bulan, nop) {
         const params = new URLSearchParams();
         if (tahun) params.set('tahun', tahun);
         // Kirim bulan spesifik jika ada, atau kosongkan (PLN mendukung Semua Bulan via select)
@@ -645,7 +673,26 @@ $(function () {
             params.set('bulan', bulan);
         }
         if (nop) params.set('nop', nop);
+        window.location.href = `${routesMap.payment}?${params.toString()}`;
+    }
+
+    function navigateToPln(tahun, bulan, nop) {
+        const params = new URLSearchParams();
+        if (tahun) params.set('tahun', tahun);
+        if (bulan && bulan !== 'all') params.set('bulan', bulan);
+        if (nop) params.set('nop', nop);
         window.location.href = `${routesMap.pln}?${params.toString()}`;
+    }
+
+    function siteOwnerExportUrl(owner = '') {
+        const params = new URLSearchParams();
+        const nop = cachedChartData?.filters?.nop || '';
+
+        if (nop) params.set('nop', nop);
+        if (owner) params.set('site_owner', owner);
+
+        const query = params.toString();
+        return `${routesMap.siteOwnerExport}${query ? `?${query}` : ''}`;
     }
 
     // 1. Render Growth Bar Chart (Overview Screen 1) - Click navigates to PnL month data
@@ -722,6 +769,12 @@ $(function () {
 
     // 2. Render Category Donut (Overview Screen 1) - Click opens filtered PnL
     function renderCategoryDonut(pnlStatus, theme) {
+        const statusColors = {
+            'Profit Site': corpColors.success,
+            'Loss Site': corpColors.danger,
+            'Tidak Aktif': palette.financial.inactive,
+        };
+
         upsertChart('categoryDonut', 'chart-category-donut', {
             chart: { type: 'pie' },
             exporting: { enabled: false },
@@ -763,7 +816,10 @@ $(function () {
             },
             series: [{
                 name: 'Total Site',
-                data: pnlStatus
+                data: (pnlStatus || []).map((point, index) => ({
+                    ...point,
+                    color: statusColors[point.name] || palette.series[index % palette.series.length]
+                }))
             }]
         });
     }
@@ -779,6 +835,7 @@ $(function () {
         $('#site-owner-caption').text(
             `${selectedNop ? `NOP: ${selectedNop} — ` : ''}Total ${totalSites} Site ID`
         );
+        $('#site-owner-export').attr('href', siteOwnerExportUrl());
 
         upsertChart('siteOwners', 'chart-site-owner', {
             chart: { type: 'bar' },
@@ -798,7 +855,7 @@ $(function () {
                 bar: {
                     borderRadius: 4,
                     borderWidth: 0,
-                    color: corpColors.primaryDark,
+                    colorByPoint: true,
                     cursor: 'pointer',
                     point: {
                         events: {
@@ -963,14 +1020,19 @@ $(function () {
             tooltip: {
                 formatter: function () {
                     const i = this.point.index;
+                    const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(this.point));
                     return `<b>${labels[i]} ${year}</b><br>` +
                         `Total biaya: <b>Rp ${Number(costs[i] || 0).toLocaleString('id-ID')}</b><br>` +
-                        `Site memiliki tagihan: <b>${Number(siteCounts[i] || 0).toLocaleString('id-ID')}</b>`;
+                        `Site memiliki tagihan: <b>${Number(siteCounts[i] || 0).toLocaleString('id-ID')}</b><br>` +
+                        `Persentase total biaya: <b>${percentage}</b>`;
                 }
             },
             series: [{
                 name: 'Total Biaya Listrik',
-                data: costs.map(value => ({ y: Number(value) || 0, color: corpColors.secondary }))
+                data: costs.map((value, index) => ({
+                    y: Number(value) || 0,
+                    color: palette.series[index % palette.series.length]
+                }))
             }]
         });
     }
@@ -1135,23 +1197,27 @@ $(function () {
             series: [{
                 name: 'Items',
                 data: (infraData || []).map((item, idx) => {
-                    const colors = [corpColors.primary, corpColors.secondary, corpColors.accent, corpColors.light, '#6366f1', '#8b5cf6'];
-                    return { name: item.name, y: item.y, color: colors[idx % colors.length] };
+                    return { name: item.name, y: item.y, color: palette.series[idx % palette.series.length] };
                 })
             }]
         });
     }
 
-    // 6. Render Peak Electricity Usage (Analytics Screen 2) - Click navigates to Electricity PLN
+    // 6. Render Electricity Billing (Analytics Screen 2)
     function renderPeakUsage(plnData, theme) {
         const labels = plnData.labels || [];
         const values = plnData.values || [];
+        const amounts = plnData.amounts || [];
+        const siteCounts = plnData.site_counts || [];
+        const recordCounts = plnData.record_counts || [];
         const periods = plnData.periods || [];
 
         const maxVal = Math.max(...values, 0);
-        const dataWithPeak = values.map(v => ({
+        const dataWithPeak = values.map((v, index) => ({
             y: v,
-            color: (v === maxVal && maxVal > 0) ? corpColors.primaryDark : corpColors.light
+            color: (v === maxVal && maxVal > 0)
+                ? corpColors.primaryDark
+                : palette.series[index % palette.series.length]
         }));
 
         upsertChart('peakUsage', 'chart-peak-usage', {
@@ -1168,6 +1234,15 @@ $(function () {
                 labels: { style: { color: theme.text, fontSize: '11px' } }
             },
             legend: { enabled: false },
+            tooltip: {
+                formatter: function () {
+                    const index = this.point.index;
+                    return `<b>${labels[index]}</b><br>` +
+                        `Total tagihan: <b>Rp ${Number(amounts[index] || 0).toLocaleString('id-ID')}</b><br>` +
+                        `Site: <b>${Number(siteCounts[index] || 0).toLocaleString('id-ID')}</b><br>` +
+                        `Rekening: <b>${Number(recordCounts[index] || 0).toLocaleString('id-ID')}</b>`;
+                }
+            },
             plotOptions: {
                 column: {
                     borderRadius: 5,
@@ -1178,9 +1253,9 @@ $(function () {
                             click: function () {
                                 const p = periods[this.index];
                                 if (p) {
-                                    navigateToPln(p.tahun, p.bulan, cachedChartData?.filters?.nop);
+                                    navigateToElectricityPayments(p.tahun, p.bulan, cachedChartData?.filters?.nop);
                                 } else {
-                                    window.location.href = routesMap.pln;
+                                    window.location.href = routesMap.payment;
                                 }
                             }
                         }
@@ -1231,7 +1306,12 @@ $(function () {
             },
             series: [{
                 name: 'Kasus',
-                data: data
+                data: data.map((point, index) => ({
+                    ...point,
+                    color: point.name.includes('Valid')
+                        ? corpColors.success
+                        : palette.series[(index + 3) % palette.series.length]
+                }))
             }]
         });
     }
@@ -1480,6 +1560,9 @@ $(function () {
         const tahun = cachedChartData.filters.tahun;
 
         $('#drawer-title').text(isOwnerFilter ? `Site Kontributor — ${ownerName}` : `Site Kontributor: ${statusName}`);
+        $('#site-owner-detail-export')
+            .toggleClass('d-none', !isOwnerFilter)
+            .attr('href', isOwnerFilter ? siteOwnerExportUrl(ownerName) : routesMap.siteOwnerExport);
         $('#drawer-tbody').html('<tr><td colspan="3" class="text-center py-4 text-body-secondary">Mengambil data site...</td></tr>');
         siteDrawer.show();
 

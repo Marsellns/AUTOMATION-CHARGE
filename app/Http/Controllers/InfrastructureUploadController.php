@@ -120,7 +120,7 @@ class InfrastructureUploadController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['dataset_file' => 'File gagal diproses: '.$e->getMessage()])->withInput();
+            return back()->withErrors(['dataset_file' => 'File gagal diproses. Periksa format file atau hubungi administrator.'])->withInput();
         }
 
         $stats = $import->getStats();

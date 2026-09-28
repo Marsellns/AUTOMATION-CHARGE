@@ -53,7 +53,8 @@ class ElectricityInbuildingController extends Controller
             return back()->with('error', 'Validasi gagal: ' . implode('; ', array_slice($errorMessages, 0, 5)))
                 ->withInput();
         } catch (\Throwable $e) {
-            return back()->with('error', 'Gagal memproses file: ' . $e->getMessage())
+            report($e);
+            return back()->with('error', 'Gagal memproses file. Periksa format file atau hubungi administrator.')
                 ->withInput();
         }
     }
