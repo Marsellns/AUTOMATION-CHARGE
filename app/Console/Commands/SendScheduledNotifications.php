@@ -105,8 +105,8 @@ class SendScheduledNotifications extends Command
         $infrastructureCount = array_sum($infrastructureResult['warning_counts']);
         if ($infrastructureCount > 0) {
             $websiteCategories = count($infrastructureResult['website_categories']);
-            $emailStatus = $infrastructureResult['email_sent'] ? 'email terkirim' : 'email tidak dikirim ulang/belum dikonfigurasi';
-            $this->info("Peringatan Infrastruktur aktif: {$infrastructureCount} site; {$websiteCategories} kategori lonceng dibuat; {$emailStatus}.");
+            $emailCategories = count($infrastructureResult['email_categories']);
+            $this->info("Peringatan Infrastruktur aktif: {$infrastructureCount} data kategori; {$websiteCategories} notifikasi lonceng dan {$emailCategories} email Excel dibuat.");
         }
 
         if ($centralizedCount === 0 && $inbuildingCount === 0 && $lossCount === 0 && $infrastructureCount === 0) {

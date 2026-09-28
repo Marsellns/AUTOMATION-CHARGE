@@ -138,6 +138,8 @@ class SewaLahanRenewalController extends Controller
             $this->applyGeographyFilter($query, $value);
         } elseif ($field === 'priority') {
             $this->applyPriorityFilter($query);
+        } elseif ($field === 'lease_alert') {
+            $this->applyLeaseAlertFilter($query);
         } elseif ($field === 'lease_window') {
             $endDate = 'COALESCE(end_date_baru, end_date_lama)';
             $query->whereRaw("{$endDate} BETWEEN ? AND ?", [today()->toDateString(), today()->addDays(180)->toDateString()]);
@@ -237,6 +239,17 @@ class SewaLahanRenewalController extends Controller
                 })
                 ->orWhereNull('end_date_baru')->whereNull('end_date_lama')
                 ->orWhereRaw("{$endDate} <= ?", [today()->addDays(180)->toDateString()]);
+        });
+    }
+
+    private function applyLeaseAlertFilter($query): void
+    {
+        $endDate = 'COALESCE(end_date_baru, end_date_lama)';
+
+        $query->where(function ($alert) use ($endDate): void {
+            $alert->where(function ($missing): void {
+                $missing->whereNull('end_date_baru')->whereNull('end_date_lama');
+            })->orWhereRaw("{$endDate} <= ?", [today()->addDays(180)->toDateString()]);
         });
     }
 

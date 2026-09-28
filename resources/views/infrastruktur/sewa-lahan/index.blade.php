@@ -140,8 +140,12 @@ $(function () {
 
     function updateFilterBadge() {
         if (currentFilter.field && currentFilter.value) {
-            const fieldLabel = currentFilter.field === 'priority' ? 'Prioritas Tindakan' : currentFilter.field.replace(/_/g, ' ');
-            $('#active-filter-text').text(currentFilter.field === 'priority' ? fieldLabel : `${fieldLabel}: ${currentFilter.value}`);
+            const labelOnlyFilters = {
+                priority: 'Prioritas Tindakan',
+                lease_alert: 'Peringatan Masa Sewa',
+            };
+            const fieldLabel = labelOnlyFilters[currentFilter.field] || currentFilter.field.replace(/_/g, ' ');
+            $('#active-filter-text').text(labelOnlyFilters[currentFilter.field] ? fieldLabel : `${fieldLabel}: ${currentFilter.value}`);
             $('#active-filter-alert').removeClass('d-none');
         } else {
             $('#active-filter-alert').addClass('d-none');

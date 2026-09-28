@@ -21,7 +21,7 @@ class InfrastructureSiteAlertNotificationTest extends TestCase
                 'within_180' => 4,
                 'unknown' => 1,
             ],
-            'https://simaster.test/infrastruktur/sewa-lahan?ownership_scope=TP',
+            'https://simaster.test/infrastruktur/sewa-lahan?ownership_scope=TP&filter_field=lease_alert&filter_value=active&unique_sites=1#infrastructure-data',
             '2026-09-28',
         ))->toArray(new User);
 
@@ -32,6 +32,7 @@ class InfrastructureSiteAlertNotificationTest extends TestCase
         $this->assertSame(2, $data['status_counts']['expired']);
         $this->assertStringContainsString('91–180 hari', $data['message']);
         $this->assertStringContainsString('ownership_scope=TP', $data['url']);
+        $this->assertStringContainsString('filter_field=lease_alert', $data['url']);
         $this->assertSame('2026-09-28', $data['notification_date']);
     }
 }

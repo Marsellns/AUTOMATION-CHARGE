@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exports\InfrastructureSiteAlertExport;
 use App\Models\CombatSite;
 use App\Models\SewaLahanRenewal;
 use App\Models\SiteOwner;
@@ -16,11 +17,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InfrastructureSiteAlertService
 {
     /**
-     * @return array{website_categories: list<string>, email_sent: bool, warning_counts: array<string, int>}
+     * @return array{website_categories: list<string>, email_categories: list<string>, warning_counts: array<string, int>}
      */
     public function send(): array
     {
@@ -31,7 +34,7 @@ class InfrastructureSiteAlertService
         );
         $result = [
             'website_categories' => [],
-            'email_sent' => false,
+            'email_categories' => [],
             'warning_counts' => array_map(
                 static fn (array $summary): int => $summary['warning_count'],
                 $summaries
@@ -88,52 +91,66 @@ class InfrastructureSiteAlertService
             return $result;
         }
 
-        $emailClaim = DailyNotificationGate::reserve('email', 'infrastructure-sites');
-        if ($emailClaim === null) {
-            return $result;
-        }
-
-        try {
-            $lines = [
-                'Peringatan harian site Infrastruktur Management',
-                "Tanggal: {$notificationDate}",
-                '',
-            ];
-
-            foreach ($activeSummaries as $summary) {
-                $counts = $summary['status_counts'];
-                $lines[] = sprintf(
-                    '%s: %d dari %d site perlu perhatian (berakhir: %d, ≤90 hari: %d, 91–180 hari: %d, tanpa tanggal akhir: %d).',
-                    $summary['label'],
-                    $summary['warning_count'],
-                    $summary['total_count'],
-                    $counts['expired'],
-                    $counts['within_90'],
-                    $counts['within_180'],
-                    $counts['unknown'],
-                );
-                $lines[] = $summary['url'];
-                $lines[] = '';
+        foreach ($activeSummaries as $category => $summary) {
+            $emailClaim = DailyNotificationGate::reserve('email', 'infrastructure-'.$category);
+            if ($emailClaim === null) {
+                continue;
             }
 
-            Mail::raw(implode("\n", $lines), function ($message) use ($recipient, $notificationDate): void {
-                $message->to(trim($recipient))
-                    ->subject("Peringatan harian site Infrastruktur - {$notificationDate}");
-            });
-            $result['email_sent'] = true;
-        } catch (\Throwable $exception) {
-            DailyNotificationGate::release($emailClaim);
-            Log::error('Email site Infrastruktur gagal dikirim.', [
-                'recipient' => $recipient,
-                'exception' => $exception,
-            ]);
+            try {
+                $counts = $summary['status_counts'];
+                $body = implode("\n", [
+                    'Peringatan harian site Infrastruktur Management',
+                    "Kategori: {$summary['label']}",
+                    "Tanggal: {$notificationDate}",
+                    '',
+                    sprintf(
+                        '%s: %d dari %d site perlu perhatian (berakhir: %d, ≤90 hari: %d, 91–180 hari: %d, tanpa tanggal akhir: %d).',
+                        $summary['label'],
+                        $summary['warning_count'],
+                        $summary['total_count'],
+                        $counts['expired'],
+                        $counts['within_90'],
+                        $counts['within_180'],
+                        $counts['unknown'],
+                    ),
+                    '',
+                    'Rincian site tersedia pada lampiran Excel.',
+                    $summary['url'],
+                ]);
+                $attachment = Excel::raw(
+                    new InfrastructureSiteAlertExport($summary['label'], $summary['alert_rows']),
+                    ExcelFormat::XLSX
+                );
+                $filename = sprintf(
+                    'peringatan_%s_%s.xlsx',
+                    str($category)->slug('_'),
+                    str_replace('-', '', $notificationDate)
+                );
+
+                Mail::raw($body, function ($message) use ($recipient, $summary, $notificationDate, $attachment, $filename): void {
+                    $message->to(trim($recipient))
+                        ->subject("Peringatan harian {$summary['label']} - {$notificationDate}")
+                        ->attachData($attachment, $filename, [
+                            'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        ]);
+                });
+                $result['email_categories'][] = $category;
+            } catch (\Throwable $exception) {
+                DailyNotificationGate::release($emailClaim);
+                Log::error('Email site Infrastruktur gagal dikirim.', [
+                    'recipient' => $recipient,
+                    'category' => $category,
+                    'exception' => $exception,
+                ]);
+            }
         }
 
         return $result;
     }
 
     /**
-     * @return array<string, array{label: string, warning_count: int, total_count: int, status_counts: array<string, int>, url: string}>
+     * @return array<string, array{label: string, warning_count: int, total_count: int, status_counts: array<string, int>, url: string, alert_rows: Collection}>
      */
     private function summaries(): array
     {
@@ -144,24 +161,29 @@ class InfrastructureSiteAlertService
         $combatSites = $this->uniqueSites(CombatSite::query()->get());
 
         $definitions = [
-            'site_telkomsel' => [
-                'label' => 'Site Telkomsel',
-                'rows' => $sewaSites->filter(
-                    fn ($row): bool => InfrastructureOwnership::bucketForRow($row, $ownersBySite) === InfrastructureOwnership::TELKOMSEL
-                ),
-                'url' => route('infrastruktur.sewa-lahan.index', ['ownership_scope' => InfrastructureOwnership::TELKOMSEL]),
+            'sewa_lahan' => [
+                'label' => 'Sewa Lahan',
+                'rows' => $sewaSites,
+                'url' => $this->alertUrl('infrastruktur.sewa-lahan.index'),
             ],
             'site_tp' => [
                 'label' => 'Site TP',
                 'rows' => $sewaSites->filter(
                     fn ($row): bool => InfrastructureOwnership::bucketForRow($row, $ownersBySite) === InfrastructureOwnership::TP
                 ),
-                'url' => route('infrastruktur.sewa-lahan.index', ['ownership_scope' => InfrastructureOwnership::TP]),
+                'url' => $this->alertUrl('infrastruktur.sewa-lahan.index', InfrastructureOwnership::TP),
+            ],
+            'site_telkomsel' => [
+                'label' => 'Site Telkomsel',
+                'rows' => $sewaSites->filter(
+                    fn ($row): bool => InfrastructureOwnership::bucketForRow($row, $ownersBySite) === InfrastructureOwnership::TELKOMSEL
+                ),
+                'url' => $this->alertUrl('infrastruktur.sewa-lahan.index', InfrastructureOwnership::TELKOMSEL),
             ],
             'combat' => [
                 'label' => 'Combat',
                 'rows' => $combatSites,
-                'url' => route('infrastruktur.combat.index'),
+                'url' => $this->alertUrl('infrastruktur.combat.index'),
             ],
         ];
 
@@ -172,7 +194,7 @@ class InfrastructureSiteAlertService
 
     /**
      * @param  array{label: string, rows: Collection, url: string}  $definition
-     * @return array{label: string, warning_count: int, total_count: int, status_counts: array<string, int>, url: string}
+     * @return array{label: string, warning_count: int, total_count: int, status_counts: array<string, int>, url: string, alert_rows: Collection}
      */
     private function summarize(array $definition): array
     {
@@ -183,7 +205,7 @@ class InfrastructureSiteAlertService
             'unknown' => 0,
         ];
 
-        foreach ($definition['rows'] as $row) {
+        $alertRows = $definition['rows']->filter(function ($row) use (&$statusCounts): bool {
             $status = LeaseStatus::fromEndDate($row->end_date_baru ?? $row->end_date_lama);
             $key = match ($status) {
                 LeaseStatus::EXPIRED => 'expired',
@@ -196,15 +218,32 @@ class InfrastructureSiteAlertService
             if ($key !== null) {
                 $statusCounts[$key]++;
             }
-        }
+
+            return $key !== null;
+        })->values();
 
         return [
             'label' => $definition['label'],
-            'warning_count' => array_sum($statusCounts),
+            'warning_count' => $alertRows->count(),
             'total_count' => $definition['rows']->count(),
             'status_counts' => $statusCounts,
             'url' => $definition['url'],
+            'alert_rows' => $alertRows,
         ];
+    }
+
+    private function alertUrl(string $routeName, ?string $ownershipScope = null): string
+    {
+        $parameters = [
+            'filter_field' => 'lease_alert',
+            'filter_value' => 'active',
+            'unique_sites' => 1,
+        ];
+        if ($ownershipScope !== null) {
+            $parameters['ownership_scope'] = $ownershipScope;
+        }
+
+        return route($routeName, $parameters).'#infrastructure-data';
     }
 
     private function uniqueSites(Collection $rows): Collection
