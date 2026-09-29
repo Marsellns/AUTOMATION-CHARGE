@@ -39,9 +39,10 @@ class PnlViewController extends Controller
             $selectedNop = '';
         }
 
-        // Deteksi apakah request "semua bulan" (bulan=all atau bulan kosong saat ada tahun)
+        // Pembukaan awal modul menampilkan satu tahun penuh. Bulan spesifik
+        // hanya dipakai jika memang dikirim melalui filter atau tautan detail.
         $bulanInput = $request->query('bulan', '');
-        $selectedAllMonths = ($bulanInput === 'all');
+        $selectedAllMonths = ($bulanInput === 'all' || !$request->has('bulan'));
         $selectedPeriod = $this->resolveSelectedPeriod($request, $periods, $selectedAllMonths);
 
         return view('pnl.index', compact('periods', 'selectedStatus', 'selectedPeriod', 'nops', 'selectedNop', 'selectedAllMonths'));
@@ -159,7 +160,10 @@ class PnlViewController extends Controller
             return DataTables::of($query)
                 ->addIndexColumn()
                 ->filterColumn('nop', fn ($q, $keyword) => $q->where('so.nop', 'like', "%{$keyword}%"))
-                ->filterColumn('site_id', fn ($q, $keyword) => $q->where('sites.site_id', 'like', "%{$keyword}%"))
+                ->filterColumn('site_id', fn ($q, $keyword) => $q->whereRaw(
+                    'UPPER(TRIM(sites.site_id)) = ?',
+                    [strtoupper(trim((string) $keyword))]
+                ))
                 ->filterColumn('site_name', fn ($q, $keyword) => $q->where('sites.site_name', 'like', "%{$keyword}%"))
                 // Kolom finansial untuk site tidak aktif selalu NULL. Override
                 // pencarian bawaan agar DataTables tidak mencoba `sites.revenue`.
@@ -317,7 +321,10 @@ class PnlViewController extends Controller
         return DataTables::of($query)
             ->addIndexColumn()
             ->filterColumn('nop', fn ($q, $keyword) => $q->where('so.nop', 'like', "%{$keyword}%"))
-            ->filterColumn('site_id', fn ($q, $keyword) => $q->where('sites.site_id', 'like', "%{$keyword}%"))
+            ->filterColumn('site_id', fn ($q, $keyword) => $q->whereRaw(
+                'UPPER(TRIM(sites.site_id)) = ?',
+                [strtoupper(trim((string) $keyword))]
+            ))
             ->filterColumn('site_name', fn ($q, $keyword) => $q->where('sites.site_name', 'like', "%{$keyword}%"))
             // Hasil query memakai alias metrik berbeda untuk tiap status
             // (`m` atau `site_monthly_metrics`). Karena itu pencarian harus
@@ -335,7 +342,7 @@ class PnlViewController extends Controller
             ->orderColumn('site_name', fn ($q, $dir) => $q->orderBy('sites.site_name', $dir))
             ->orderColumn('revenue', fn ($q, $dir) => $q->orderBy($revCol, $dir))
             ->orderColumn('cost', fn ($q, $dir) => $q->orderBy($costCol, $dir))
-            ->orderColumn('profit_loss', fn ($q, $dir) => $q->orderBy($pnlCol, $dir))
+            ->orderColumn('profit_loss', fn ($q, $dir) => $q->orderBy($pnlCol, $dir)->orderBy('sites.site_id'))
             ->editColumn('revenue', fn ($s) => $s->revenue !== null ? 'Rp ' . number_format($s->revenue, 0, ',', '.') : '<span class="text-muted">-</span>')
             ->editColumn('cost', fn ($s) => $s->cost !== null ? 'Rp ' . number_format($s->cost, 0, ',', '.') : '<span class="text-muted">-</span>')
             ->addColumn('status_badge', function ($s) {
@@ -355,6 +362,82 @@ class PnlViewController extends Controller
             })
             ->rawColumns(['revenue', 'cost', 'profit_loss', 'status_badge'])
             ->toJson();
+    }
+
+    /**
+     * Site dengan laba tertinggi dan rugi terdalam untuk filter PnL yang aktif.
+     */
+    public function highlights(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'tahun' => ['required', 'integer', 'between:2000,2100'],
+            'bulan' => ['required'],
+            'nop' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $bulanInput = (string) $validated['bulan'];
+        abort_unless(
+            $bulanInput === 'all' || (ctype_digit($bulanInput) && (int) $bulanInput >= 1 && (int) $bulanInput <= 12),
+            422,
+            'Bulan tidak valid.'
+        );
+        $bulan = $bulanInput === 'all' ? null : (int) $bulanInput;
+        $nop = trim((string) ($validated['nop'] ?? ''));
+
+        // Pada mode semua bulan, tabel PnL menjumlahkan metrik per site dan
+        // mengabaikan baris anomali. Untuk bulan spesifik, semua baris dipakai.
+        $metricsBySite = DB::table('site_monthly_metrics as m')
+            ->where('m.tahun', (int) $validated['tahun'])
+            ->when($bulan !== null, fn ($query) => $query->where('m.bulan', $bulan))
+            ->when($bulan === null, fn ($query) => $query->where('m.is_anomaly', 0))
+            ->select('m.site_id')
+            ->selectRaw('SUM(m.profit_loss) as net_pnl')
+            ->groupBy('m.site_id');
+
+        $siteTotals = DB::table('sites as s')
+            ->joinSub($metricsBySite, 'm', 'm.site_id', '=', 's.id')
+            ->when($nop !== '', function ($query) use ($nop) {
+                $query->whereExists(function ($ownerQuery) use ($nop) {
+                    $ownerQuery->selectRaw('1')
+                        ->from('site_owners as so')
+                        ->whereRaw('UPPER(TRIM(so.site_code)) = UPPER(TRIM(s.site_id))')
+                        ->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]);
+                });
+            })
+            ->select('s.id', 's.site_id', 's.site_name', 'm.net_pnl');
+
+        $profit = DB::query()->fromSub($siteTotals, 'site_pnl')
+            ->where('net_pnl', '>', 0)
+            ->orderByDesc('net_pnl')
+            ->orderBy('site_id')
+            ->first();
+        $loss = DB::query()->fromSub($siteTotals, 'site_pnl')
+            ->where('net_pnl', '<=', 0)
+            ->orderBy('net_pnl')
+            ->orderBy('site_id')
+            ->first();
+
+        $toCard = static function ($site) use ($nop): ?array {
+            if ($site === null) {
+                return null;
+            }
+
+            $siteNop = $nop !== '' ? $nop : DB::table('site_owners')
+                ->whereRaw('UPPER(TRIM(site_code)) = ?', [strtoupper(trim((string) $site->site_id))])
+                ->value('nop');
+
+            return [
+                'site_id' => $site->site_id,
+                'site_name' => $site->site_name,
+                'nop' => $siteNop,
+                'profit_loss' => (float) $site->net_pnl,
+            ];
+        };
+
+        return response()->json([
+            'profit' => $toCard($profit),
+            'loss' => $toCard($loss),
+        ]);
     }
 
     /**
@@ -509,11 +592,13 @@ class PnlViewController extends Controller
         $bulan = $request->integer('bulan');
         $tahun = $request->integer('tahun');
 
-        // Jika all months diminta, kembalikan 0-TAHUN agar JS bisa mendeteksi "Semua Bulan"
-        if ($allMonths && $tahun > 0) {
+        // Jika semua bulan diminta atau modul baru dibuka, gunakan tahun yang
+        // dipilih (jika valid) atau tahun terbaru yang tersedia.
+        if ($allMonths) {
+            $annualYear = $tahun > 0 ? $tahun : (int) ($periods[0]['tahun'] ?? 2026);
             foreach ($periods as $period) {
-                if ($period['tahun'] === $tahun) {
-                    return "0-{$tahun}";
+                if ($period['tahun'] === $annualYear) {
+                    return "0-{$annualYear}";
                 }
             }
         }

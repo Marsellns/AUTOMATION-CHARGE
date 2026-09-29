@@ -122,6 +122,81 @@ class ElectricityBillingIntegrityTest extends TestCase
             ->assertJsonPath('data.0.site_id', 'SITE-001');
     }
 
+    public function test_master_dashboard_electricity_uses_selected_site_owner_nop_across_its_data_sources(): void
+    {
+        $user = User::factory()->create(['account_status' => 'approved']);
+        $now = now();
+
+        DB::table('site_owners')->insert([
+            ['site_code' => 'SITE-001', 'nop' => 'NOP BEKASI'],
+            ['site_code' => 'SITE-002', 'nop' => 'NOP BEKASI'],
+            ['site_code' => 'SITE-003', 'nop' => 'NOP BOGOR'],
+        ]);
+        DB::table('listrik_pln')->insert([
+            ['id_pelanggan' => 'PEL-001', 'site_id' => 'SITE-001', 'nop' => 'NOP BEKASI', 'status_aktif_site' => 'Aktif', 'daya_va' => 1000, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-002', 'site_id' => 'SITE-002', 'nop' => 'BEKASI', 'status_aktif_site' => 'Aktif', 'daya_va' => 2000, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-003', 'site_id' => 'SITE-003', 'nop' => 'NOP BOGOR', 'status_aktif_site' => 'Aktif', 'daya_va' => 3000, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        DB::table('payment_pln')->insert([
+            ['id_pelanggan' => 'PEL-001', 'site_id' => 'SITE-001', 'harga' => 1000, 'status' => 'Done', 'bulan' => 7, 'tahun' => 2026, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-002', 'site_id' => 'SITE-002', 'harga' => 250, 'status' => 'Pending', 'bulan' => 7, 'tahun' => 2026, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-003', 'site_id' => 'SITE-003', 'harga' => 2000, 'status' => 'Done', 'bulan' => 7, 'tahun' => 2026, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        DB::table('payment_pln_master_monthly')->insert([
+            ['id_pelanggan' => 'PEL-001', 'site_id' => 'SITE-001', 'bulan' => 7, 'tahun' => 2026, 'amount' => 1000, 'is_paid' => true, 'status_aktif_site' => 'Aktif', 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-002', 'site_id' => 'SITE-002', 'bulan' => 7, 'tahun' => 2026, 'amount' => 250, 'is_paid' => false, 'status_aktif_site' => 'Aktif', 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-003', 'site_id' => 'SITE-003', 'bulan' => 7, 'tahun' => 2026, 'amount' => 2000, 'is_paid' => true, 'status_aktif_site' => 'Aktif', 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        DB::table('listrik_all')->insert([
+            ['id_pelanggan' => 'PEL-001', 'site_id' => 'SITE-001', 'tahun' => 2026, 'jul' => 1100, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-002', 'site_id' => 'SITE-002', 'tahun' => 2026, 'jul' => 200, 'created_at' => $now, 'updated_at' => $now],
+            ['id_pelanggan' => 'PEL-003', 'site_id' => 'SITE-003', 'tahun' => 2026, 'jul' => 2200, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.chart-data', ['tahun' => 2026, 'bulan' => 7, 'nop' => 'NOP BEKASI']))
+            ->assertOk()
+            ->assertJsonPath('filters.nop', 'NOP BEKASI')
+            ->assertJsonPath('pln_kpi.pelanggan_count', 2)
+            ->assertJsonPath('pln_kpi.total_daya_va', 3000)
+            ->assertJsonPath('pln_kpi.total_tagihan', 1250)
+            ->assertJsonPath('pln.amounts.0', 1250)
+            ->assertJsonPath('pln.site_counts.0', 2)
+            ->assertJsonPath('electricity_payment.active_sites.0', 2)
+            ->assertJsonPath('electricity_payment.paid_counts.0', 1)
+            ->assertJsonPath('electricity_all.site_count', 2)
+            ->assertJsonPath('electricity_all.costs.6', 1300);
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.electricity-payment-data', ['tahun' => 2026, 'bulan' => 7, 'nop' => 'NOP BEKASI']))
+            ->assertOk()
+            ->assertJsonPath('active_sites.0', 2)
+            ->assertJsonPath('paid_counts.0', 1);
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.chart-data', ['tahun' => 2026, 'bulan' => 'all', 'nop' => 'NOP BEKASI']))
+            ->assertOk()
+            ->assertJsonPath('pln_kpi.pelanggan_count', 2)
+            ->assertJsonPath('pln_kpi.total_tagihan', 1250)
+            ->assertJsonPath('pln.amounts.6', 1250)
+            ->assertJsonPath('electricity_payment.active_sites.6', 2)
+            ->assertJsonPath('electricity_all.site_count', 2);
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.electricity-payment-detail', ['tahun' => 2026, 'bulan' => 7, 'nop' => 'NOP BEKASI']))
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('sites.0.site_id', 'SITE-002');
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.chart-data', ['tahun' => 2026, 'bulan' => 7]))
+            ->assertOk()
+            ->assertJsonPath('pln_kpi.pelanggan_count', 3)
+            ->assertJsonPath('pln_kpi.total_tagihan', 3250)
+            ->assertJsonPath('electricity_all.site_count', 3)
+            ->assertJsonPath('electricity_all.costs.6', 3500);
+    }
+
     public function test_uploaded_payment_rows_are_deduplicated_and_numeric_thousands_are_restored(): void
     {
         $import = new CentralizedPaymentImport('Done', 5, 2026);

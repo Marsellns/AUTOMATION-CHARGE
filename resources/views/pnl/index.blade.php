@@ -82,6 +82,33 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-3" aria-live="polite">
+        <div class="col-md-6">
+            <button type="button" class="card pnl-highlight pnl-highlight-profit h-100 w-100 text-start"
+                    id="pnl-highlight-profit"
+                    aria-controls="pnl-table" aria-pressed="false" aria-busy="true" disabled>
+                <div class="card-body">
+                    <div class="small fw-semibold text-body-secondary mb-2">Profit Site Terbesar</div>
+                    <div class="pnl-highlight-value text-profit mb-2" id="pnl-highlight-profit-value">Memuat...</div>
+                    <div class="fw-semibold text-truncate" id="pnl-highlight-profit-name">&nbsp;</div>
+                    <div class="small text-body-secondary" id="pnl-highlight-profit-meta">&nbsp;</div>
+                </div>
+            </button>
+        </div>
+        <div class="col-md-6">
+            <button type="button" class="card pnl-highlight pnl-highlight-loss h-100 w-100 text-start"
+                    id="pnl-highlight-loss"
+                    aria-controls="pnl-table" aria-pressed="false" aria-busy="true" disabled>
+                <div class="card-body">
+                    <div class="small fw-semibold text-body-secondary mb-2">Loss Site Terbesar</div>
+                    <div class="pnl-highlight-value text-loss mb-2" id="pnl-highlight-loss-value">Memuat...</div>
+                    <div class="fw-semibold text-truncate" id="pnl-highlight-loss-name">&nbsp;</div>
+                    <div class="small text-body-secondary" id="pnl-highlight-loss-meta">&nbsp;</div>
+                </div>
+            </button>
+        </div>
+    </div>
+
     {{-- Main PnL Table --}}
     <div class="row g-3 mb-3">
         <div class="col-lg-8">
@@ -107,7 +134,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="pnl-table-card" tabindex="-1">
         <div class="card-body">
             <table id="pnl-table" class="display align-middle text-nowrap" style="width:100%">
                 <thead>
@@ -167,6 +194,21 @@
 @push('styles')
 <style>
     #pnl-table tbody tr { cursor: pointer; }
+    .pnl-highlight {
+        border-radius: 12px;
+        background: var(--bs-body-bg);
+        color: inherit;
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .pnl-highlight:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .12); }
+    .pnl-highlight:focus-visible { outline: 3px solid rgba(59, 130, 246, .35); outline-offset: 2px; }
+    .pnl-highlight:disabled { cursor: default; opacity: .72; }
+    .pnl-highlight.is-selected { box-shadow: 0 0 0 2px rgba(59, 130, 246, .45); }
+    .pnl-highlight-profit { border-left: 4px solid #14b8a6; }
+    .pnl-highlight-loss { border-left: 4px solid #ef7357; }
+    .pnl-highlight-value { font-size: clamp(1.35rem, 2vw, 1.8rem); font-weight: 700; line-height: 1.2; }
+    #pnl-table tbody tr.pnl-highlighted-row > * { background-color: rgba(59, 130, 246, .14); }
 </style>
 @endpush
 
@@ -175,6 +217,7 @@
 <script>
 $(function () {
     const dataUrl = @json(route('pnl.data'));
+    const highlightApiUrl = @json(route('pnl.highlights'));
     const chartApiUrl = @json(route('dashboard.chart-data'));
     const historyBaseUrl = @json(url('pnl/site-history'));
     const exportBaseUrl = @json(route('pnl.export-excel'));
@@ -186,6 +229,8 @@ $(function () {
     let growthChart = null;
     let categoryChart = null;
     let chartRequest = null;
+    let highlightRequest = null;
+    let highlightSiteFilterActive = false;
 
     function populateMonths(tahun, selectedBulan) {
         const months = availablePeriods
@@ -274,6 +319,55 @@ $(function () {
             bulan: bulan === 'all' ? 'all' : bulan,
             nop: $('#filter-nop').val()
         };
+    }
+
+    function renderHighlightCard(type, site) {
+        const $card = $(`#pnl-highlight-${type}`).attr('aria-busy', 'false');
+        const $value = $card.find(`#pnl-highlight-${type}-value`);
+        const $name = $card.find(`#pnl-highlight-${type}-name`);
+        const $meta = $card.find(`#pnl-highlight-${type}-meta`);
+
+        if (!site) {
+            $card.prop('disabled', true).removeAttr('data-site-id');
+            $value.text('—');
+            $name.text(`Tidak ada site ${type === 'profit' ? 'profit' : 'loss'} untuk filter ini`);
+            $meta.empty();
+            return;
+        }
+
+        $card.prop('disabled', false).attr('data-site-id', site.site_id);
+        $value.text(fmtRupiah(site.profit_loss));
+        $name.text(site.site_name || site.site_id);
+        $meta.text(`${site.site_id}${site.nop ? ` · ${site.nop}` : ''}`);
+    }
+
+    function loadPnlHighlights() {
+        if (highlightRequest) highlightRequest.abort();
+        $('.pnl-highlight').attr('aria-busy', 'true').prop('disabled', true).removeAttr('data-site-id');
+        $('#pnl-highlight-profit-value, #pnl-highlight-loss-value').text('Memuat...');
+        $('#pnl-highlight-profit-name, #pnl-highlight-loss-name, #pnl-highlight-profit-meta, #pnl-highlight-loss-meta').empty();
+
+        let request;
+        request = $.ajax({
+            url: highlightApiUrl,
+            method: 'GET',
+            data: getChartFilters(),
+            success: function (res) {
+                renderHighlightCard('profit', res.profit);
+                renderHighlightCard('loss', res.loss);
+            },
+            error: function (_xhr, status) {
+                if (status === 'abort') return;
+                $('.pnl-highlight').attr('aria-busy', 'false');
+                $('#pnl-highlight-profit-value, #pnl-highlight-loss-value').text('—');
+                $('#pnl-highlight-profit-name, #pnl-highlight-loss-name').text('Gagal memuat ringkasan.');
+                $('#pnl-highlight-profit-meta, #pnl-highlight-loss-meta').empty();
+            },
+            complete: function () {
+                if (highlightRequest === request) highlightRequest = null;
+            }
+        });
+        highlightRequest = request;
     }
 
     function renderPnlCharts(res) {
@@ -394,6 +488,47 @@ $(function () {
     }
 
     loadPnlCharts();
+    loadPnlHighlights();
+
+    function clearHighlightSiteFilter() {
+        if (!highlightSiteFilterActive) return;
+        table.column(1).search('');
+        highlightSiteFilterActive = false;
+        $('.pnl-highlight').removeClass('is-selected').attr('aria-pressed', 'false');
+    }
+
+    function showHighlightInTable($card) {
+        const siteId = $card.attr('data-site-id');
+        if (!siteId || $card.prop('disabled')) return;
+
+        // Kartu menunjuk satu Site ID. Status dikembalikan ke semua status agar
+        // hanya filter kolom Site ID yang menentukan baris hasilnya.
+        $('#filter-status').val('');
+        $('.pnl-highlight').removeClass('is-selected').attr('aria-pressed', 'false');
+        $card.addClass('is-selected').attr('aria-pressed', 'true');
+        highlightSiteFilterActive = true;
+        updateExportUrl();
+
+        $('#pnl-table').one('draw.dt.pnlHighlight', function () {
+            const matchingRow = $(table.rows({ page: 'current' }).nodes().toArray()).filter(function () {
+                return table.row(this).data()?.site_id === siteId;
+            }).first();
+            matchingRow.addClass('pnl-highlighted-row');
+            window.setTimeout(() => matchingRow.removeClass('pnl-highlighted-row'), 1800);
+            document.getElementById('pnl-table-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        // Bersihkan pencarian lain lalu terapkan pencarian hanya pada kolom
+        // Site ID. Filter periode dan NOP tetap dikirim melalui AJAX tabel.
+        table.search('');
+        table.columns().search('');
+        table.column(1).search(siteId);
+        table.page('first').draw();
+    }
+
+    $('.pnl-highlight').on('click', function () {
+        showHighlightInTable($(this));
+    });
 
     $('#page-size').on('change', function () {
         table.page.len(parseInt($(this).val())).draw();
@@ -403,18 +538,23 @@ $(function () {
         // Saat ganti tahun, pertahankan pilihan Semua Bulan jika sebelumnya Semua Bulan
         const prevBulan = $('#filter-month').val();
         populateMonths(this.value, prevBulan === 'all' ? 0 : null);
+        clearHighlightSiteFilter();
         updateExportUrl();
         table.draw();
         loadPnlCharts();
+        loadPnlHighlights();
     });
 
     $('#filter-month, #filter-nop').on('change', function () {
+        clearHighlightSiteFilter();
         updateExportUrl();
         table.draw();
         loadPnlCharts();
+        loadPnlHighlights();
     });
 
     $('#filter-status').on('change', function () {
+        clearHighlightSiteFilter();
         updateExportUrl();
         table.draw();
     });

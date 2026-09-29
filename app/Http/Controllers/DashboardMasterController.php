@@ -116,7 +116,7 @@ class DashboardMasterController extends Controller
             AnomaliTagihanPln::query()->max('updated_at') ?? 'empty',
             AnomaliTagihanInbuilding::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.chart-data.v5:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
+        $cacheKey = 'dashboard.chart-data.v6:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
 
         return response()->json(Cache::remember(
             $cacheKey,
@@ -189,6 +189,7 @@ class DashboardMasterController extends Controller
             abort_if($canonicalNop === null, 422, 'NOP tidak valid.');
             $nop = $canonicalNop;
         }
+        $electricityNop = $nop === null ? null : $this->normalizedElectricityNop($nop);
         $bulanInput = $request->query('bulan');
         $allMonths = $bulanInput === 'all' || $bulanInput === null;
         abort_unless(
@@ -448,14 +449,14 @@ class DashboardMasterController extends Controller
         $plnBaseQuery = PaymentPln::query()
             ->where('tahun', $tahun)
             ->when($bulan !== null, fn ($query) => $query->where('bulan', $bulan))
-            ->when($nop !== null, function ($query) use ($nop) {
-                $query->whereExists(function ($nopQuery) use ($nop) {
+            ->when($electricityNop !== null, function ($query) use ($electricityNop) {
+                $query->whereExists(function ($nopQuery) use ($electricityNop) {
                     $nopQuery->selectRaw('1')
                         ->from('listrik_pln as nop_listrik')
                         ->whereRaw('UPPER(TRIM(nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
                         ->whereRaw(
                             "REPLACE(REPLACE(UPPER(TRIM(nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
-                            [strtoupper($nop)]
+                            [$electricityNop]
                         );
                 });
             });
@@ -470,16 +471,16 @@ class DashboardMasterController extends Controller
             ->keyBy('bulan');
 
         $plnPelangganCount = ListrikPln::query()
-            ->when($nop !== null, fn ($q) => $q->whereRaw(
+            ->when($electricityNop !== null, fn ($q) => $q->whereRaw(
                 "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
-                [strtoupper($nop)]
+                [$electricityNop]
             ))
             ->count();
 
         $plnTotalDaya = (int) ListrikPln::query()
-            ->when($nop !== null, fn ($q) => $q->whereRaw(
+            ->when($electricityNop !== null, fn ($q) => $q->whereRaw(
                 "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
-                [strtoupper($nop)]
+                [$electricityNop]
             ))
             ->sum('daya_va');
 
@@ -509,7 +510,7 @@ class DashboardMasterController extends Controller
         }
 
         $electricityPayment = $this->electricityPaymentSummary($tahun, $bulan, $nop);
-        $electricityAll = $this->electricityAllSummary($tahun);
+        $electricityAll = $this->electricityAllSummary($tahun, $electricityNop);
 
         // --- 5. PO HQ Breakdown ---
         $poExpenseData = PoHq::query()
@@ -618,6 +619,7 @@ class DashboardMasterController extends Controller
 
         $nopInput = trim((string) ($validated['nop'] ?? ''));
         $nop = $nopInput === '' || strcasecmp($nopInput, 'all') === 0 ? null : $nopInput;
+        $electricityNop = $nop === null ? null : $this->normalizedElectricityNop($nop);
         $activeSiteQuery = PaymentPlnMasterMonthly::query()
             ->where('tahun', $validated['tahun'])
             ->where('bulan', $validated['bulan'])
@@ -625,14 +627,14 @@ class DashboardMasterController extends Controller
                 $query->whereNull('status_aktif_site')
                     ->orWhereRaw("LOWER(TRIM(status_aktif_site)) <> 'tidak aktif'");
             })
-            ->when($nop !== null, function ($query) use ($nop) {
-                $query->whereExists(function ($siteQuery) use ($nop) {
+            ->when($electricityNop !== null, function ($query) use ($electricityNop) {
+                $query->whereExists(function ($siteQuery) use ($electricityNop) {
                     $siteQuery->selectRaw('1')
                         ->from('listrik_pln')
                         ->whereRaw('UPPER(TRIM(listrik_pln.site_id)) = UPPER(TRIM(payment_pln_master_monthly.site_id))')
                         ->whereRaw(
                             "REPLACE(REPLACE(UPPER(TRIM(listrik_pln.nop)), 'NOP ', ''), 'NOP-', '') = ?",
-                            [strtoupper($nop)]
+                            [$electricityNop]
                         );
                 });
             })
@@ -685,11 +687,13 @@ class DashboardMasterController extends Controller
 
     private function electricityPaymentSummary(int $tahun, ?int $bulan, ?string $nop): array
     {
+        $nop = $nop === null ? null : $this->normalizedElectricityNop($nop);
         $sourceVersion = implode('|', [
             PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
             PaymentPln::query()->max('updated_at') ?? 'empty',
+            ListrikPln::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.electricity-payment.v4:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
+        $cacheKey = 'dashboard.electricity-payment.v5:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
 
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($tahun, $bulan, $nop): array {
             return $this->buildElectricityPaymentSummary($tahun, $bulan, $nop);
@@ -831,11 +835,23 @@ class DashboardMasterController extends Controller
         ];
     }
 
-    private function electricityAllSummary(int $tahun): array
+    private function electricityAllSummary(int $tahun, ?string $nop): array
     {
         $months = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'ags', 'sep', 'okt', 'nov', 'des'];
         $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        $query = ListrikAll::query()->where('tahun', $tahun);
+        $query = ListrikAll::query()
+            ->where('tahun', $tahun)
+            ->when($nop !== null, function ($query) use ($nop) {
+                $query->whereExists(function ($siteQuery) use ($nop) {
+                    $siteQuery->selectRaw('1')
+                        ->from('listrik_pln')
+                        ->whereRaw('UPPER(TRIM(listrik_pln.site_id)) = UPPER(TRIM(listrik_all.site_id))')
+                        ->whereRaw(
+                            "REPLACE(REPLACE(UPPER(TRIM(listrik_pln.nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                            [$nop]
+                        );
+                });
+            });
         $siteCount = (clone $query)->distinct('site_id')->count('site_id');
         $costs = [];
         $siteCounts = [];
@@ -852,5 +868,10 @@ class DashboardMasterController extends Controller
             'site_counts' => $siteCounts,
             'costs' => $costs,
         ];
+    }
+
+    private function normalizedElectricityNop(string $nop): string
+    {
+        return strtoupper(preg_replace('/^NOP[\s-]+/i', '', trim($nop)));
     }
 }
