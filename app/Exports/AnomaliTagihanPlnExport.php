@@ -14,6 +14,8 @@ class AnomaliTagihanPlnExport implements FromQuery, WithHeadings, WithMapping, W
 {
     use Exportable;
 
+    private int $rowNumber = 0;
+
     private const BULAN_NAMA = [
         1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
         5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
@@ -68,13 +70,10 @@ class AnomaliTagihanPlnExport implements FromQuery, WithHeadings, WithMapping, W
     /** @param AnomaliTagihanPln $row */
     public function map($row): array
     {
-        static $no = 0;
-        $no++;
-
         $namaBulan = self::BULAN_NAMA[(int)$row->bulan] ?? (string)$row->bulan;
 
         return [
-            $no,
+            ++$this->rowNumber,
             $row->id_pelanggan,
             $row->site_id,
             $row->site_name,

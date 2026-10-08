@@ -15,7 +15,8 @@ use Throwable;
  * Base import untuk modul Electricity.
  *
  * Pola: upsert idempotent — data dengan key unik yang sama akan diupdate,
- * data baru akan diinsert. Menggunakan DB::upsert() per chunk.
+ * data baru akan diinsert. updateOrInsert dipakai karena skema lama hanya
+ * memiliki index biasa, bukan unique index pada kunci import.
  */
 abstract class BaseElectricityImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
@@ -65,9 +66,15 @@ abstract class BaseElectricityImport implements ToCollection, WithHeadingRow, Wi
 
         if (!empty($batch)) {
             try {
-                foreach (array_chunk($batch, 200) as $chunk) {
-                    DB::table($this->table())->upsert($chunk, $this->uniqueKey(), array_keys($chunk[0]));
-                    $this->inserted += count($chunk);
+                foreach ($batch as $record) {
+                    $key = array_intersect_key($record, array_flip($this->uniqueKey()));
+                    DB::table($this->table())->updateOrInsert($key, static function (bool $exists) use ($record): array {
+                        if ($exists) {
+                            unset($record['created_at']);
+                        }
+                        return $record;
+                    });
+                    $this->inserted++;
                 }
             } catch (Throwable $e) {
                 $this->errors += count($batch);

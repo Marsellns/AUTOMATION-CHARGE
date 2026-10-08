@@ -10,12 +10,14 @@ use App\Imports\Datasets\JaknetContractImport;
 use App\Imports\Datasets\RecurringIpasImport;
 use App\Imports\Datasets\RecurringTagihanIpasImport;
 use App\Imports\Datasets\SewaLahanRenewalImport;
+use App\Support\InfrastructureUploadTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
 class InfrastructureUploadController extends Controller
 {
@@ -39,22 +41,22 @@ class InfrastructureUploadController extends Controller
     {
         abort_unless(isset(self::DATASETS[$dataset]), 404);
 
-        $headers = match ($dataset) {
-            'recurring-tagihan-ipas' => ['Site ID', 'Site Name', 'TP', 'Contract Type', 'Termin', 'Periode Ke', 'Termin Start', 'Termin End', 'Amount', 'Batch Name'],
-            'site-unlock' => ['Site ID', 'Site Name', 'Class', 'City', 'Batch', 'Status', 'Final Status', 'Update By', 'Tanggal'],
-            default => ['Site ID', 'Site Name'],
-        };
-
-        $rows = $dataset === 'recurring-tagihan-ipas'
+        $headers = InfrastructureUploadTemplate::headers($dataset);
+        $rows = InfrastructureUploadTemplate::headingRow($dataset) === 1
             ? [$headers]
-            : [['SIMASTER - Template Dataset'], $headers];
+            : [[self::DATASETS[$dataset]['label'].' - Template Upload'], $headers];
 
-        return Excel::download(new class($rows) implements FromArray {
-            public function __construct(private readonly array $rows) {}
+        return Excel::download(new class($rows, $dataset) implements FromArray, WithTitle {
+            public function __construct(private readonly array $rows, private readonly string $dataset) {}
 
             public function array(): array
             {
                 return $this->rows;
+            }
+
+            public function title(): string
+            {
+                return $this->dataset === 'combat' ? 'DATABASE' : 'Data';
             }
         }, 'template-'.str_replace('-', '_', $dataset).'.xlsx');
     }
@@ -102,20 +104,26 @@ class InfrastructureUploadController extends Controller
         $import = $dataset === 'combat'
             ? new CombatWorkbookImport()
             : new $definition['import']();
+        if ($dataset !== 'combat' && $dataset !== 'bapss') {
+            $import->incremental();
+        }
 
         try {
-            // Dataset files are snapshots. Replacing the snapshot avoids stale rows while
-            // preserving the same idempotent behaviour as the CLI importer.
-            DB::transaction(function () use ($dataset, $definition, $import, $request): void {
-                DB::table($definition['table'])->delete();
+            DB::transaction(function () use ($dataset, $import, $request): void {
+                if ($dataset === 'bapss') {
+                    DB::table('bapss')->delete();
+                }
                 if ($dataset === 'combat' && $import instanceof CombatWorkbookImport) {
                     $path = $request->file('dataset_file')->getRealPath();
                     if ($path === false) {
                         throw new \RuntimeException('File upload sementara tidak dapat dibaca.');
                     }
-                    $import->import($path);
+                    $import->import($path, incremental: true);
                 } else {
                     Excel::import($import, $request->file('dataset_file'));
+                }
+                if ($import->getStats()['inserted'] === 0) {
+                    throw new \RuntimeException('Tidak ada baris dengan Site ID yang valid pada file upload.');
                 }
             });
         } catch (\Throwable $e) {

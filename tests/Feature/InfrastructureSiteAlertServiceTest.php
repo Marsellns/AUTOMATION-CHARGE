@@ -17,10 +17,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Mime\Email;
+use Tests\Concerns\ReadsEmailAttachments;
 use Tests\TestCase;
 
 class InfrastructureSiteAlertServiceTest extends TestCase
 {
+    use ReadsEmailAttachments;
+
     private string $originalConnection;
 
     protected function setUp(): void
@@ -144,9 +147,29 @@ class InfrastructureSiteAlertServiceTest extends TestCase
         ], $emails->map(fn (Email $email): ?string => $email->getSubject())->all());
         foreach ($emails as $email) {
             $this->assertInstanceOf(Email::class, $email);
-            $this->assertCount(1, $email->getAttachments());
-            $this->assertStringEndsWith('.xlsx', $email->getAttachments()[0]->getFilename());
+            $this->assertSame('infrastructure@example.test', $email->getTo()[0]->getAddress());
+            $rows = $this->attachmentRows($email);
+            $label = $rows[0][1];
+            $expectedSites = match ($label) {
+                'Sewa Lahan' => ['TSEL-001', 'TP-001'],
+                'Site TP' => ['TP-001'],
+                'Site Telkomsel' => ['TSEL-001'],
+                'Combat' => ['COMBAT-001'],
+            };
+            $this->assertEqualsCanonicalizing($expectedSites, array_column($rows, 2));
+            $summary = collect($summaries)->firstWhere('label', $label);
+            $this->assertStringContainsString($summary['url'], $email->getTextBody());
+            $this->assertStringContainsString($label.': '.count($rows).' dari ', $email->getTextBody());
         }
+
+        CarbonImmutable::setTestNow('2026-09-28 17:00:00 Asia/Jakarta');
+        $evening = $service->send();
+        $this->assertCount(4, $evening['website_categories']);
+        $this->assertCount(4, $evening['email_categories']);
+        $this->assertSame(8, $user->fresh()->notifications()->count());
+        $this->assertCount(8, $transport->messages());
+        $this->assertSame([], $service->send()['email_categories']);
+        $this->assertCount(8, $transport->messages());
     }
 
     public function test_notification_links_filter_tables_to_lease_alert_rows_only(): void

@@ -6,6 +6,11 @@ use Illuminate\Support\Collection;
 
 class RecurringTagihanIpasImport extends BaseDatasetImport
 {
+    protected function uploadKey(): array
+    {
+        return ['site_code', 'batch_name', 'periode_ke', 'termin_start'];
+    }
+
     protected function table(): string { return 'recurring_tagihan_ipas'; }
 
     public function headingRow(): int

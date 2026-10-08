@@ -67,7 +67,12 @@ class PnlViewController extends Controller
         ]);
 
         $import = new SimawarPnLImport();
-        Excel::import($import, $validated['pnl_file']);
+        try {
+            Excel::import($import, $validated['pnl_file']);
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->withErrors(['pnl_file' => 'File PnL gagal diproses. Periksa header dan isi template.']);
+        }
 
         app(SiteStatusSummaryService::class)->invalidateCache();
 
@@ -85,11 +90,13 @@ class PnlViewController extends Controller
     public function downloadTemplate(): BinaryFileResponse
     {
         $headers = ['Site ID', 'Site Name'];
-        $months = [
-            ['Jan', '25'], ['Feb', '25'], ['Mar', '25'], ['Apr', '25'], ['May', '25'], ['Jun', '25'],
-            ['Jul', '25'], ['Aug', '25'], ['Sep', '25'], ['Oct', '25'], ['Nov', '25'], ['Dec', '25'],
-            ['Jan', '26'], ['Feb', '26'], ['Mar', '26'], ['Apr', '26'], ['May', '26'], ['Jun', '26'],
-        ];
+        $months = [];
+        $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        for ($year = 2025; $year <= (int) now()->year; $year++) {
+            foreach ($labels as $month) {
+                $months[] = [$month, substr((string) $year, -2)];
+            }
+        }
         $details = [
             'Opex Freq', 'Opex Isr', 'Opex Trans', 'Opex Power', 'Opex Rm',
             'Total Direct Dep', 'Rev Voice', 'Rev Sms', 'Rev Broath', 'Rev Digi', 'Rev Tapout',

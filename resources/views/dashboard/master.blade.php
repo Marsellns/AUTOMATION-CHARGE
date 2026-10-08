@@ -323,8 +323,8 @@
                             <div class="enterprise-card chart-card">
                                 <div class="enterprise-card-header">
                                     <div>
-                                        <h2 class="enterprise-card-title">Persentase Pembayaran Listrik PLN</h2>
-                                        <span class="text-body-secondary small" id="electricity-payment-caption">Site aktif yang sudah dibayar per bulan</span>
+                                        <h2 class="enterprise-card-title">Cakupan Flagging Pembayaran PLN</h2>
+                                        <span class="text-body-secondary small" id="electricity-payment-caption">Site dengan flagging pembayaran per bulan</span>
                                     </div>
                                 </div>
                                 <div class="enterprise-card-body">
@@ -337,8 +337,8 @@
                                     <div class="enterprise-card chart-card">
                                         <div class="enterprise-card-header">
                                             <div>
-                                                <h2 class="enterprise-card-title">Listrik All — Total Biaya Bulanan</h2>
-                                                <span class="text-body-secondary small" id="electricity-all-caption">Data biaya listrik dari dataset Listrik All</span>
+                                                <h2 class="enterprise-card-title">Listrik All — Total Flagging Pembayaran</h2>
+                                                <span class="text-body-secondary small" id="electricity-all-caption">Nilai flagging pembayaran dari dataset Listrik All</span>
                                             </div>
                                             <span class="badge text-bg-light border small">Sumber: Listrik All</span>
                                         </div>
@@ -906,7 +906,7 @@ $(function () {
         const selectedNop = cachedChartData?.filters?.nop || '';
         const filterLabel = selectedNop ? ` — NOP: ${selectedNop}` : ' — Semua NOP';
         $('#electricity-payment-caption').text(
-            `Site aktif terbayar${filterLabel} — ${labels[0] || 'Tidak ada periode'}${labels.length > 1 ? ` sampai ${labels[labels.length - 1]}` : ''}`
+            `Site dengan flagging pembayaran / site pada snapshot${filterLabel} — ${labels[0] || 'Tidak ada periode'}${labels.length > 1 ? ` sampai ${labels[labels.length - 1]}` : ''}. Bulan tanpa data tidak dihitung sebagai 0%.`
         );
 
         upsertChart('electricityPayment', 'chart-electricity-payment', {
@@ -923,7 +923,7 @@ $(function () {
                 // Reserve headroom above 100% so data labels stay inside the plot.
                 max: 110,
                 tickPositions: [0, 25, 50, 75, 100],
-                title: { text: 'Persentase Terbayar', style: { color: theme.text, fontSize: '11px' } },
+                title: { text: 'Cakupan pada Snapshot (%)', style: { color: theme.text, fontSize: '11px' } },
                 labels: { format: '{value}%', style: { color: theme.text, fontSize: '11px' } },
                 gridLineColor: theme.gridLine
             },
@@ -933,8 +933,8 @@ $(function () {
                     const i = this.point.index;
                     return `<b>${labels[i]}</b><br>` +
                         `Terbayar: <b>${Number(paidCounts[i] || 0).toLocaleString('id-ID')}</b> site<br>` +
-                        `Site aktif: <b>${Number(activeSites[i] || 0).toLocaleString('id-ID')}</b><br>` +
-                        `Persentase: <b>${Number(percentages[i] || 0).toLocaleString('id-ID')}%</b><br>` +
+                        `Site pada snapshot: <b>${Number(activeSites[i] || 0).toLocaleString('id-ID')}</b><br>` +
+                        `Persentase: <b>${dataAvailable[i] ? `${Number(percentages[i] || 0).toLocaleString('id-ID')}%` : 'Belum tersedia'}</b><br>` +
                         `Total biaya: <b>Rp ${Number(costs[i] || 0).toLocaleString('id-ID')}</b>` +
                         (!dataAvailable[i] ? '<br><span class="text-warning">Data pembayaran belum tersedia</span>' : '');
                 }
@@ -966,7 +966,7 @@ $(function () {
                         events: {
                             click: function () {
                                 const period = periods[this.index];
-                                if (period) {
+                                if (period && dataAvailable[this.index]) {
                                     const nop = cachedChartData?.filters?.nop || selectedPeriod?.nop || '';
                                     showElectricityPaymentDetail(period.tahun, period.bulan, nop);
                                 }
@@ -976,9 +976,9 @@ $(function () {
                 }
             },
             series: [{
-                name: 'Persentase Terbayar',
+                name: 'Cakupan Flagging',
                 data: percentages.map((value, index) => ({
-                    y: Number(value) || 0,
+                    y: dataAvailable[index] ? Number(value) || 0 : null,
                     color: !dataAvailable[index]
                         ? '#94A3B8'
                         : (Number(value) >= 100 ? corpColors.success : corpColors.primary)
@@ -994,7 +994,7 @@ $(function () {
         const year = data.year || selectedPeriod?.tahun || '';
 
         $('#electricity-all-caption').text(
-            `Total biaya dan site dengan tagihan dari ${Number(data.site_count || 0).toLocaleString('id-ID')} site — ${year}`
+            `Nilai flagging pembayaran dari ${Number(data.site_count || 0).toLocaleString('id-ID')} site — ${year}. Inquiry tidak dihitung sebagai pembayaran.`
         );
 
         upsertChart('electricityAll', 'chart-electricity-all', {
@@ -1039,8 +1039,8 @@ $(function () {
 
     function showElectricityPaymentDetail(year, month, nop) {
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('electricityPaymentModal'));
-        $('#electricity-payment-title').text(`Site Listrik Belum Terbayar — ${monthNames[month - 1]} ${year}`);
-        $('#electricity-payment-detail-summary').text('Memuat data site aktif yang belum memiliki pembayaran Done...');
+        $('#electricity-payment-title').text(`Site Tanpa Flagging Pembayaran — ${monthNames[month - 1]} ${year}`);
+        $('#electricity-payment-detail-summary').text('Memuat site pada snapshot yang belum memiliki nilai flagging pembayaran...');
         $('#electricity-payment-detail-body').html('<tr><td colspan="5" class="text-center text-body-secondary">Memuat data...</td></tr>');
         modal.show();
 
@@ -1052,15 +1052,15 @@ $(function () {
                         <td>${escapeHtml(site.site_name)}</td>
                         <td>${escapeHtml(site.id_pelanggan)}</td>
                         <td>${escapeHtml(site.nop)}</td>
-                        <td><span class="badge text-bg-warning">Belum terbayar</span></td>
+                        <td><span class="badge text-bg-warning">Belum ada flagging</span></td>
                     </tr>
                 `).join('');
                 $('#electricity-payment-detail-summary').text(
-                    `${Number(res.total || 0).toLocaleString('id-ID')} site aktif belum terbayar` +
+                    `${Number(res.total || 0).toLocaleString('id-ID')} site pada snapshot belum memiliki flagging pembayaran` +
                     (res.limited ? ' (ditampilkan maksimal 5.000 site)' : '')
                 );
                 $('#electricity-payment-detail-body').html(
-                    rows || '<tr><td colspan="5" class="text-center text-success">Semua site aktif sudah terbayar.</td></tr>'
+                    rows || '<tr><td colspan="5" class="text-center text-success">Semua site pada snapshot memiliki flagging pembayaran.</td></tr>'
                 );
             })
             .fail(function () {

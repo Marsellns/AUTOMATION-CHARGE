@@ -17,7 +17,7 @@ class DailyNotificationGateTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_it_allows_each_topic_and_channel_only_once_per_business_day(): void
+    public function test_it_allows_each_topic_and_channel_once_in_the_morning_and_again_in_the_evening(): void
     {
         config()->set('notifications.timezone', 'Asia/Jakarta');
         CarbonImmutable::setTestNow('2026-09-28 08:00:00 Asia/Jakarta');
@@ -29,8 +29,26 @@ class DailyNotificationGateTest extends TestCase
         $this->assertNotNull(DailyNotificationGate::reserve('email', 'site-tp'));
         $this->assertNotNull(DailyNotificationGate::reserve('website', 'combat'));
 
+        CarbonImmutable::setTestNow('2026-09-28 16:59:59 Asia/Jakarta');
+        $this->assertNull(DailyNotificationGate::reserve('website', 'site-tp'));
+        $this->assertNull(DailyNotificationGate::reserve('email', 'site-tp'));
+
+        CarbonImmutable::setTestNow('2026-09-28 10:00:00 UTC');
+        $this->assertNotNull(DailyNotificationGate::reserve('website', 'site-tp'));
+        $this->assertNotNull(DailyNotificationGate::reserve('email', 'site-tp'));
+        $this->assertNull(DailyNotificationGate::reserve('website', 'site-tp'));
+        $this->assertNull(DailyNotificationGate::reserve('email', 'site-tp'));
+
         CarbonImmutable::setTestNow('2026-09-29 08:00:00 Asia/Jakarta');
 
+        $this->assertNotNull(DailyNotificationGate::reserve('website', 'site-tp'));
+    }
+
+    public function test_an_early_import_does_not_consume_the_morning_slot(): void
+    {
+        CarbonImmutable::setTestNow('2026-09-28 07:59:59 Asia/Jakarta');
+        $this->assertNull(DailyNotificationGate::reserve('website', 'site-tp'));
+        CarbonImmutable::setTestNow('2026-09-28 08:00:00 Asia/Jakarta');
         $this->assertNotNull(DailyNotificationGate::reserve('website', 'site-tp'));
     }
 

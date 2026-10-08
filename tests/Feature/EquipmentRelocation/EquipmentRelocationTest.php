@@ -4,6 +4,7 @@ namespace Tests\Feature\EquipmentRelocation;
 
 use App\Exports\EquipmentRelocationExport;
 use App\Models\EquipmentRelocation;
+use App\Models\EquipmentRelocationInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -20,8 +21,7 @@ class EquipmentRelocationTest extends TestCase
     {
         $admin = $this->userWithRole('admin');
         $viewer = $this->userWithRole('viewer');
-        $snapshot = json_decode(file_get_contents(public_path('data/equipment_relocation_inventory.json')), true);
-        $key = $snapshot['rows'][0][0];
+        $key = $this->createInventoryItem();
 
         $this->actingAs($admin)->get(route('equipment-relocation.index'))
             ->assertOk()
@@ -29,6 +29,11 @@ class EquipmentRelocationTest extends TestCase
             ->assertSee('Download Excel')
             ->assertSee('Upload Excel')
             ->assertSee('chart.umd.min.js');
+        $inventoryResponse = $this->actingAs($admin)->get(route('equipment-relocation.inventory-data'));
+        $inventoryResponse->assertOk();
+        $inventory = json_decode($inventoryResponse->streamedContent(), true);
+        $this->assertSame($key, $inventory['rows'][0][0]);
+        $this->assertSame('uniq_key', $inventory['columns'][0]);
         $this->actingAs($viewer)->postJson(route('equipment-relocation.relocation-data.store'), [
             'donor_uniq_key' => $key,
         ])->assertForbidden();
@@ -54,8 +59,7 @@ class EquipmentRelocationTest extends TestCase
     {
         $admin = $this->userWithRole('admin');
         $viewer = $this->userWithRole('viewer');
-        $snapshot = json_decode(file_get_contents(public_path('data/equipment_relocation_inventory.json')), true);
-        $key = $snapshot['rows'][0][0];
+        $key = $this->createInventoryItem();
 
         $this->actingAs($viewer)
             ->get(route('equipment-relocation.export-excel'))
@@ -118,6 +122,20 @@ class EquipmentRelocationTest extends TestCase
         $this->assertSame('Diperbarui dari Excel', $updated->remark);
         $this->assertNull($updated->pic);
         $this->assertNull($updated->progress);
+    }
+
+    private function createInventoryItem(): string
+    {
+        $key = 'BKS001-RU-TEST-001';
+        EquipmentRelocationInventory::create([
+            'uniq_key' => $key,
+            'site_id' => 'BKS001',
+            'nop' => 'NOP BEKASI',
+            'equipment_group' => 'RU',
+            'safe_to_reloc' => 'Safe',
+        ]);
+
+        return $key;
     }
 
     /** @param array<int, array<string, mixed>> $rows */

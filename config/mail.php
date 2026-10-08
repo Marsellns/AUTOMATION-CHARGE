@@ -121,4 +121,7 @@ return [
     'infrastructure_alert_to' => env('INFRASTRUCTURE_ALERT_EMAIL')
         ?: env('ELECTRICITY_ALERT_EMAIL', env('MAIL_USERNAME')),
 
+    'site_loss_alert_to' => env('SITE_LOSS_ALERT_EMAIL')
+        ?: (env('INFRASTRUCTURE_ALERT_EMAIL') ?: env('ELECTRICITY_ALERT_EMAIL', env('MAIL_USERNAME'))),
+
 ];

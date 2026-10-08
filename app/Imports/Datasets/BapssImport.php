@@ -35,9 +35,18 @@ class BapssImport extends BaseDatasetImport
             // dirender sebagai tautan. Hanya path PDF lokal yang tervalidasi.
             'pdf_bapss'        => $this->safePdfPath($row['pdf_bapss'] ?? null),
             'pdf_ba_dismantle' => $this->safePdfPath($row['pdf_ba_dismantle'] ?? null),
+            'source_documents' => json_encode([
+                'pdf_bapss' => $this->cleanText($row['pdf_bapss'] ?? null),
+                'pdf_ba_dismantle' => $this->cleanText($row['pdf_ba_dismantle'] ?? null),
+            ], JSON_THROW_ON_ERROR),
             'update_by'        => $this->cleanText($row['update_by'] ?? null),
             'tgl_update'       => $this->parseDate($row['tgl_update'] ?? null, withTime: true),
         ];
+    }
+
+    protected function preserveWhenEmpty(): array
+    {
+        return ['pdf_bapss', 'pdf_ba_dismantle'];
     }
 
     private function safePdfPath(mixed $value): ?string

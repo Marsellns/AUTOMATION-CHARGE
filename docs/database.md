@@ -73,6 +73,13 @@ Aturan perubahan schema:
 
 Relasi penting: `site_monthly_metrics.site_id` menunjuk ke `sites.id`; pencocokan `site_owners` dengan `sites` menggunakan `site_code` dan `site_id` yang dinormalisasi.
 
+### Equipment Relocation
+
+- `equipment_relocation_inventory`: inventaris unit yang dimuat dari snapshot sumber melalui `equipment:import-inventory`.
+- `equipment_relocations`: perubahan donor/acceptor, PIC, progres, dan remark per `donor_uniq_key`.
+
+Kedua sumber halaman Equipment Relocation dibaca dari MySQL. Snapshot JSON hanya dipakai sebagai bahan impor awal atau pembaruan inventaris, bukan sebagai sumber halaman saat request berjalan.
+
 ### Dataset dan infrastruktur
 
 Tabel seperti `sewa_lahan_renewals`, `combat_sites`, `recurring_ipas`, `recurring_tagihan_ipas`, `data_asset_towers`, dan `data_site_unlocks` menyimpan snapshot dari file dataset masing-masing.
@@ -132,6 +139,13 @@ Command yang paling penting:
 .\sail.bat artisan simawar:import-pnl --fresh
 .\sail.bat artisan dataset:import-all
 ```
+
+Untuk `recurring` (ANT & IPAS), sumber terdiri dari lima bagian berurutan:
+`Simawar (1).xlsx` dan `Simawar 1.xlsx` sampai `Simawar 4.xlsx`.
+`dataset:import-all --only=recurring` membutuhkan kelima file tersebut dan
+mengganti snapshot tabel `recurring_ipas` dalam satu transaksi. Backup database
+sebelum menjalankannya, lalu cocokkan jumlah baris hasil impor dengan seluruh
+bagian sumber.
 
 Sebelum import, cek heading file Excel bila tersedia:
 

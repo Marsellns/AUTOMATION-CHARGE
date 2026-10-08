@@ -58,7 +58,7 @@
                     <select id="filter-tahun" class="form-select form-select-sm" style="width:auto">
                         <option value="">Semua Tahun</option>
                         @foreach ($years as $yr)
-                            <option value="{{ $yr }}" @selected($yr == 2025)>{{ $yr }}</option>
+                            <option value="{{ $yr }}">{{ $yr }}</option>
                         @endforeach
                     </select>
                 </div>

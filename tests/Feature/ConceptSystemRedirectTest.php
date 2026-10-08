@@ -9,7 +9,7 @@ class ConceptSystemRedirectTest extends TestCase
 {
     public function test_config_system_urls_redirect_to_the_database_backed_modules(): void
     {
-        $user = new User(['id' => 1]);
+        $user = new User(['id' => 1, 'account_status' => 'approved']);
 
         $this->actingAs($user)->get('/infrastructure-management')
             ->assertRedirect('/infrastruktur');

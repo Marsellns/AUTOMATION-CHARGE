@@ -42,8 +42,9 @@ class BapssController extends Controller
 
     public function file(Bapss $bapss, string $type): StreamedResponse
     {
-        $path = $type === 'bapss' ? $bapss->pdf_bapss : $bapss->pdf_ba_dismantle;
-        abort_unless($this->isSafePdfPath($path) && Storage::disk('private')->exists($path), 404);
+        $column = $type === 'bapss' ? 'pdf_bapss' : 'pdf_ba_dismantle';
+        $path = $bapss->pdfPath($column);
+        abort_if($path === null, 404);
 
         return Storage::disk('private')->response($path, basename($path), [
             'Content-Type' => 'application/pdf',
@@ -103,18 +104,12 @@ class BapssController extends Controller
 
     private function pdfLink(Bapss $bapss, string $type): string
     {
-        $path = $type === 'bapss' ? $bapss->pdf_bapss : $bapss->pdf_ba_dismantle;
-        if (!$this->isSafePdfPath($path)) {
-            return '-';
+        $column = $type === 'bapss' ? 'pdf_bapss' : 'pdf_ba_dismantle';
+        if (! $bapss->pdfAvailable($column)) {
+            return e($bapss->missingPdfLabel($column));
         }
 
         return '<a href="' . e(route('infrastruktur.bapss.file', [$bapss, $type])) . '" target="_blank" rel="noopener" class="btn btn-outline-brand btn-sm">PDF</a>';
     }
 
-    private function isSafePdfPath(?string $path): bool
-    {
-        return is_string($path)
-            && preg_match('#^bapss/[A-Za-z0-9][A-Za-z0-9._/-]*\.pdf$#i', $path) === 1
-            && !str_contains($path, '..');
-    }
 }

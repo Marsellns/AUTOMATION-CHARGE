@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\EquipmentRelocationExport;
 use App\Imports\EquipmentRelocationImport;
 use App\Models\EquipmentRelocation;
+use App\Models\EquipmentRelocationInventory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,12 +15,50 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EquipmentRelocationController extends Controller
 {
+    private const INVENTORY_COLUMNS = [
+        'uniq_key', 'site_id', 'nop', 'region', 'to_name', 'ne_name',
+        'equipment_group', 'equipment_type', 'category', 'board_name',
+        'board_type', 'serial_number', 'utilization_status', 'safe_to_reloc',
+    ];
+
     public function index(): View
     {
         return view('equipment-relocation.index');
+    }
+
+    public function inventoryData(): StreamedResponse
+    {
+        return response()->stream(function (): void {
+            echo '{"schema":1,"columns":'.json_encode(self::INVENTORY_COLUMNS).',"rows":[';
+            $first = true;
+
+            DB::table('equipment_relocation_inventory')
+                ->select(['id', ...self::INVENTORY_COLUMNS])
+                ->orderBy('id')
+                ->chunkById(500, function ($records) use (&$first): void {
+                    foreach ($records as $record) {
+                        if (!$first) {
+                            echo ',';
+                        }
+
+                        $values = [];
+                        foreach (self::INVENTORY_COLUMNS as $column) {
+                            $values[] = (string) $record->{$column};
+                        }
+                        echo json_encode($values, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                        $first = false;
+                    }
+                });
+
+            echo ']}';
+        }, 200, [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     public function relocationData(): JsonResponse
@@ -47,7 +86,7 @@ class EquipmentRelocationController extends Controller
         ]);
 
         try {
-            $import = new EquipmentRelocationImport($this->inventorySnapshot());
+            $import = new EquipmentRelocationImport();
             Excel::import($import, $validated['relocation_file']);
 
             $now = now();
@@ -103,9 +142,8 @@ class EquipmentRelocationController extends Controller
             'remark' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        // Hanya baris yang benar-benar ada dalam snapshot inventaris lokal.
-        $encodedKey = json_encode($data['donor_uniq_key'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($encodedKey === false || !str_contains($this->inventorySnapshot(), '['.$encodedKey.',')) {
+        // Relokasi hanya boleh memakai equipment yang ada di inventaris MySQL.
+        if (!EquipmentRelocationInventory::query()->where('uniq_key', $data['donor_uniq_key'])->exists()) {
             throw ValidationException::withMessages(['donor_uniq_key' => 'Equipment tidak ditemukan dalam inventaris.']);
         }
 
@@ -139,16 +177,6 @@ class EquipmentRelocationController extends Controller
         return collect($user->getRoleNames())
             ->map(fn ($role) => strtolower((string) $role))
             ->contains(fn (string $role) => str_starts_with($role, 'manager_') || str_starts_with($role, 'manager '));
-    }
-
-    private function inventorySnapshot(): string
-    {
-        $inventory = file_get_contents(public_path('data/equipment_relocation_inventory.json'));
-        if ($inventory === false) {
-            throw new \RuntimeException('Snapshot inventaris Equipment Relocation tidak dapat dibaca.');
-        }
-
-        return $inventory;
     }
 
 }

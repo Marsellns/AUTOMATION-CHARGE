@@ -1,11 +1,11 @@
 services:
     laravel.test:
         build:
-            context: './vendor/laravel/sail/runtimes/8.5'
+            context: './vendor/laravel/sail/runtimes/8.2'
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
-        image: 'sail-8.5/app'
+        image: 'sail-8.2/app'
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -20,7 +20,8 @@ services:
         volumes:
             - '.:/var/www/html'
             # OPcache tuning untuk `php artisan serve` (lihat docker/php).
-            - './docker/php/99-simaster-dev.ini:/etc/php/8.5/cli/conf.d/99-simaster-dev.ini:ro'
+            - './docker/php/99-simaster-dev.ini:/etc/php/8.2/cli/conf.d/99-simaster-dev.ini:ro'
+            - './docker/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro'
         networks:
             - sail
         depends_on:

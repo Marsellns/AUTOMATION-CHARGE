@@ -31,6 +31,9 @@
                     <label class="form-label fw-semibold">File Excel <span class="text-danger">*</span></label>
                     <input type="file" name="{{ $fileField }}" class="form-control form-control-sm" accept=".xls,.xlsx" required>
                     <small class="text-body-secondary">Format .xls atau .xlsx, maksimal 50 MB. Gunakan kolom sesuai template.</small>
+                    @if ($type === 'listrik-all')
+                        <small class="text-body-secondary d-block">Untuk tahun lain, ubah angka tahun pada semua header Flagging sebelum mengisi data.</small>
+                    @endif
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-brand btn-sm">Upload dan Perbarui</button>
@@ -46,12 +49,12 @@
                     <thead class="table-light"><tr><th>No</th><th>Nama Kolom</th><th>Keterangan</th></tr></thead>
                     <tbody>
                     @foreach ($headers as $index => $header)
-                        <tr><td>{{ $index + 1 }}</td><td>{{ $header }}</td><td>{{ $index === 0 ? 'Wajib diisi' : '' }}</td></tr>
+                        <tr><td>{{ $index + 1 }}</td><td>{{ $header }}</td><td>{{ in_array($header, ['ID Pelanggan', 'Site ID'], true) ? 'Isi minimal salah satu ID' : '' }}</td></tr>
                     @endforeach
                     </tbody>
                 </table>
             </div>
-            <div class="alert alert-info mt-3 mb-0"><strong>Catatan:</strong> Data pada upload terbaru akan menjadi sumber data website. Pastikan struktur kolom mengikuti template.</div>
+            <div class="alert alert-info mt-3 mb-0"><strong>Catatan:</strong> Baris baru akan ditambahkan, dan entri dengan kunci yang sama akan diperbarui. Data lain tetap tersimpan. Pastikan struktur kolom mengikuti template.</div>
         </div>
     </div>
 @endsection

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\SiteLossExport;
 use App\Models\SiteMonthlyMetric;
+use App\Support\NotificationLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -27,6 +28,7 @@ class NotificationController extends Controller
                 ->with('site.region')
                 ->where('tahun', $year)
                 ->where('bulan', $month)
+                ->where('is_anomaly', 0)
                 ->where('profit_loss', '<=', 0)
                 ->orderBy('profit_loss')
                 ->get();
@@ -60,17 +62,7 @@ class NotificationController extends Controller
 
         $notification->markAsRead();
 
-        $url = $notification->data['url'] ?? route('notifications.index');
-        if (($notification->data['title'] ?? null) === 'Peringatan site Loss') {
-            $month = filter_var($notification->data['month'] ?? null, FILTER_VALIDATE_INT);
-            $year = filter_var($notification->data['year'] ?? null, FILTER_VALIDATE_INT);
-
-            if ($month !== false && $year !== false && $month >= 1 && $month <= 12 && $year >= 2000 && $year <= 2100) {
-                $url = route('notifications.site-loss', ['bulan' => $month, 'tahun' => $year]);
-            }
-        }
-
-        return redirect()->to($url);
+        return redirect()->to(NotificationLinks::read($notification->data));
     }
 
     /**

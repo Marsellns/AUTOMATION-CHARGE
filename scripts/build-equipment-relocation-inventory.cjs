@@ -1,4 +1,4 @@
-// One-time import of an inventory snapshot. The application never reads the source path.
+// Prepare a compact, private JSON file for the one-time MySQL import command.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -44,10 +44,11 @@ const rows = input.map((item, index) => {
     ];
 });
 
-const destination = path.join(__dirname, '..', 'public', 'data', 'equipment_relocation_inventory.json');
+const destination = path.join(__dirname, '..', 'storage', 'app', 'imports', 'equipment_relocation_inventory.json');
 fs.mkdirSync(path.dirname(destination), { recursive: true });
 fs.writeFileSync(destination, JSON.stringify({ schema: 1, columns, rows }));
 
 const ru = rows.filter(row => row[6] === 'RU').length;
 const safe = rows.filter(row => ['OK', 'SAFE'].includes(String(row[13]).trim().toUpperCase())).length;
-console.log(`Imported ${rows.length} equipment (${ru} RU, ${rows.length - ru} BBP, ${safe} safe).`);
+console.log(`Prepared ${rows.length} equipment (${ru} RU, ${rows.length - ru} BBP, ${safe} safe) at ${destination}.`);
+console.log('Run php artisan equipment:import-inventory after migrating the database.');

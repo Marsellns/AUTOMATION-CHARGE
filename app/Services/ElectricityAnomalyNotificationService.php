@@ -25,6 +25,10 @@ class ElectricityAnomalyNotificationService
             return false;
         }
 
+        $isCentralized = str_starts_with(strtolower($source), 'centralized');
+        $dataUrl = route($isCentralized
+            ? 'electricity.centralized.anomali.index'
+            : 'electricity.inbuilding.anomali.index');
         $recipient = config('mail.electricity_alert_to');
         $topic = 'electricity-'.mb_strtolower(trim($source), 'UTF-8');
         $delivered = false;
@@ -35,10 +39,8 @@ class ElectricityAnomalyNotificationService
                 $this->notifyWebsite(
                     $source,
                     count($anomalies),
-                    str_starts_with(strtolower($source), 'centralized')
-                        ? route('electricity.centralized.anomali.index')
-                        : route('electricity.inbuilding.anomali.index'),
-                    str_starts_with(strtolower($source), 'centralized')
+                    $dataUrl,
+                    $isCentralized
                         ? route('electricity.centralized.anomali.export-excel')
                         : route('electricity.inbuilding.anomali.export-excel')
                 );
@@ -52,7 +54,7 @@ class ElectricityAnomalyNotificationService
                 ]);
             }
         } else {
-            Log::info('Notifikasi website anomali listrik tidak dikirim ulang pada hari yang sama.', [
+            Log::info('Notifikasi website anomali listrik tidak dikirim ulang pada slot jadwal yang sama.', [
                 'source' => $source,
                 'anomaly_count' => count($anomalies),
             ]);
@@ -69,7 +71,7 @@ class ElectricityAnomalyNotificationService
 
         $emailClaim = DailyNotificationGate::reserve('email', $topic);
         if ($emailClaim === null) {
-            Log::info('Email anomali listrik tidak dikirim ulang pada hari yang sama.', [
+            Log::info('Email anomali listrik tidak dikirim ulang pada slot jadwal yang sama.', [
                 'source' => $source,
                 'anomaly_count' => count($anomalies),
             ]);
@@ -77,22 +79,23 @@ class ElectricityAnomalyNotificationService
             return $delivered;
         }
 
-        $export = str_starts_with(strtolower($source), 'centralized')
+        $export = $isCentralized
             ? new AnomaliTagihanPlnExport
             : new AnomaliTagihanInbuildingExport;
         $filename = 'anomali_tagihan_'.str($source)->slug('_').'_'.now()->format('Ymd_His').'.xlsx';
-        $attachment = Excel::raw($export, ExcelFormat::XLSX);
-
         try {
+            $attachment = Excel::raw($export, ExcelFormat::XLSX);
             Mail::raw(implode("\n", [
                 'Ditemukan kenaikan tagihan listrik di atas 50%.',
                 '',
                 "Sumber data: {$source}",
+                'Cakupan: seluruh periode yang tersedia pada data anomali.',
                 'Jumlah anomali: '.count($anomalies),
                 '',
                 'Rincian lengkap tersedia pada lampiran Excel.',
+                'Data terkait: '.$dataUrl,
             ]), function ($message) use ($recipient, $source, $attachment, $filename): void {
-                $message->to($recipient)
+                $message->to(trim($recipient))
                     ->subject("Peringatan kenaikan tagihan listrik >50% ({$source})")
                     ->attachData($attachment, $filename, [
                         'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

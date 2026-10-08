@@ -693,7 +693,7 @@ class DashboardMasterController extends Controller
             PaymentPln::query()->max('updated_at') ?? 'empty',
             ListrikPln::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.electricity-payment.v5:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
+        $cacheKey = 'dashboard.electricity-payment.v6:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
 
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($tahun, $bulan, $nop): array {
             return $this->buildElectricityPaymentSummary($tahun, $bulan, $nop);
@@ -829,7 +829,11 @@ class DashboardMasterController extends Controller
             'latest_year' => $periods[count($periods) - 1]['tahun'] ?? $tahun,
             'active_sites' => $activeCounts,
             'paid_counts' => $paidCounts,
-            'percentages' => $percentages,
+            'percentages' => array_map(
+                fn ($value, $available) => $available ? $value : null,
+                $percentages,
+                $dataAvailable
+            ),
             'costs' => $costs,
             'data_available' => $dataAvailable,
         ];

@@ -49,7 +49,7 @@
             </div>
         @endforeach
         <div class="col-xl-2 col-md-4 col-6">
-            <div class="card h-100 border-info infra-card-link infra-summary-card" data-filter-field="summary_status" data-filter-value="contract"
+            <div class="card h-100 border-info infra-card-link infra-summary-card" data-filter-field="summary_status" data-filter-value="risk"
                  role="link" tabindex="0" title="Buka data yang perlu perhatian"><div class="card-body py-2 infra-summary-card-body">
                 <div>
                     <div class="small text-body-secondary">Nilai Risiko</div>
@@ -458,7 +458,13 @@ window.renderInfrastructureSitePerformance = function (container, performance) {
             chart: { type: 'column', className: 'infra-analytics-chart' },
             xAxis: options.xAxis,
             yAxis: { title: { text: 'Nilai (Rp)' } },
-            tooltip: { valuePrefix: 'Rp ', valueDecimals: 0 },
+        tooltip: {
+            valuePrefix: 'Rp ',
+            valueDecimals: 0,
+            formatter: function () {
+                return `${infrastructureDrilldownEscape(this.key)}<br>${infrastructureDrilldownEscape(this.series.name)}: <b>Rp ${new Intl.NumberFormat('id-ID').format(this.y)}</b>`;
+            }
+        },
             plotOptions: {
                 column: {
                     borderRadius: 3,
@@ -818,8 +824,7 @@ $(function () {
                                     const dated = this.point.options.custom?.datedCount || 0;
                                     const total = this.point.options.custom?.totalCount || 0;
                                     const value = this.y === null || this.y === undefined ? 'Tanggal proses belum tersedia' : `<b>${this.y} hari</b>`;
-                                    const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(this.point));
-                                    return `${this.key}<br>${value}<br>Persentase total: <b>${percentage}</b><br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
+                                    return `${infrastructureDrilldownEscape(this.key)}<br>${value}<br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
                                 }
                             }
                         } : {}),

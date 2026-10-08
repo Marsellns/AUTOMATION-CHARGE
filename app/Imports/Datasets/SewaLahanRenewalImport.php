@@ -11,6 +11,11 @@ use Illuminate\Support\Collection;
  */
 class SewaLahanRenewalImport extends BaseDatasetImport
 {
+    protected function uploadKey(): array
+    {
+        return ['site_code', 'tahun_renewal', 'no_pks_baru'];
+    }
+
     public function headingRow(): int
     {
         return 1;

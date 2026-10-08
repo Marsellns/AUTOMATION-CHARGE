@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class SiteMonthlyMetric extends Model
 {
@@ -39,14 +39,14 @@ class SiteMonthlyMetric extends Model
 
     /**
      * Audit trail: catat create/update/delete beserta nilai lama & baru.
-     * Nilai lama otomatis tersimpan di properties.old (API activitylog v5).
+     * Nilai lama otomatis tersimpan di properties.old.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['site_id', 'bulan', 'tahun', 'revenue', 'cost', 'profit_loss'])
             ->logOnlyDirty()
-            ->dontLogEmptyChanges();
+            ->dontSubmitEmptyLogs();
     }
 
     protected function casts(): array

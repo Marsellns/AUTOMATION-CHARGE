@@ -12,6 +12,11 @@ use Illuminate\Support\Collection;
  */
 class JaknetContractImport extends BaseDatasetImport
 {
+    protected function uploadKey(): array
+    {
+        return ['site_code', 'no_pks', 'tanggal_mulai'];
+    }
+
     protected function table(): string
     {
         return 'jaknet_contracts';
@@ -35,7 +40,7 @@ class JaknetContractImport extends BaseDatasetImport
             'contact_address'  => $this->cleanText($row['contact_address'] ?? null),
             'telp'             => $this->cleanText($row['telp'] ?? null),
             'nilai'            => $this->parseMoney($row['nilai'] ?? null),
-            'nilai_per_tahun'  => $this->parseMoney($row['nilaithn'] ?? null),
+            'nilai_per_tahun'  => $this->parseMoney($row['nilai_per_tahun'] ?? $row['nilai_thn'] ?? $row['nilaithn'] ?? null),
             'tahun_berakhir'   => $this->parseYear($row['tahun_berakhir'] ?? null),
             'tgl_update'       => $this->parseDate($row['tgl_update'] ?? null),
         ];

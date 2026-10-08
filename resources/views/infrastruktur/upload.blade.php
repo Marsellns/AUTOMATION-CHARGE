@@ -22,7 +22,7 @@
     <a class="btn btn-outline-secondary" href="{{ route('infrastruktur.'.$dataset.'.index') }}">Batal</a>
    </div>
   </form>
-  <div class="alert alert-info mt-4 mb-0">Upload mengganti snapshot data modul ini. Baris tanpa Site ID dilewati dan data akan langsung tampil di halaman modul.</div>
+  <div class="alert alert-info mt-4 mb-0">@if ($dataset === 'bapss') Upload BAPSS mengganti data modul ini. @else Upload menambahkan data baru dan memperbarui entri dengan kunci yang sama. Data lain tetap tersimpan. @endif Baris tanpa Site ID dilewati.</div>
  </div>
 </div>
 @endsection

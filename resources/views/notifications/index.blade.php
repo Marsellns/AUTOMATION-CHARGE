@@ -20,8 +20,8 @@
         <div class="list-group list-group-flush">
             @forelse ($notifications as $notification)
                 @php($data = $notification->data)
-                <div
-                    class="list-group-item list-group-item-action px-4 py-3 {{ $notification->read_at ? '' : 'notification-unread' }}">
+                <a href="{{ route('notifications.read', $notification) }}"
+                    class="list-group-item list-group-item-action px-4 py-3 text-decoration-none text-body {{ $notification->read_at ? '' : 'notification-unread' }}">
                     <div class="d-flex gap-3">
                         <span class="notification-icon text-warning" aria-hidden="true">!</span>
                         <div class="flex-grow-1">
@@ -30,17 +30,9 @@
                                 <small class="text-muted text-nowrap">{{ $notification->created_at->diffForHumans() }}</small>
                             </div>
                             <div class="text-muted small mt-1">{{ $data['message'] ?? '' }}</div>
-                            <div class="d-flex gap-3 mt-2">
-                                <a href="{{ route('notifications.read', $notification) }}" class="small text-decoration-none">
-                                    Lihat data
-                                </a>
-                                @if (!empty($data['download_url']))
-                                    <a href="{{ $data['download_url'] }}" class="small text-decoration-none">Download Excel</a>
-                                @endif
-                            </div>
                         </div>
                     </div>
-                </div>
+                </a>
             @empty
                 <div class="text-center text-muted py-5">Belum ada notifikasi.</div>
             @endforelse

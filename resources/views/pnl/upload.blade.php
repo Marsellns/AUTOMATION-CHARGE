@@ -51,7 +51,7 @@
                     <li>Baris pertama adalah judul; header kolom berada di baris ke-2.</li>
                     <li>Kolom <strong>Site ID</strong> wajib diisi.</li>
                     <li>Data dengan Site ID dan periode yang sama akan diperbarui, sedangkan data baru akan ditambahkan.</li>
-                    <li>Gunakan format kolom sesuai template, termasuk periode Januari 2025 sampai Juni 2026.</li>
+                    <li>Gunakan format kolom sesuai template. Periode baru dapat ditambahkan dengan kolom Rev dan Cost dalam format seperti <strong>Rev Jul-26</strong> dan <strong>Cost Jul-26</strong>.</li>
                 </ul>
             </div>
         </div>

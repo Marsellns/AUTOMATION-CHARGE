@@ -136,12 +136,6 @@ class ElectricityCentralizedPaymentController extends Controller
 
         try {
             DB::transaction(function () use ($request, $validated): void {
-                DB::table('payment_pln')
-                    ->where('status', $validated['status'])
-                    ->where('bulan', $validated['bulan'])
-                    ->where('tahun', $validated['tahun'])
-                    ->delete();
-
                 Excel::import(
                     new CentralizedPaymentImport($validated['status'], $validated['bulan'], $validated['tahun']),
                     $request->file('payment_file')

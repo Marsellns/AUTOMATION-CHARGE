@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\PoHq;
 use Illuminate\Database\Seeder;
-use Spatie\Activitylog\Support\ActivityLogStatus;
+use Spatie\Activitylog\ActivityLogStatus;
 
 class PoHqSeeder extends Seeder
 {

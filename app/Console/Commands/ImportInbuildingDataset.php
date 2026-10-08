@@ -267,7 +267,7 @@ class ImportInbuildingDataset extends Command
                 $sent = app(ElectricityAnomalyNotificationService::class)->send('Inbuilding', $alertRows);
                 $this->info($sent
                     ? '✓ Notifikasi kenaikan listrik >50% berhasil dikirim.'
-                    : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per hari.');
+                    : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per slot jadwal.');
             }
         }
 

@@ -9,7 +9,7 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 test('Electricity dashboard exposes its filters, KPI cards, and analytical charts', () => {
     const view = read('resources/views/electricity/dashboard/index.blade.php');
-    const layout = read('resources/views/layouts/app.blade.php');
+    const navigation = read('app/Support/ReportModules.php');
 
     for (const id of [
         'electricity-scope', 'electricity-year', 'electricity-month', 'electricity-nop',
@@ -21,8 +21,7 @@ test('Electricity dashboard exposes its filters, KPI cards, and analytical chart
     }
 
     assert.match(view, /data-simaster-filter-panel="Filter Dashboard Electricity"/);
-    assert.match(layout, /route\('electricity\.dashboard'\)/);
-    assert.match(layout, />Dashboard Electricity</);
+    assert.match(navigation, /'Electricity' => 'electricity\.dashboard'/);
 });
 
 test('Electricity dashboard inline JavaScript remains valid after Blade URL rendering', () => {

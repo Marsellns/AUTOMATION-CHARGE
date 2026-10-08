@@ -53,7 +53,7 @@
     @endforeach
     <div class="col-lg-4 col-md-6">
         <div class="card h-100 border-info infra-summary-link infra-summary-card"
-             data-filter-field="summary_status" data-filter-value="contract"
+             data-filter-field="summary_status" data-filter-value="risk"
              role="link" tabindex="0" title="Buka data yang perlu perhatian">
             <div class="card-body infra-summary-card-body">
                 <div>

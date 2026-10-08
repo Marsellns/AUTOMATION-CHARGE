@@ -49,7 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
 
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/user-approvals', [UserApprovalController::class, 'index'])->name('user-approvals.index');
+        Route::get('/user-approvals', fn () => redirect()->route('filament.report.pages.account-approvals'))->name('user-approvals.index');
         Route::post('/user-approvals/{user}/approve', [UserApprovalController::class, 'approve'])->name('user-approvals.approve');
         Route::post('/user-approvals/{user}/reject', [UserApprovalController::class, 'reject'])->name('user-approvals.reject');
     });
@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pnl/site-history/{site}', [PnlViewController::class, 'siteHistory'])->name('pnl.site-history');
 
     Route::get('/equipment-relocation', [EquipmentRelocationController::class, 'index'])->name('equipment-relocation.index');
+    Route::get('/equipment-relocation/inventory-data', [EquipmentRelocationController::class, 'inventoryData'])->name('equipment-relocation.inventory-data');
     Route::get('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'relocationData'])->name('equipment-relocation.relocation-data');
     Route::post('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'saveRelocation'])->name('equipment-relocation.relocation-data.store');
     Route::delete('/equipment-relocation/relocation-data', [EquipmentRelocationController::class, 'deleteRelocation'])->name('equipment-relocation.relocation-data.destroy');
@@ -137,7 +138,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard-data', [InfrastructureDashboardController::class, 'data'])->name('dashboard.data');
         Route::get('/dashboard-details', [InfrastructureDashboardController::class, 'details'])->name('dashboard.details');
 
-        // Upload snapshot dataset per modul (halaman khusus, tanpa menu baru).
+        // Upload dataset per modul (halaman khusus, tanpa menu baru).
         Route::get('{dataset}/upload', [InfrastructureUploadController::class, 'create'])
             ->whereIn('dataset', ['sewa-lahan', 'combat', 'recurring-ipas', 'recurring-tagihan-ipas', 'jaknet', 'site-unlock', 'bapss'])
             ->name('upload');

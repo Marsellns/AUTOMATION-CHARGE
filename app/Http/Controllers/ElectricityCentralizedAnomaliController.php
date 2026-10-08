@@ -97,7 +97,6 @@ class ElectricityCentralizedAnomaliController extends Controller
 
         try {
             DB::transaction(function () use ($request): void {
-                DB::table('anomali_tagihan_pln')->delete();
                 Excel::import(new CentralizedAnomaliImport(), $request->file('anomali_file'));
             });
         } catch (\Throwable $e) {

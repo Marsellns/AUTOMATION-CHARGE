@@ -59,7 +59,7 @@ class CombatSiteImport extends BaseDatasetImport
             'no_pks_baru'         => $this->cleanText($row['nomor_pks_baru'] ?? $row['no_pks_baru'] ?? null),
             'start_date_baru'     => $this->parseDate($row['periode_awal_baru'] ?? $row['start_date_baru'] ?? null),
             'end_date_baru'       => $this->parseDate($row['periode_akhir_baru'] ?? $row['end_date_baru'] ?? null),
-            'harga_baru'          => $this->parseMoney($row['total_harga_baru'] ?? $row['harga_baru'] ?? null),
+            'harga_baru'          => $this->parseMoney($row['harga_baru'] ?? $row['total_harga_baru'] ?? null),
             'total_harga_baru'    => $this->parseMoney($row['total_harga_baru'] ?? null),
             'penawaran_1'         => $this->parseMoney($row['penawaran_1'] ?? null),
             'nego_1'              => $this->parseMoney($row['nego_1'] ?? null),

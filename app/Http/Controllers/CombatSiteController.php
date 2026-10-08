@@ -6,6 +6,7 @@ use App\Exports\CombatSiteExport;
 use App\Http\Requests\UpdateCombatSiteRequest;
 use App\Models\CombatSite;
 use App\Support\CombatSourceDetails;
+use App\Support\InfrastructureCanonicalSites;
 use App\Support\InfrastructureMetrics;
 use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
@@ -42,22 +43,16 @@ class CombatSiteController extends Controller
 
         $query = CombatSite::query()->latest('id');
 
+        if ($request->boolean('unique_sites')) {
+            $ids = InfrastructureCanonicalSites::fromRows(CombatSite::query()->get())->pluck('id');
+            $query->whereIn('combat_sites.id', $ids);
+        }
+
         // Filter tahun justi dirnet
         if ($request->filled('tahun') && $request->tahun !== 'all') {
             $query->where('tahun_justi_dirnet', (int) $request->tahun);
         }
         $this->applyDashboardFilter($query, $request);
-        if ($request->boolean('unique_sites')) {
-            $uniqueIds = (clone $query)
-                ->reorder()
-                ->select([])
-                // The canonical Combat workbook stores the master sheet
-                // before DATABASE_REVENUE.  MIN(id) therefore keeps the
-                // richest master row for a unique Site ID.
-                ->selectRaw('MIN(id)')
-                ->groupBy('site_code');
-            $query->whereIn('combat_sites.id', $uniqueIds);
-        }
 
         $dataTable = DataTables::of($query);
 
@@ -100,6 +95,13 @@ class CombatSiteController extends Controller
                 } elseif ($value === 'contract') {
                     $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
                     $subQuery->whereRaw("{$status} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'");
+                } elseif ($value === 'risk') {
+                    $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
+                    $subQuery->whereRaw("{$status} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'")
+                        ->orWhere(function ($withoutPks): void {
+                            $withoutPks->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
+                                ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
+                        });
                 } elseif ($value === 'off_air') {
                     $subQuery->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
                 } elseif ($value === 'without_pks') {

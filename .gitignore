@@ -17,6 +17,11 @@
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot
+/public/css/filament/
+/public/js/filament/
+/public/fonts/filament/
+/public/vendor/simaster/
+/resources/css/report-scoped.css
 /public/storage
 /storage/*.key
 /storage/pail
@@ -36,6 +41,7 @@ Thumbs.db
 /public/data/equipment_inventory.json
 /public/data/equipment_relocation_inventory.json
 /storage/app/backups/
+/storage/app/releases/
 /exports/
 
 # Screenshots

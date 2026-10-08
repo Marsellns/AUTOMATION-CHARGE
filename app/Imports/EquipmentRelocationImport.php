@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\EquipmentRelocationInventory;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -20,15 +21,11 @@ class EquipmentRelocationImport implements ToCollection, WithHeadingRow, SkipsEm
     /** @var array<int, array<string, string|null>> */
     private array $records = [];
 
-    /** @var array<string, true> */
+    /** @var array<string, int> */
     private array $seenKeys = [];
 
     /** @var array<int, string> */
     private array $errors = [];
-
-    public function __construct(private readonly string $inventorySnapshot)
-    {
-    }
 
     public function collection(Collection $rows): void
     {
@@ -39,6 +36,10 @@ class EquipmentRelocationImport implements ToCollection, WithHeadingRow, SkipsEm
             }
 
             $this->parseRow($values, $offset + 2);
+        }
+
+        if ($this->errors === []) {
+            $this->validateInventoryKeys();
         }
 
         if ($this->errors !== []) {
@@ -73,29 +74,24 @@ class EquipmentRelocationImport implements ToCollection, WithHeadingRow, SkipsEm
             return;
         }
 
-        if (!$this->isInventoryKey($key)) {
-            $this->addError("Baris {$rowNumber}: donor_uniq_key tidak ditemukan dalam inventaris equipment.");
-
-            return;
-        }
-
         if (isset($this->seenKeys[$key])) {
             $this->addError("Baris {$rowNumber}: donor_uniq_key duplikat di file Excel.");
 
             return;
         }
 
+        $errorsBeforeRow = count($this->errors);
         $donorAcceptor = $this->nullableString($row->get('donor_acceptor'), 255, 'donor_acceptor', $rowNumber);
         $siteTargetSource = $this->nullableString($row->get('site_target_source'), 255, 'site_target_source', $rowNumber);
         $remark = $this->nullableString($row->get('remark'), 5000, 'remark', $rowNumber);
         $pic = $this->choice($row->get('pic'), self::PIC_OPTIONS, 'pic', $rowNumber);
         $progress = $this->choice($row->get('progress'), self::PROGRESS_OPTIONS, 'progress', $rowNumber);
 
-        if ($this->errors !== []) {
+        if (count($this->errors) > $errorsBeforeRow) {
             return;
         }
 
-        $this->seenKeys[$key] = true;
+        $this->seenKeys[$key] = $rowNumber;
         $this->records[] = [
             'donor_uniq_key' => $key,
             'donor_acceptor' => $donorAcceptor,
@@ -148,11 +144,18 @@ class EquipmentRelocationImport implements ToCollection, WithHeadingRow, SkipsEm
         return $value === '' ? null : $value;
     }
 
-    private function isInventoryKey(string $key): bool
+    private function validateInventoryKeys(): void
     {
-        $encodedKey = json_encode($key, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        foreach (array_chunk(array_keys($this->seenKeys), 500) as $keys) {
+            $existing = EquipmentRelocationInventory::query()
+                ->whereIn('uniq_key', $keys)
+                ->pluck('uniq_key')
+                ->all();
 
-        return $encodedKey !== false && str_contains($this->inventorySnapshot, '['.$encodedKey.',');
+            foreach (array_diff($keys, $existing) as $key) {
+                $this->addError("Baris {$this->seenKeys[$key]}: donor_uniq_key tidak ditemukan dalam inventaris equipment.");
+            }
+        }
     }
 
     private function addError(string $message): void

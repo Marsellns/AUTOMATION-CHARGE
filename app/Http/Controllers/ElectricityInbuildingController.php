@@ -70,7 +70,7 @@ class ElectricityInbuildingController extends Controller
             'Alamat',
             'Telkomsel / TP',
             'Daya',
-            'Harga/kWh',
+            'Harga per kWh',
             'Update By',
             'Tanggal',
         ];

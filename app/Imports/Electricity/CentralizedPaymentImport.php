@@ -46,8 +46,20 @@ class CentralizedPaymentImport implements ToCollection
             ];
         }
 
-        foreach (array_chunk(array_values($batch), 500) as $chunk) {
-            DB::table('payment_pln')->insert($chunk);
+        if ($batch === []) {
+            throw new \RuntimeException('File Payment tidak memiliki baris dengan ID Pelanggan atau Site ID.');
+        }
+
+        foreach ($batch as $record) {
+            $key = array_intersect_key($record, array_flip([
+                'id_pelanggan', 'site_id', 'status', 'bulan', 'tahun',
+            ]));
+            DB::table('payment_pln')->updateOrInsert($key, static function (bool $exists) use ($record): array {
+                if ($exists) {
+                    unset($record['created_at']);
+                }
+                return $record;
+            });
         }
     }
 

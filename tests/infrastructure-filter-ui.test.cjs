@@ -85,7 +85,7 @@ test('main-module filters opt into the shared compact drawer', () => {
         assert.match(read(view), /data-simaster-filter-panel="[^"]+"/, `${view} is not connected to the drawer`);
     }
 
-    const layout = read('resources/views/layouts/app.blade.php');
+    const layout = read('resources/views/reports/scripts.blade.php');
     assert.match(layout, /querySelectorAll\('\[data-simaster-filter-panel\]'\)/);
     assert.match(layout, /appendChild\(source\)/, 'the original controls must be moved so existing handlers survive');
     assert.match(layout, /const periodPicker = source\.querySelector\('\.simaster-filter-wrapper'\)/);
@@ -100,15 +100,15 @@ test('main-module filters opt into the shared compact drawer', () => {
     assert.doesNotMatch(filtersCss, /\.simaster-filter-drawer\s*\{[\s\S]*?height: 100%/);
 });
 
-test('Site Telkomsel and Site TP are nested under the Sewa Lahan portfolio', () => {
-    const layout = read('resources/views/layouts/app.blade.php');
-    const css = read('public/css/simaster.css');
+test('Site Telkomsel and Site TP retain ownership filters under the Sewa Lahan parent', () => {
+    const navigation = read('app/Support/ReportModules.php');
+    const provider = read('app/Providers/Filament/ReportPanelProvider.php');
 
-    assert.match(layout, /class="sidebar-submodule"/);
-    assert.match(layout, /class="sidebar-submenu-nested" aria-label="Submodul Sewa Lahan"/);
-    assert.match(layout, /route\('infrastruktur\.sewa-lahan\.index', \['ownership_scope' => 'Telkomsel'\]\)/);
-    assert.match(layout, /route\('infrastruktur\.sewa-lahan\.index', \['ownership_scope' => 'TP'\]\)/);
-    assert.match(css, /\.sidebar-submenu-nested/);
+    assert.match(navigation, /'Site Telkomsel', 'infrastruktur\.sewa-lahan\.index'[^\n]+\['ownership_scope' => 'Telkomsel'\], 'Sewa Lahan'/);
+    assert.match(navigation, /'Site TP', 'infrastruktur\.sewa-lahan\.index'[^\n]+\['ownership_scope' => 'TP'\], 'Sewa Lahan'/);
+    assert.match(provider, /->childItems\(/);
+    assert.match(read('resources/views/vendor/filament-panels/components/sidebar/item.blade.php'), /:child-items="\$childItem->getChildItems\(\)"/);
+    assert.match(provider, /->url\(fn \(\) => route\(\$module\[2\], \$module\[5\]/);
 });
 
 test('changed inline browser scripts remain valid JavaScript after Blade values are rendered', () => {
@@ -131,8 +131,8 @@ test('changed inline browser scripts remain valid JavaScript after Blade values 
         }
     }
 
-    const layout = read('resources/views/layouts/app.blade.php');
-    const drawerScript = inlineScripts('resources/views/layouts/app.blade.php')
+    const layout = read('resources/views/reports/scripts.blade.php');
+    const drawerScript = inlineScripts('resources/views/reports/scripts.blade.php')
         .find(source => source.includes("querySelectorAll('[data-simaster-filter-panel]')"));
     assert.ok(drawerScript, 'shared drawer script is missing');
     assert.doesNotThrow(() => new vm.Script(drawerScript), 'shared drawer script contains invalid JavaScript');

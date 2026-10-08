@@ -14,14 +14,15 @@ use Throwable;
 /**
  * Base import untuk file-file dataset Simawar.
  *
- * Pola: snapshot idempotent — command menghapus isi tabel dulu, lalu class ini
- * bulk-insert per chunk via query builder (tanpa event model, cepat).
- * Semua file punya baris 1 = judul, baris 2 = header (headingRow 2).
+ * Import CLI memakai snapshot: command menghapus isi tabel sebelum bulk insert.
+ * Upload dari halaman modul memakai mode incremental. Header default di baris 2;
+ * modul dengan header baris 1 mengubah headingRow().
  */
 abstract class BaseDatasetImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
     protected int $inserted = 0;
     protected int $skipped = 0;
+    private bool $incremental = false;
 
     /** Nama tabel tujuan. */
     abstract protected function table(): string;
@@ -31,6 +32,24 @@ abstract class BaseDatasetImport implements ToCollection, WithHeadingRow, WithCh
      * Return null untuk skip baris (misal tanpa Site ID).
      */
     abstract protected function mapRow(Collection $row): ?array;
+
+    /** Kolom pembeda satu entri saat upload dari halaman modul. */
+    protected function uploadKey(): array
+    {
+        return ['site_code'];
+    }
+
+    public function incremental(): static
+    {
+        $this->incremental = true;
+        return $this;
+    }
+
+    /** Existing attachments must survive spreadsheet metadata updates. */
+    protected function preserveWhenEmpty(): array
+    {
+        return [];
+    }
 
     public function headingRow(): int
     {
@@ -64,8 +83,32 @@ abstract class BaseDatasetImport implements ToCollection, WithHeadingRow, WithCh
             $batch[] = $mapped;
         }
 
-        foreach (array_chunk($batch, 500) as $chunk) {
-            DB::table($this->table())->insert($chunk);
+        if ($this->incremental) {
+            $hasSoftDeletes = in_array($this->table(), [
+                'sewa_lahan_renewals', 'jaknet_contracts', 'data_site_unlocks', 'bapss',
+            ], true);
+            foreach ($batch as $record) {
+                $preserveWhenEmpty = $this->preserveWhenEmpty();
+                $key = array_intersect_key($record, array_flip($this->uploadKey()));
+                if ($hasSoftDeletes) {
+                    $record['deleted_at'] = null;
+                }
+                DB::table($this->table())->updateOrInsert($key, static function (bool $exists) use ($record, $preserveWhenEmpty): array {
+                    if ($exists) {
+                        unset($record['created_at']);
+                        foreach ($preserveWhenEmpty as $column) {
+                            if (($record[$column] ?? null) === null || $record[$column] === '') {
+                                unset($record[$column]);
+                            }
+                        }
+                    }
+                    return $record;
+                });
+            }
+        } else {
+            foreach (array_chunk($batch, 500) as $chunk) {
+                DB::table($this->table())->insert($chunk);
+            }
         }
 
         $this->inserted += count($batch);

@@ -7,7 +7,7 @@
         <div>
             <h1 class="h4 mb-1">Electricity — Listrik All</h1>
             <p class="text-body-secondary mb-0 small">
-                Matriks ringkasan tagihan listrik 12 bulan (Januari – Desember) per pelanggan PLN.
+                Matriks nilai Flagging pembayaran per rekening PLN. Kolom Inquiry merupakan tagihan dan tidak dihitung sebagai pembayaran.
             </p>
         </div>
         <div class="d-flex gap-2">

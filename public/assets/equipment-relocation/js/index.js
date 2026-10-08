@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     try {
         await window.__equipmentRelocationReady;
-        if (loadState) loadState.textContent = (window.__equipmentRelocationWarnings || []).join(" ");
+        if (loadState) loadState.textContent = "";
     } catch (error) {
         if (loadState) {
             loadState.textContent = "Gagal memuat inventaris Equipment Relocation: " + error.message;
@@ -2979,11 +2979,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     /* =========================================================
-    Legacy browser storage (kept only for backward compatibility; the
-    Laravel monitoring endpoint is now the source of truth).
+    Laravel endpoints are the source of truth for inventory and monitoring.
     ========================================================= */
 
-    const STORAGE_KEY = "SIMAWAR_EQUIPMENT_RELOCATION_DATA";
     const API_URLS = window.__equipmentRelocationUrls || {};
 
     async function persistRelocation(url, method, payload) {
@@ -3009,62 +3007,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
 
-    function getStoredRelocationData() {
-
-        try {
-
-            const raw =
-                localStorage.getItem(
-                    STORAGE_KEY
-                );
-
-            if (!raw) {
-                return {};
-            }
-
-            const parsed =
-                JSON.parse(raw);
-
-            return (
-                parsed &&
-                typeof parsed === "object"
-            )
-                ? parsed
-                : {};
-
-        } catch (error) {
-
-            console.warn(
-                "Equipment Relocation: gagal membaca localStorage.",
-                error
-            );
-
-            return {};
-        }
-    }
-
-
-    function saveStoredRelocationData(data) {
-
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch (error) {
-            console.warn("Equipment Relocation: cache browser tidak tersedia.", error);
-        }
-    }
-
-
-    function getItemStorageKey(item) {
-
-        return String(
-            item.uniq_key ||
-            `${item.site_id || ""}|${item.equipment_group || ""}|${item.equipment_type || ""}`
-        );
-    }
-
-
     /* =========================================================
-    SAVE - Laravel API + local cache
+    SAVE - Laravel API
     ========================================================= */
 
     async function submitSave(
@@ -3128,51 +3072,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             /*
             * ---------------------------------------------------
-            * SAVE KE LOCAL STORAGE
-            * ---------------------------------------------------
-            */
-
-            const stored =
-                getStoredRelocationData();
-
-
-            const key =
-                getItemStorageKey(
-                    allData[itemIndex]
-                );
-
-
-            stored[key] = {
-
-                donor_acceptor:
-                    allData[itemIndex]
-                        .donor_acceptor || "",
-
-                site_target_source:
-                    allData[itemIndex]
-                        .site_target_source || "",
-
-                pic:
-                    allData[itemIndex]
-                        .pic || "",
-
-                progress:
-                    allData[itemIndex]
-                        .progress || "",
-
-                remark:
-                    allData[itemIndex]
-                        .remark || ""
-            };
-
-
-            saveStoredRelocationData(
-                stored
-            );
-
-
-            /*
-            * ---------------------------------------------------
             * CLOSE MODAL
             * ---------------------------------------------------
             */
@@ -3214,7 +3113,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     /* =========================================================
-    DELETE - Laravel API + local cache
+    DELETE - Laravel API
     ========================================================= */
 
     async function submitDelete(
@@ -3251,28 +3150,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             const item =
                 allData[itemIndex];
-
-
-            /*
-            * ---------------------------------------------------
-            * REMOVE FROM LOCAL STORAGE
-            * ---------------------------------------------------
-            */
-
-            const stored =
-                getStoredRelocationData();
-
-
-            const key =
-                getItemStorageKey(item);
-
-
-            delete stored[key];
-
-
-            saveStoredRelocationData(
-                stored
-            );
 
 
             /*
@@ -3832,110 +3709,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     /* =========================================================
-    LOAD FRONTEND DATA
-    Inventory JSON = MASTER
-    Laravel monitoring API = Relocation Data
-    ========================================================= */
-
-    async function refreshData() {
-
-        try {
-
-            if (
-                window.EquipmentRelocationData &&
-                typeof window.EquipmentRelocationData.load === "function"
-            ) {
-
-                const fresh =
-                    await window
-                        .EquipmentRelocationData
-                        .load();
-
-
-                const inventory =
-                    Array.isArray(fresh.inventory)
-                        ? fresh.inventory
-                        : [];
-
-
-                /*
-                * ------------------------------------------------
-                * MERGE INVENTORY + SERVER RELOCATION DATA
-                * ------------------------------------------------
-                */
-
-                allData =
-                    inventory.map(item => {
-
-                        // equipment-relocation-data.js already merged the
-                        // server row into each inventory item. Do not let a
-                        // stale browser cache override the database.
-                        const relocation = {};
-
-
-                        const merged = {
-
-                            ...item,
-
-                            donor_acceptor:
-                                relocation.donor_acceptor ??
-                                item.donor_acceptor ??
-                                "",
-
-                            site_target_source:
-                                relocation.site_target_source ??
-                                item.site_target_source ??
-                                "",
-
-                            pic:
-                                relocation.pic ??
-                                item.pic ??
-                                "",
-
-                            progress:
-                                relocation.progress ??
-                                item.progress ??
-                                "",
-
-                            remark:
-                                relocation.remark ??
-                                item.remark ??
-                                ""
-                        };
-
-
-                        merged.has_data =
-                            Boolean(
-                                merged.donor_acceptor ||
-                                merged.site_target_source ||
-                                merged.pic ||
-                                merged.progress ||
-                                merged.remark
-                            );
-
-
-                        return merged;
-                    });
-
-            }
-
-
-            populateFilterOptions();
-
-            renderDashboard();
-
-
-        } catch (error) {
-
-            console.error(
-                "Equipment Relocation: gagal refresh data.",
-                error
-            );
-
-        }
-    }
-
-    /* =========================================================
        RENDER DASHBOARD
        ========================================================= */
 
@@ -3985,7 +3758,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 
         /*
-        * Load inventory + localStorage
+        * Load inventory and monitoring from MySQL
         */
 
         populateFilterOptions();

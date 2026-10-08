@@ -12,6 +12,11 @@ use Illuminate\Support\Collection;
  */
 class DataSiteUnlockImport extends BaseDatasetImport
 {
+    protected function uploadKey(): array
+    {
+        return ['site_code', 'batch', 'tanggal'];
+    }
+
     protected function table(): string
     {
         return 'data_site_unlocks';

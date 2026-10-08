@@ -13,6 +13,8 @@ class SiteLossExport implements FromQuery, WithHeadings, WithMapping
 {
     use Exportable;
 
+    private int $rowNumber = 0;
+
     public function __construct(
         private readonly int $month,
         private readonly int $year,
@@ -25,6 +27,7 @@ class SiteLossExport implements FromQuery, WithHeadings, WithMapping
             ->with('site.region')
             ->where('bulan', $this->month)
             ->where('tahun', $this->year)
+            ->where('is_anomaly', 0)
             ->where('profit_loss', '<=', 0)
             ->orderBy('profit_loss');
     }
@@ -36,11 +39,8 @@ class SiteLossExport implements FromQuery, WithHeadings, WithMapping
 
     public function map($row): array
     {
-        static $number = 0;
-        $number++;
-
         return [
-            $number,
+            ++$this->rowNumber,
             $row->site?->site_id,
             $row->site?->site_name,
             $row->site?->region?->nama,

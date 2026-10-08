@@ -23,7 +23,7 @@ class CombatWorkbookImport
     private int $inserted = 0;
     private int $skipped = 0;
 
-    public function import(string $path): void
+    public function import(string $path, bool $incremental = false): void
     {
         $spreadsheet = IOFactory::load($path);
         $masterSheet = $spreadsheet->getSheetByName('DATABASE') ?? $spreadsheet->getActiveSheet();
@@ -40,8 +40,23 @@ class CombatWorkbookImport
         }
         unset($record);
 
-        foreach (array_chunk($records, 500) as $chunk) {
-            DB::table('combat_sites')->insert($chunk);
+        if ($incremental) {
+            foreach ($records as $record) {
+                $record['deleted_at'] = null;
+                DB::table('combat_sites')->updateOrInsert(
+                    ['site_code' => $record['site_code']],
+                    static function (bool $exists) use ($record): array {
+                        if ($exists) {
+                            unset($record['created_at']);
+                        }
+                        return $record;
+                    }
+                );
+            }
+        } else {
+            foreach (array_chunk($records, 500) as $chunk) {
+                DB::table('combat_sites')->insert($chunk);
+            }
         }
 
         $this->inserted = count($records);

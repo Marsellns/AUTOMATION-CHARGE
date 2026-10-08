@@ -10,8 +10,8 @@
   @foreach(['site_code'=>'Site ID','site_name'=>'Site Name','tgl_bapss'=>'Tgl BAPSS','tgl_dismantle'=>'Tgl Dismantle','remark'=>'Remark','update_by'=>'Update By','tgl_update'=>'Tgl Update'] as $field=>$label)
    <dt class="col-sm-3">{{ $label }}</dt><dd class="col-sm-9">{{ $bapss->{$field} ?? '-' }}</dd>
   @endforeach
-  <dt class="col-sm-3">PDF BAPSS</dt><dd class="col-sm-9">@if($bapss->pdf_bapss)<a target="_blank" rel="noopener" href="{{ route('infrastruktur.bapss.file', [$bapss, 'bapss']) }}">Buka PDF</a>@else - @endif</dd>
-  <dt class="col-sm-3">PDF BA Dismantle</dt><dd class="col-sm-9">@if($bapss->pdf_ba_dismantle)<a target="_blank" rel="noopener" href="{{ route('infrastruktur.bapss.file', [$bapss, 'dismantle']) }}">Buka PDF</a>@else - @endif</dd>
+  <dt class="col-sm-3">PDF BAPSS</dt><dd class="col-sm-9">@if($bapss->pdfAvailable('pdf_bapss'))<a target="_blank" rel="noopener" href="{{ route('infrastruktur.bapss.file', [$bapss, 'bapss']) }}">Buka PDF</a>@else {{ $bapss->missingPdfLabel('pdf_bapss') }} @endif</dd>
+  <dt class="col-sm-3">PDF BA Dismantle</dt><dd class="col-sm-9">@if($bapss->pdfAvailable('pdf_ba_dismantle'))<a target="_blank" rel="noopener" href="{{ route('infrastruktur.bapss.file', [$bapss, 'dismantle']) }}">Buka PDF</a>@else {{ $bapss->missingPdfLabel('pdf_ba_dismantle') }} @endif</dd>
  </dl>
 </div></div>
 @endsection

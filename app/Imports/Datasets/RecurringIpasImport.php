@@ -10,6 +10,11 @@ use Illuminate\Support\Collection;
  */
 class RecurringIpasImport extends BaseDatasetImport
 {
+    protected function uploadKey(): array
+    {
+        return ['site_code', 'source_id', 'sow_id', 'start_date'];
+    }
+
     protected function table(): string
     {
         return 'recurring_ipas';

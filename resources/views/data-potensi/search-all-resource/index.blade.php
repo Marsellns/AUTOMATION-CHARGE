@@ -10,6 +10,16 @@
     <div class="card mb-3" data-simaster-filter-panel="Filter Search All Resource">
         <div class="card-body py-2 d-flex flex-wrap align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
+                <label for="period-filter" class="form-label mb-0 small fw-semibold text-nowrap">Periode P&amp;L:</label>
+                <select id="period-filter" class="form-select form-select-sm" style="width:auto">
+                    @forelse ($periods as $period)
+                        <option value="{{ sprintf('%04d-%02d', $period->tahun, $period->bulan) }}">{{ sprintf('%02d/%04d', $period->bulan, $period->tahun) }}</option>
+                    @empty
+                        <option value="">Belum ada data P&amp;L</option>
+                    @endforelse
+                </select>
+            </div>
+            <div class="d-flex align-items-center gap-2">
                 <label for="page-size" class="form-label mb-0 small fw-semibold text-nowrap">Show:</label>
                 <select id="page-size" class="form-select form-select-sm" style="width:auto">
                     @foreach ([10, 20, 40, 80, 100, 5000] as $size)
@@ -40,6 +50,7 @@
 
     <div class="card">
         <div class="card-body">
+            <p class="small text-muted">Revenue, cost, dan profit berasal dari data P&amp;L bulanan pada periode terpilih. Data yang tidak tersedia atau ditandai anomali ditampilkan sebagai “-”. Baris merepresentasikan resource DAPOT/ANT; satu site dapat memiliki beberapa resource.</p>
             <table id="search-resource-table" class="display align-middle text-nowrap" style="width:100%; cursor:pointer">
                 <thead><tr>
                     <th>No</th><th>Site ID</th><th>DAPOT–Site Name</th><th>DAPOT–Class</th>
@@ -72,6 +83,10 @@
 $(function () {
     const value = (data) => data === null || data === undefined || data === ''
         ? '-' : $('<div>').text(data).html();
+    const money = (data, type) => {
+        if (data === null || data === undefined || data === '') return type === 'display' ? '-' : null;
+        return type === 'display' ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 2 }).format(Number(data)) : data;
+    };
 
     const table = new DataTable('#search-resource-table', {
         processing: true,
@@ -84,6 +99,7 @@ $(function () {
             data: data => {
                 data.site_owner = $('#owner-filter').val();
                 data.city = $('#city-filter').val();
+                data.periode = $('#period-filter').val();
             }
         },
         columns: [
@@ -104,9 +120,9 @@ $(function () {
             { data: 'ant_tgl_update', name: 'ant_tgl_update', render: value },
             { data: 'ant_alamat', name: 'ant_alamat', render: value },
             { data: 'rev_site', name: 'rev_site', render: value },
-            { data: 'revenue', name: 'revenue', render: value },
-            { data: 'cost', name: 'cost', render: value },
-            { data: 'profit_value', name: 'profit_value', render: value },
+            { data: 'revenue', name: 'revenue', render: money },
+            { data: 'cost', name: 'cost', render: money },
+            { data: 'profit_value', name: 'profit_value', render: money },
             { data: 'profit_status', name: 'profit_status', render: value }
         ],
         order: []
@@ -117,32 +133,27 @@ $(function () {
     });
     $('#owner-filter').on('change', function () { table.ajax.reload(); });
     $('#city-filter').on('change', function () { table.ajax.reload(); });
+    $('#period-filter').on('change', function () { table.ajax.reload(); });
 
     $('#search-resource-table tbody').on('click', 'tr', function () {
         const row = table.row(this).data();
         if (!row || !row.site_id) return;
-        fetch(`${@json(url('data-potensi/search-all-resource'))}/${encodeURIComponent(row.site_id)}`, {
-            headers: { Accept: 'application/json' }
-        })
-            .then(response => {
-                if (!response.ok) throw new Error('Gagal memuat detail Search All Resource.');
-                return response.json();
-            })
-            .then(({ data }) => {
-                $('#search-resource-detail-title').text(data.site_id || 'Detail Resource');
-                const rows = [
-                    ['DAPOT–ID Pel', data.id_pel], ['ANT–Site', data.ant_site],
-                    ['ANT–RTP', data.ant_rtp], ['ANT–Type', data.ant_type],
-                    ['ANT–Tgl Update', data.ant_tgl_update], ['ANT–Alamat', data.ant_alamat],
-                    ['REV–Site', data.rev_site], ['REV–Revenue', data.revenue],
-                    ['COST–Cost', data.cost], ['Profit Value', data.profit_value],
-                    ['Profit Status', data.profit_status]
-                ];
-                $('#search-resource-detail-body').html(rows.map(([label, item]) =>
-                    `<tr><th>${label}</th><td>${value(item)}</td></tr>`).join(''));
-                bootstrap.Modal.getOrCreateInstance('#search-resource-detail-modal').show();
-            })
-            .catch(error => window.alert(error.message));
+        // Use the exact displayed resource; another contract for the same
+        // site must not replace its owner/address in the detail modal.
+        const data = row;
+        $('#search-resource-detail-title').text(data.site_id || 'Detail Resource');
+        const rows = [
+            ['Periode P&L', data.periode],
+            ['DAPOT–ID Pel', data.id_pel], ['ANT–Site', data.ant_site],
+            ['ANT–RTP', data.ant_rtp], ['ANT–Type', data.ant_type],
+            ['ANT–Tgl Update', data.ant_tgl_update], ['ANT–Alamat', data.ant_alamat],
+            ['REV–Site', data.rev_site], ['REV–Revenue', money(data.revenue, 'display')],
+            ['COST–Cost', money(data.cost, 'display')], ['Profit Value', money(data.profit_value, 'display')],
+            ['Profit Status', data.profit_status]
+        ];
+        $('#search-resource-detail-body').html(rows.map(([label, item]) =>
+            `<tr><th>${label}</th><td>${value(item)}</td></tr>`).join(''));
+        bootstrap.Modal.getOrCreateInstance('#search-resource-detail-modal').show();
     });
 });
 </script>

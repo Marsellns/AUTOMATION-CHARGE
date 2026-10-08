@@ -143,7 +143,7 @@ class PresalesController extends Controller
         $validated = $request->validate([
             'action' => ['required', 'in:approve,reject'],
             'comments' => ['nullable', 'required_if:action,reject', 'string', 'max:2000'],
-            'confirm_rejection' => ['nullable', 'required_if:action,reject', 'accepted'],
+            'confirm_rejection' => ['exclude_unless:action,reject', 'required', 'accepted'],
         ]);
 
         $message = DB::transaction(function () use ($document, $request, $validated, $notificationService): string {

@@ -23,7 +23,11 @@ Laravel is accessible, powerful, and provides tools required for large, robust a
 
 ## Dokumentasi Project
 
+Panduan pemindahan ke produksi cPanel Jagoan Hosting: [docs/deploy-cpanel.md](docs/deploy-cpanel.md). Proyek memakai **Laravel 12, Filament 5 dan PHP 8.2+** sesuai dependency yang terkunci. `/report` membuka Dashboard Utama; seluruh halaman operasional menggunakan custom page Filament dengan controller dan query MySQL yang sama. Notifikasi berada di samping avatar akun; Persetujuan Akun memakai tabel native Filament dan tersedia dalam menu avatar admin. Dashboard Infrastruktur menjadi induk submodul, termasuk Sewa Lahan dengan Site TP/Site Telkomsel. Dashboard Electricity menjadi induk Listrik Centralized dan Listrik Inbuilding beserta submodul masing-masing.
+
 - [Panduan pengelolaan database](docs/database.md): setup, migration, import dataset, backup, restore, dan checklist untuk penerus project.
+
+- [Filament per modul](docs/filament-modules.md): plugin, custom Page setiap modul/submodul, dan pendaftaran navigasi pada panel yang sama.
 
 ## Learning Laravel
 

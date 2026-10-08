@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('shared chart metric helper calculates a contribution against its series total', () => {
-    const layout = read('resources/views/layouts/app.blade.php');
+    const layout = read('resources/views/reports/scripts.blade.php');
 
     assert.match(layout, /window\.SimasterChartMetrics = Object\.freeze/);
     assert.match(layout, /Math\.abs\(numericValue\) \/ total/);

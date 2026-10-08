@@ -78,7 +78,7 @@ class PoHqController extends Controller
     public function update(UpdatePoHqRequest $request, PoHq $po_hq): RedirectResponse
     {
         // Update tercatat di activity_log dengan nilai lama & baru
-        // (kolom attribute_changes).
+        // (properties.attributes dan properties.old).
         $po_hq->update($request->validated());
 
         return redirect()

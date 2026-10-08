@@ -13,7 +13,15 @@ class ElectricityInbuildingAnomaliController extends Controller
 {
     public function index(): View
     {
-        $years = [2026, 2025, 2024];
+        $years = AnomaliTagihanInbuilding::query()
+            ->where('kenaikan_persen', '>', 50)
+            ->whereNotNull('periode_saat_ini')
+            ->selectRaw('DISTINCT SUBSTR(periode_saat_ini, 1, 4) as tahun')
+            ->orderByDesc('tahun')
+            ->pluck('tahun')
+            ->filter(fn ($year): bool => ctype_digit((string) $year) && (int) $year >= 2000 && (int) $year <= 2100)
+            ->map(fn ($year): int => (int) $year)
+            ->values();
 
         return view('electricity.inbuilding.anomali.index', compact('years'));
     }

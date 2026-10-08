@@ -8,7 +8,7 @@ use App\Models\SiteMonthlyMetric;
 use App\Services\SiteStatusSummaryService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Spatie\Activitylog\Support\ActivityLogStatus;
+use Spatie\Activitylog\ActivityLogStatus;
 use XMLReader;
 use ZipArchive;
 

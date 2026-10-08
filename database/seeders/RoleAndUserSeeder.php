@@ -17,15 +17,15 @@ class RoleAndUserSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach (['admin', 'viewer', 'manager_nop', 'manager_sq', 'manager_nos', 'manager_nbae'] as $roleName) {
+        foreach (['admin', 'viewer', 'report', 'manager_nop', 'manager_sq', 'manager_nos', 'manager_nbae'] as $roleName) {
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
         // Tidak pernah membuat akun demo dengan kredensial yang diketahui umum.
         // Administrator pertama bersifat opsional dan harus dikonfigurasi lewat
         // environment saat provisioning.
-        $email = trim((string) env('SIMASTER_INITIAL_ADMIN_EMAIL', ''));
-        $password = (string) env('SIMASTER_INITIAL_ADMIN_PASSWORD', '');
+        $email = trim((string) config('provisioning.admin_email', ''));
+        $password = (string) config('provisioning.admin_password', '');
 
         if (($email === '') !== ($password === '')) {
             throw new \RuntimeException('SIMASTER_INITIAL_ADMIN_EMAIL dan SIMASTER_INITIAL_ADMIN_PASSWORD harus diisi bersama-sama.');
@@ -46,7 +46,7 @@ class RoleAndUserSeeder extends Seeder
         $admin = User::firstOrCreate(
             ['email' => $email],
             [
-                'name' => trim((string) env('SIMASTER_INITIAL_ADMIN_NAME', 'Administrator')) ?: 'Administrator',
+                'name' => trim((string) config('provisioning.admin_name', 'Administrator')) ?: 'Administrator',
                 'password' => Hash::make($password),
                 'account_status' => 'approved',
                 'requested_role' => 'admin',

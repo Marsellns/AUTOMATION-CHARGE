@@ -34,13 +34,18 @@ class ElectricityCentralizedListrikAllController extends Controller
         $headers = self::listrikAllHeaders();
         return Excel::download(new class($headers) implements FromArray {
             public function __construct(private readonly array $headers) {}
-            public function array(): array { return [['DATA MASTER PLN EASTERN JABOTABEK'], [], $this->headers]; }
+            public function array(): array { return [['Listrik All - Template'], $this->headers]; }
         }, 'template-listrik-all-centralized.xlsx');
     }
 
     private static function listrikAllHeaders(): array
     {
-        return ['NO', 'ID Pelanggan', 'Site ID', 'Site Name', 'Nama Pelanggan', 'Daya Existing', 'Gol Tarif', 'PLN UID', 'PLN UP3', 'PLN ULP', 'Alamat', 'Bill type', 'TP (OWNER)', 'NOP', 'AMR Date', 'Phasa', 'KWH Type (AMR/Non AMR)2', 'SITE ID LAMA', 'BA MUTASI N', 'REMARKS', 'Flagging Januari 2023', 'Flagging Februari 2023', 'Flagging Maret 2023', 'Flagging April 2023', 'Flagging Mei 2023', 'Flagging Juni 2023', 'Flagging Juli 2023', 'Flagging Aug 2023', 'Flagging Sept 2023', 'Flagging Oct 2023', 'Flagging Nov 2023', 'Flagging Dec 2023', 'Flagging Jan 2024', 'Flagging Feb 2024', 'Flagging Mar 2024', 'Flagging Apr 2024', 'Flagging Mei 2024', 'Flagging Juni 2024', 'Flagging Juli 2024', 'Flagging Aug 2024', 'Flagging Sep 2024', 'Flagging Oct 2024', 'Flagging Nov 2024', 'Flagging Dec 2024', 'Flagging Jan 2025', 'Flagging Feb 2025', 'Flagging Mar 2025', 'flagging Apr 2025', 'Flagging May 2025', 'Flagging Jun 2025', 'Flagging Jul 2025', 'Flagging Agst 2025', 'Flagging Sept 2025', 'Flagging Oct 2025', 'Inquiry Nov 2025', 'Flagging Nov 2025', 'Inquiry Des 2025', 'Flagging Des 2025', 'Inquiry Jan 2026', 'Flagging Jan 2026', 'Inquiry Feb 2026', 'Flagging Feb 2026', 'Inquiry Mar 2026', 'Flagging Mar 2026', 'Inquiry Apr 2026', 'Flagging Apr 2026', 'Inquiry Mei 2026', 'Flagging Mei 2026', 'Inquiry Juni 2026', 'Flagging Juni 2026', 'Inquiry Juli 2026', 'Flagging Juli 2026', 'Inquiry Agustus 2026', 'Flagging Agustus 2026', 'Inquiry September 20262'];
+        $headers = ['No', 'ID Pelanggan', 'Site ID', 'Site Name', 'Gol Tarif', 'Unit PLN'];
+        foreach (['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'] as $month) {
+            $headers[] = 'Flagging '.$month.' '.now()->year;
+        }
+
+        return $headers;
     }
     public function index(): View
     {
@@ -92,7 +97,7 @@ class ElectricityCentralizedListrikAllController extends Controller
                 ->where('tahun', $tahun)
                 ->select([
                     'site_id',
-                    DB::raw("GROUP_CONCAT(DISTINCT id_pelanggan ORDER BY id_pelanggan SEPARATOR ', ') as payment_ids"),
+                    'id_pelanggan',
                     DB::raw('MAX(site_name) as payment_site_name'),
                     DB::raw('MAX(status_aktif_site) as status_aktif_site'),
                     DB::raw('SUM(CASE WHEN bulan = 1 THEN COALESCE(amount, 0) ELSE 0 END) as payment_jan'),
@@ -120,14 +125,17 @@ class ElectricityCentralizedListrikAllController extends Controller
                     DB::raw('COUNT(CASE WHEN bulan = 11 THEN 1 END) as nov_rows'),
                     DB::raw('COUNT(CASE WHEN bulan = 12 THEN 1 END) as des_rows'),
                 ])
-                ->groupBy('site_id');
+                ->groupBy('site_id', 'id_pelanggan');
 
             $query = DB::table('listrik_all as la')
-                ->leftJoinSub($payment, 'p', 'p.site_id', '=', 'la.site_id')
+                ->leftJoinSub($payment, 'p', function ($join): void {
+                    $join->on('p.site_id', '=', 'la.site_id')
+                        ->on('p.id_pelanggan', '=', 'la.id_pelanggan');
+                })
                 ->where('la.tahun', $tahun)
                 ->select([
                     'la.site_id', 'la.gol_tarif', 'la.unit_pln',
-                    DB::raw('COALESCE(p.payment_ids, la.id_pelanggan) as id_pelanggan'),
+                    'la.id_pelanggan',
                     DB::raw('COALESCE(p.payment_site_name, la.site_name) as site_name'),
                     DB::raw('COALESCE(CASE WHEN p.jan_rows > 0 THEN p.payment_jan ELSE la.jan END, 0) as jan'),
                     DB::raw('COALESCE(CASE WHEN p.feb_rows > 0 THEN p.payment_feb ELSE la.feb END, 0) as feb'),
@@ -215,7 +223,6 @@ class ElectricityCentralizedListrikAllController extends Controller
 
         try {
             DB::transaction(function () use ($request): void {
-                DB::table('listrik_all')->delete();
                 Excel::import(new CentralizedListrikAllImport(), $request->file('listrik_all_file'));
             });
         } catch (\Throwable $e) {

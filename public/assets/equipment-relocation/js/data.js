@@ -1,11 +1,9 @@
-/* Inventaris mandiri SIMAWAR.
- * Browser hanya membaca berkas dalam proyek ini dan data monitoring Laravel. */
+/* Inventaris dan progres relokasi dibaca melalui API Laravel dari MySQL. */
 (function () {
     "use strict";
 
     const urls = window.__equipmentRelocationUrls || {};
     window.__equipmentInventoryData = [];
-    window.__equipmentRelocationWarnings = [];
 
     async function fetchJson(url) {
         const response = await fetch(url, {
@@ -30,14 +28,9 @@
             return item;
         });
 
-        let monitoring = [];
-        try {
-            const result = await fetchJson(urls.monitoring);
-            if (result.success === false || !Array.isArray(result.data)) throw new Error("Data monitoring tidak valid.");
-            monitoring = result.data;
-        } catch (error) {
-            window.__equipmentRelocationWarnings.push("Inventaris dimuat, tetapi data progres relokasi belum tersedia. " + error.message);
-        }
+        const result = await fetchJson(urls.monitoring);
+        if (result.success === false || !Array.isArray(result.data)) throw new Error("Data monitoring tidak valid.");
+        const monitoring = result.data;
 
         const monitoringByKey = new Map(monitoring.map(row => [String(row.donor_uniq_key || "").trim(), row]));
         window.__equipmentInventoryData = rows.map(item => {

@@ -20,7 +20,7 @@ use Maatwebsite\Excel\Facades\Excel;
  * Import semua file Excel di folder DATASET/ ke tabel masing-masing.
  *
  * Pola snapshot: isi tabel tujuan dihapus dulu lalu diisi ulang dari Excel,
- * sehingga command ini idempotent (aman dijalankan berulang).
+ * sehingga setiap eksekusi mengganti snapshot, bukan menambahkan duplikat.
  * Data PnL utama (sites, site_monthly_metrics) TIDAK disentuh.
  */
 class ImportAllDatasets extends Command
@@ -64,7 +64,15 @@ class ImportAllDatasets extends Command
             ],
             'recurring' => [
                 'label'  => 'Infra 04 — Recurring (ANT & Ipas)',
-                'file'   => 'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar (1).xlsx',
+                // The export is split into consecutive 5,000-row workbooks.
+                // Import every part so the snapshot covers the complete source.
+                'files'  => [
+                    'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar (1).xlsx',
+                    'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar 1.xlsx',
+                    'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar 2.xlsx',
+                    'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar 3.xlsx',
+                    'DATASET/02 Infrastruktur management/04 Recurring (ANT & Ipas)/Simawar 4.xlsx',
+                ],
                 'table'  => 'recurring_ipas',
                 'import' => RecurringIpasImport::class,
             ],
@@ -126,17 +134,22 @@ class ImportAllDatasets extends Command
         $this->newLine();
 
         $summary = [];
+        $failed = false;
 
         foreach ($datasets as $key => $def) {
             $this->info("▶ [{$key}] {$def['label']}");
 
-            $files = [['file' => $def['file'], 'import' => $def['import']]];
+            $files = array_map(
+                static fn (string $path): array => ['file' => $path, 'import' => $def['import']],
+                $def['files'] ?? [$def['file']]
+            );
             $missing = array_values(array_filter($files, static fn (array $file): bool => ! file_exists(base_path($file['file']))));
 
             if ($missing !== []) {
                 $missingNames = implode(', ', array_map(static fn (array $file): string => $file['file'], $missing));
                 $this->error("  File tidak ditemukan: {$missingNames} — dilewati.");
                 $summary[] = [$key, $def['table'], 'FILE MISSING', '-', '-'];
+                $failed = true;
                 continue;
             }
 
@@ -176,6 +189,9 @@ class ImportAllDatasets extends Command
                                 Excel::import($import, base_path($file['file']));
                             }
                             $stats = $import->getStats();
+                            if ($stats['inserted'] === 0) {
+                                throw new \RuntimeException("File {$file['file']} tidak menghasilkan baris; snapshot lama dipertahankan.");
+                            }
                             $inserted += $stats['inserted'];
                             $skipped += $stats['skipped'];
                         }
@@ -193,6 +209,7 @@ class ImportAllDatasets extends Command
             } catch (\Throwable $e) {
                 $this->error("  Import gagal: " . $e->getMessage());
                 $summary[] = [$key, $def['table'], 'FAILED', '-', '-'];
+                $failed = true;
                 continue;
             }
 
@@ -219,6 +236,6 @@ class ImportAllDatasets extends Command
             $summary
         );
 
-        return self::SUCCESS;
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 }

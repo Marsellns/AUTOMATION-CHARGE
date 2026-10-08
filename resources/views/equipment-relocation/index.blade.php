@@ -667,7 +667,7 @@
 @push('scripts')
     <script>
         window.__equipmentRelocationUrls = {
-            inventory: @json(asset('data/equipment_relocation_inventory.json')),
+            inventory: @json(route('equipment-relocation.inventory-data')),
             monitoring: @json(route('equipment-relocation.relocation-data')),
             save: @json(route('equipment-relocation.relocation-data.store')),
             destroy: @json(route('equipment-relocation.relocation-data.destroy'))

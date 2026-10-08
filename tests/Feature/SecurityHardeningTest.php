@@ -15,6 +15,22 @@ class SecurityHardeningTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_approved_user_can_login_and_logout_and_credentials_remain_hidden(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'approved@example.test', 'password' => 'Secure!Pass123',
+            'account_status' => 'approved',
+        ]);
+        $this->post(route('login'), ['email' => $user->email, 'password' => 'Secure!Pass123'])
+            ->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user);
+        $this->get(route('dashboard'))->assertOk();
+        $this->assertArrayNotHasKey('password', $user->toArray());
+        $this->assertArrayNotHasKey('remember_token', $user->toArray());
+        $this->post(route('logout'))->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
     public function test_registration_requires_admin_approval_for_every_role(): void
     {
         Role::create(['name' => 'viewer', 'guard_name' => 'web']);
@@ -113,5 +129,21 @@ class SecurityHardeningTest extends TestCase
         $user->assignRole($role);
 
         return $user;
+    }
+
+    public function test_rejected_account_cannot_keep_using_a_preexisting_session(): void
+    {
+        $user = $this->approvedUserWithRole('admin');
+        $this->actingAs($user);
+        $user->update(['account_status' => 'rejected']);
+        $this->get('/infrastruktur')->assertRedirect(route('login'));
+        $this->assertGuest();
+    }
+
+    public function test_pending_account_session_cannot_access_financial_api(): void
+    {
+        $user = User::factory()->create(['account_status' => 'pending']);
+        $this->actingAs($user)->getJson('/api/dashboard/periods')->assertForbidden();
+        $this->assertGuest();
     }
 }

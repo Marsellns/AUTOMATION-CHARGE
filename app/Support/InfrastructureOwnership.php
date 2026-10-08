@@ -101,6 +101,7 @@ class InfrastructureOwnership
     {
         return SiteOwner::query()
             ->get(['site_code', 'site_owner'])
+            ->keyBy(fn (SiteOwner $owner): string => strtoupper(trim((string) $owner->site_code)))
             ->filter(fn (SiteOwner $owner): bool => in_array(self::bucketForLabel($owner->site_owner), $buckets, true))
             ->map(fn (SiteOwner $owner): string => strtoupper(trim((string) $owner->site_code)))
             ->filter()
@@ -120,11 +121,13 @@ class InfrastructureOwnership
                 "$.database_revenue.{$key}",
             ];
             $values = array_map(
-                static fn (string $path): string => "NULLIF(NULLIF(LOWER(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(source_details, '{$path}')), ''))), 'null'), '-')",
+                static fn (string $path): string => "NULLIF(NULLIF(NULLIF(LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(source_details, '{$path}')))), ''), 'null'), '-')",
                 $paths
             );
 
-            return 'COALESCE('.implode(', ', $values).", '')";
+            // Leave this nullable so an empty Ownership value can fall back
+            // to TP, matching bucketForRow() on the dashboard.
+            return 'COALESCE('.implode(', ', $values).')';
         };
         $ownership = $value('ownership');
         $tp = $value('tp');

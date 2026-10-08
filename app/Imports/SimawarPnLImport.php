@@ -23,7 +23,7 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
      * PENTING: Keys di sini harus match persis dengan output dari
      * `php artisan simawar:check-headings`.
      */
-    private array $monthColumns;
+    private array $monthColumns = [];
 
     /**
      * Master Site list dari Dapot (Site Owner).
@@ -45,7 +45,6 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     public function __construct(array $allowedSites = [])
     {
-        $this->monthColumns = $this->buildMonthColumns();
         if (!empty($allowedSites)) {
             $this->setAllowedSites($allowedSites);
         }
@@ -110,6 +109,17 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
      */
     public function collection(Collection $rows): void
     {
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        if ($this->monthColumns === []) {
+            $this->monthColumns = $this->buildMonthColumns($rows->first()->keys()->all());
+            if ($this->monthColumns === []) {
+                throw new \RuntimeException('Header Rev/Cost per bulan tidak ditemukan pada file PnL.');
+            }
+        }
+
         foreach ($rows as $row) {
             $this->processRow($row);
         }
@@ -194,33 +204,42 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
     }
 
     /**
-     * Build mapping 18 bulan ke heading keys.
-     *
-     * Menghasilkan array of [bulan, tahun, rev_key, cost_key].
-     * PnL key sengaja TIDAK di-include karena kita hitung sendiri.
+     * Temukan periode dari header file agar bulan baru dapat diimpor tanpa
+     * perubahan kode. PnL tetap dihitung dari Rev - Cost pada model.
      */
-    private function buildMonthColumns(): array
+    private function buildMonthColumns(array $headings): array
     {
-        $months = [
-            // [bulan_num, tahun, bulan_label]
-            [1, 2025, 'jan_25'],   [2, 2025, 'feb_25'],   [3, 2025, 'mar_25'],
-            [4, 2025, 'apr_25'],   [5, 2025, 'may_25'],   [6, 2025, 'jun_25'],
-            [7, 2025, 'jul_25'],   [8, 2025, 'aug_25'],   [9, 2025, 'sep_25'],
-            [10, 2025, 'oct_25'],  [11, 2025, 'nov_25'],  [12, 2025, 'dec_25'],
-            [1, 2026, 'jan_26'],   [2, 2026, 'feb_26'],   [3, 2026, 'mar_26'],
-            [4, 2026, 'apr_26'],   [5, 2026, 'may_26'],   [6, 2026, 'jun_26'],
-        ];
+        $numbers = ['jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4, 'may' => 5,
+            'mei' => 5, 'jun' => 6, 'jul' => 7, 'aug' => 8, 'ags' => 8,
+            'sep' => 9, 'oct' => 10, 'okt' => 10, 'nov' => 11, 'dec' => 12, 'des' => 12];
+        $columns = [];
 
-        return array_map(function ($m) {
-            [$bulan, $tahun, $label] = $m;
-            return [
+        foreach ($headings as $heading) {
+            if (!is_string($heading) || !preg_match('/^rev_([a-z]{3})_(\d{2}|\d{4})$/', $heading, $matches)) {
+                continue;
+            }
+            $bulan = $numbers[$matches[1]] ?? null;
+            if ($bulan === null) {
+                continue;
+            }
+            $tahun = (int) $matches[2];
+            if ($tahun < 100) {
+                $tahun += 2000;
+            }
+            $label = $matches[1].'_'.$matches[2];
+            if (!in_array("cost_{$label}", $headings, true)) {
+                throw new \RuntimeException("Header Cost {$matches[1]} {$matches[2]} tidak ditemukan pada file PnL.");
+            }
+            $columns[] = [
                 $bulan,
                 $tahun,
-                "rev_{$label}",   // e.g. "rev_jan_25"
-                "cost_{$label}",  // e.g. "cost_jan_25"
+                "rev_{$label}",
+                "cost_{$label}",
                 $this->detailKeys($label),
             ];
-        }, $months);
+        }
+
+        return $columns;
     }
 
     private function detailKeys(string $label): array

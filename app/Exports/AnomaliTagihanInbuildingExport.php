@@ -14,6 +14,8 @@ class AnomaliTagihanInbuildingExport implements FromQuery, WithHeadings, WithMap
 {
     use Exportable;
 
+    private int $rowNumber = 0;
+
     protected ?int $bulan;
     protected ?int $tahun;
 
@@ -65,11 +67,8 @@ class AnomaliTagihanInbuildingExport implements FromQuery, WithHeadings, WithMap
     /** @param AnomaliTagihanInbuilding $row */
     public function map($row): array
     {
-        static $no = 0;
-        $no++;
-
         return [
-            $no,
+            ++$this->rowNumber,
             $row->site_id,
             $row->periode_sebelumnya,
             (float) $row->tagihan_sebelumnya,

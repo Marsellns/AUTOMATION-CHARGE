@@ -6,6 +6,7 @@ use App\Exports\SewaLahanRenewalExport;
 use App\Http\Requests\UpdateSewaLahanRenewalRequest;
 use App\Models\SewaLahanRenewal;
 use App\Support\InfrastructureMetrics;
+use App\Support\InfrastructureCanonicalSites;
 use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -42,23 +43,30 @@ class SewaLahanRenewalController extends Controller
 
         $query = SewaLahanRenewal::query()->latest('id');
 
+        $ownershipScope = (string) $request->input('ownership_scope');
+        $validOwnershipScope = in_array($ownershipScope, ['Telkomsel', 'TP'], true);
+        $hasOwnershipScope = $validOwnershipScope
+            && ! ($request->input('filter_field') === 'ownership' && $request->input('filter_value') === $ownershipScope);
+
+        if ($request->boolean('unique_sites')) {
+            // Pick canonical Site IDs before applying a chart/year filter.
+            // Historical rows in another year must not appear in a year
+            // drill-down whose chart counted only the canonical row.
+            $selection = SewaLahanRenewal::query();
+            if ($validOwnershipScope) {
+                $this->applyOwnershipFilter($selection, $ownershipScope);
+            }
+            $ids = InfrastructureCanonicalSites::fromRows($selection->get())->pluck('id');
+            $query->whereIn('sewa_lahan_renewals.id', $ids);
+        }
+
         // Filter tahun renewal
         if ($request->filled('tahun') && $request->tahun !== 'all') {
             $query->where('tahun_renewal', (int) $request->tahun);
         }
         $this->applyDashboardFilter($query, $request);
-        $ownershipScope = (string) $request->input('ownership_scope');
-        if (in_array($ownershipScope, ['Telkomsel', 'TP'], true)
-            && ! ($request->input('filter_field') === 'ownership' && $request->input('filter_value') === $ownershipScope)) {
+        if ($hasOwnershipScope) {
             $this->applyOwnershipFilter($query, $ownershipScope);
-        }
-        if ($request->boolean('unique_sites')) {
-            $uniqueIds = (clone $query)
-                ->reorder()
-                ->select([])
-                ->selectRaw('MIN(id)')
-                ->groupBy('site_code');
-            $query->whereIn('sewa_lahan_renewals.id', $uniqueIds);
         }
 
         $dataTable = DataTables::of($query);
@@ -97,6 +105,13 @@ class SewaLahanRenewalController extends Controller
                 } elseif ($value === 'contract') {
                     $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
                     $subQuery->whereRaw("{$status} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'");
+                } elseif ($value === 'risk') {
+                    $status = "LOWER(CONCAT(COALESCE(status_dokumen, ''), ' ', COALESCE(status_perpanjangan, '')))";
+                    $subQuery->whereRaw("{$status} REGEXP 'nego|pending|belum|proses|legal|perpanjang|finalisasi'")
+                        ->orWhere(function ($withoutPks): void {
+                            $withoutPks->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
+                                ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
+                        });
                 } elseif ($value === 'off_air') {
                     $subQuery->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
                 } elseif ($value === 'without_pks') {

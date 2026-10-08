@@ -13,19 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Header X-Forwarded-* hanya boleh diterima dari proxy yang memang
-        // dikelola. Memercayai seluruh alamat IP memungkinkan klien memalsukan
-        // alamat asal, host, serta skema HTTPS (termasuk melewati rate limit).
-        $trustedProxies = trim((string) env('TRUSTED_PROXIES', ''));
-        if ($trustedProxies !== '') {
-            $middleware->trustProxies(at: $trustedProxies);
-        }
-
         // Security hardening enterprise: enforce HTTPS, add security headers,
         // dan protect sensitive web routes from common attack vectors.
         $middleware->append([
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\EnforceHttps::class,
+        ]);
+
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureAccountApproved::class,
+            \App\Http\Middleware\RenderReportInFilament::class,
         ]);
 
         // Alias middleware spatie/laravel-permission (role & permission)

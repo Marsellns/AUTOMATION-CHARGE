@@ -48,7 +48,7 @@ class ImportCentralizedSubmodulesDataset extends Command
             $sent = app(ElectricityAnomalyNotificationService::class)->send('Centralized PLN', $anomalies);
             $this->info($sent
                 ? '✓ Notifikasi kenaikan listrik >50% berhasil dikirim.'
-                : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per hari.');
+                : '✓ Notifikasi tidak dikirim ulang karena batas satu kali per slot jadwal.');
         }
 
         return self::SUCCESS;

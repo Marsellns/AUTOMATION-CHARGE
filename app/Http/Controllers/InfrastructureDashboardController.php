@@ -6,6 +6,7 @@ use App\Models\CombatSite;
 use App\Models\SewaLahanRenewal;
 use App\Models\SiteOwner;
 use App\Support\CombatSourceDetails;
+use App\Support\InfrastructureCanonicalSites;
 use App\Support\InfrastructureMetrics;
 use App\Support\InfrastructureOwnership;
 use App\Support\LeaseStatus;
@@ -40,24 +41,7 @@ class InfrastructureDashboardController extends Controller
         }
 
         $all = $scope === 'sewa' ? $sewa : ($scope === 'combat' ? $combat : $sewa->concat($combat));
-        $uniqueBySite = static function ($rows) {
-            // Combat's canonical workbook has a master sheet and a revenue
-            // sheet.  Prefer the richer master row when both sheets contain
-            // the same Site ID; keep the revenue-only row only for IDs that
-            // exist there exclusively.
-            return $rows
-            ->sortByDesc(static function ($row): int {
-                $details = CombatSourceDetails::flattened($row->source_details);
-                $score = (filled($row->status_dokumen) ? 16 : 0)
-                    + (filled($row->status_perpanjangan) ? 8 : 0)
-                    + (filled($row->end_date_baru ?? $row->end_date_lama) ? 4 : 0)
-                    + (filled($details['status'] ?? null) ? 2 : 0)
-                    + (filled($row->site_name) ? 1 : 0);
-                return ($score * 1000000) + (int) $row->id;
-            })
-            ->unique(fn ($row): string => strtoupper(trim((string) $row->site_code)))
-            ->values();
-        };
+        $uniqueBySite = static fn (Collection $rows): Collection => InfrastructureCanonicalSites::fromRows($rows);
         $sewaSites = $uniqueBySite($sewa);
         $combatSites = $uniqueBySite($combat);
         $allSites = $uniqueBySite($all);
@@ -91,7 +75,9 @@ class InfrastructureDashboardController extends Controller
         // do not mix Combat's Justi years into it.  On the module pages the
         // same chart remains scoped to that module and includes its own year
         // field (Renewal or Justi Dirnet).
-        $renewalRows = $scope === 'all' ? $sewaSites : $allSites;
+        // The overview always describes Sewa Lahan renewal years.  Requests
+        // without an explicit scope are the normal overview request as well.
+        $renewalRows = $scope === 'combat' ? $combatSites : $sewaSites;
         $renewalYears = $renewalRows->groupBy(function ($row): string {
             $year = $row->tahun_renewal ?? $row->tahun_justi_dirnet;
             return $this->dimensionKey('tahun', $year);
@@ -120,11 +106,10 @@ class InfrastructureDashboardController extends Controller
             ->sortBy(fn ($item) => array_search($item['name'], LeaseStatus::labels(), true))
             ->values();
 
-        // The charts count unique Site ID values.  Keep the notification
-        // drill-down on the same basis so duplicate/historical workbook rows
-        // do not make a notification show a different number of sites.
-        $uniqueRows = $uniqueBySite;
-        $buildLeaseAlerts = static function ($rows, string $source): array {
+        // The charts count unique Site ID values across both datasets.  The
+        // overview alerts follow that same definition; module alerts remain
+        // scoped to their own selected rows.
+        $buildLeaseAlerts = static function ($rows, ?string $source): array {
             $alerts = [
                 'expired' => [],
                 'within_90' => [],
@@ -153,7 +138,7 @@ class InfrastructureDashboardController extends Controller
                 $item = [
                     'site_code' => (string) $row->site_code,
                     'site_name' => (string) ($row->site_name ?? ''),
-                    'source' => $source,
+                    'source' => $source ?? ($row instanceof CombatSite ? 'Combat' : 'Sewa Lahan'),
                     'end_date' => $endDate?->format('Y-m-d'),
                     'days_remaining' => $daysRemaining,
                     'status' => $status,
@@ -182,13 +167,10 @@ class InfrastructureDashboardController extends Controller
             'unknown' => [],
         ];
         $alertSources = $scope === 'sewa'
-            ? [['rows' => $uniqueRows($sewa), 'source' => 'Sewa Lahan']]
+            ? [['rows' => $sewaSites, 'source' => 'Sewa Lahan']]
             : ($scope === 'combat'
-                ? [['rows' => $uniqueRows($combat), 'source' => 'Combat']]
-                : [
-                    ['rows' => $uniqueRows($sewa), 'source' => 'Sewa Lahan'],
-                    ['rows' => $uniqueRows($combat), 'source' => 'Combat'],
-                ]);
+                ? [['rows' => $combatSites, 'source' => 'Combat']]
+                : [['rows' => $allSites, 'source' => null]]);
         foreach ($alertSources as $alertSource) {
             $sourceAlerts = $buildLeaseAlerts($alertSource['rows'], $alertSource['source']);
             foreach ($sourceAlerts as $key => $items) {
@@ -399,6 +381,8 @@ class InfrastructureDashboardController extends Controller
                 'summary_status' => match ($filterValue) {
                     'active' => $airStatus === InfrastructureMetrics::ACTIVE,
                     'contract' => (bool) preg_match('/nego|pending|belum|proses|legal|perpanjang|finalisasi/', $statusText),
+                    'risk' => (bool) preg_match('/nego|pending|belum|proses|legal|perpanjang|finalisasi/', $statusText)
+                        || (blank($row->no_pks_baru) && blank($row->no_pks_lama)),
                     'off_air' => $airStatus === InfrastructureMetrics::OFF_AIR,
                     'without_pks' => blank($row->no_pks_baru) && blank($row->no_pks_lama),
                     default => false,
@@ -577,17 +561,9 @@ class InfrastructureDashboardController extends Controller
     private function uniqueDetailRecords(Collection $records, bool $global = false): Collection
     {
         return $records
-            ->sortByDesc(function (array $record): int {
-                $row = $record['row'];
-                $details = $this->rowDetails($row);
-                $score = (filled($row->status_dokumen) ? 16 : 0)
-                    + (filled($row->status_perpanjangan) ? 8 : 0)
-                    + (filled($row->end_date_baru ?? $row->end_date_lama) ? 4 : 0)
-                    + (filled($details['status'] ?? null) ? 2 : 0)
-                    + (filled($row->site_name) ? 1 : 0);
-
-                return ($score * 1000000) + (int) $row->id;
-            })
+            ->sort(static fn (array $left, array $right): int =>
+                (InfrastructureCanonicalSites::score($right['row']) <=> InfrastructureCanonicalSites::score($left['row']))
+                ?: ((int) $right['row']->id <=> (int) $left['row']->id))
             ->unique(fn (array $record): string => ($global ? '' : $record['source'].':') . strtoupper(trim((string) $record['row']->site_code)))
             ->values();
     }
