@@ -46,3 +46,8 @@ Thumbs.db
 
 # Screenshots
 *.png
+
+# Local cPanel metadata and temporary working files
+/.cpanel/
+/tmp/
+.venv/
