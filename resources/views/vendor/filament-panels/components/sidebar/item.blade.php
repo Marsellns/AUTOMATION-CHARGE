@@ -1,4 +1,4 @@
-{{-- Filament 5.9 sidebar item: pass child items recursively for nested report portfolios. --}}
+{{-- Filament 4 sidebar item: pass child items recursively for nested report portfolios. --}}
 @props([
     'active' => false,
     'activeChildItems' => false,

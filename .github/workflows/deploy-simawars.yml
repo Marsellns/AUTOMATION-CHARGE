@@ -1,0 +1,78 @@
+name: Deploy simawars.web.id
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simawars-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.SIMAWARS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, simplexml, xml, xmlreader, xmlwriter, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Build release package
+        id: package
+        run: |
+          set -euo pipefail
+          composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+          npm ci
+          npm run build
+          php scripts/build-cpanel-package.php
+          archive="$(find storage/app/releases -maxdepth 1 -type f -name 'simaster-cpanel-filament-php82-*.zip' -print -quit)"
+          test -n "$archive"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "archive_sha256=$(sha256sum "$archive" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure verified SSH connection
+        env:
+          DEPLOY_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+          CPANEL_HOST: ${{ vars.CPANEL_SSH_HOST }}
+          CPANEL_PORT: ${{ vars.CPANEL_SSH_PORT }}
+          CPANEL_USER: ${{ vars.CPANEL_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          test -n "$CPANEL_HOST"
+          test -n "$CPANEL_PORT"
+          test -n "$CPANEL_USER"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_deploy"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_deploy" "$HOME/.ssh/known_hosts"
+          printf 'Host simawars-cpanel\n  HostName %s\n  Port %s\n  User %s\n  IdentityFile %s/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
+            "$CPANEL_HOST" "$CPANEL_PORT" "$CPANEL_USER" "$HOME" > "$HOME/.ssh/config"
+          chmod 600 "$HOME/.ssh/config"
+
+      - name: Upload and activate release
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          ARCHIVE_SHA256: ${{ steps.package.outputs.archive_sha256 }}
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes simawars-cpanel 'mkdir -p "$HOME/simawars-deploy/inbox"'
+          scp -o BatchMode=yes "$ARCHIVE" "simawars-cpanel:simawars-deploy/inbox/$GITHUB_SHA.zip"
+          ssh -o BatchMode=yes simawars-cpanel bash -s -- "$GITHUB_SHA" "$ARCHIVE_SHA256" < scripts/cpanel-activate-release.sh

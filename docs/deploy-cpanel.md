@@ -1,4 +1,4 @@
-# Deploy SIMASTER Laravel 12 / Filament 5 / PHP 8.2 ke cPanel Jagoan Hosting
+# Deploy SIMASTER Laravel 12 / Filament 4 / PHP 8.2 ke cPanel Jagoan Hosting
 
 Panduan ini untuk hosting dengan SSH/Terminal, cron, Apache/LiteSpeed, dan MySQL. DBeaver adalah aplikasi pengelola MySQL; aplikasi menggunakan koneksi `.env` ke server MySQL yang sama. Data operasional ada dalam database dan berkas dokumen privat.
 
@@ -6,7 +6,7 @@ Untuk produksi yang sudah memiliki login PHP 8.0, tempatkan modul Laravel pada s
 
 ## 1. Syarat hosting
 
-- **PHP web dan CLI 8.2**, gunakan patch 8.2 terbaru yang disediakan hosting. Lockfile ditujukan untuk PHP 8.2.0 atau lebih baru dan memakai Laravel 12, Filament 5, Livewire 4, Activitylog 4, Permission 6, DataTables 12, Excel 3.1 dan Symfony 7. Filament 5 mendukung PHP 8.2 / Laravel 11.28+ menurut [persyaratan resminya](https://filamentphp.com/docs/5.x/introduction/installation).
+- **PHP web dan CLI 8.2**, gunakan patch 8.2 terbaru yang disediakan hosting. Lockfile ditujukan untuk PHP 8.2.0 atau lebih baru dan memakai Laravel 12, Filament 4, Livewire 3, Activitylog 4, Permission 6, DataTables 12, Excel 3.1 dan Symfony 7. Lihat [persyaratan resmi Filament 4](https://filamentphp.com/docs/4.x/introduction/installation).
 - Ekstensi: bcmath, ctype, curl, dom, fileinfo, filter, gd, hash, iconv, **intl**, mbstring, openssl, pcre, PDO/pdo_mysql, session, SimpleXML, tokenizer, xml, xmlreader, xmlwriter, zip. Gunakan `composer check-platform-reqs --no-dev` untuk daftar lengkap sesuai dependency.
 - MySQL 8.0+ dengan akses SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP, REFERENCES, CREATE VIEW, SHOW VIEW dan TRIGGER. Pemulihan paket telah diuji pada MySQL 8.4; MariaDB perlu pengujian tersendiri.
 - HTTPS/AutoSSL aktif. Akses Terminal/SSH, cron, dan SMTP yang diizinkan hosting.

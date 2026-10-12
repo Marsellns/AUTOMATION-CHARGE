@@ -1,4 +1,4 @@
-{{-- Filament 5.9 database notifications with a compact topbar panel. --}}
+{{-- Filament 4 database notifications with a compact topbar panel. --}}
 @php
     use Filament\Notifications\View\NotificationsIconAlias;
     use Filament\Support\Enums\Alignment;

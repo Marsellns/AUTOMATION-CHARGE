@@ -31,8 +31,8 @@ class FilamentReportPanelTest extends TestCase
         config(['app.force_https' => false]);
         $user = $this->userWithRole('report');
 
-        $this->actingAs($user)->get('/report')->assertRedirect(route('dashboard'));
-        $this->get(route('dashboard'))->assertOk()->assertSee('fi-sidebar', false)
+        $this->actingAs($user)->get('https://localhost/report')->assertRedirect(route('dashboard'));
+        $this->get('https://localhost/dashboard')->assertOk()->assertSee('fi-sidebar', false)
             ->assertDontSee('Ringkasan Laporan');
         $this->assertTrue($user->canAccessPanel(Filament::getPanel('report')));
         $user->update(['account_status' => 'rejected']);

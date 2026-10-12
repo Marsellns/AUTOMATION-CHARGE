@@ -113,6 +113,7 @@ try {
         'filament_version' => \Composer\InstalledVersions::getPrettyVersion('filament/filament'),
         'composer_lock_sha256' => hash_file('sha256', $base.'/composer.lock'),
         'vite_manifest_sha256' => hash_file('sha256', $base.'/public/build/manifest.json'),
+        'source_commit' => getenv('GITHUB_SHA') ?: null,
         'includes_credentials' => false,
         'includes_database_or_documents' => false,
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
