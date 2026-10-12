@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\AccountApprovals;
+use App\Filament\Pages\Login as ReportLogin;
 use App\Filament\Pages\OperationalReport;
 use App\Livewire\ReportNotifications;
 use App\Http\Middleware\EnsureAccountApproved;
@@ -18,6 +19,7 @@ use Filament\Actions\Action;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -35,9 +37,11 @@ class ReportPanelProvider extends PanelProvider
             ->default()
             ->id('report')
             ->path('report')
-            ->login()
+            ->login(ReportLogin::class)
             ->authGuard('web')
             ->brandName('SIMAWAR')
+            ->brandLogo(fn () => view('auth.partials.brand'))
+            ->brandLogoHeight('2.25rem')
             ->colors(['primary' => Color::Red])
             ->maxContentWidth('full')
             ->sidebarCollapsibleOnDesktop()
@@ -53,6 +57,9 @@ class ReportPanelProvider extends PanelProvider
             ])
             ->navigation(fn (NavigationBuilder $builder) => $builder->groups(ModuleNavigation::groups()))
             ->renderHook('panels::head.end', fn () => view('filament.partials.report-assets'))
+            ->renderHook(PanelsRenderHook::SIMPLE_LAYOUT_START, fn () => request()->routeIs('filament.report.auth.login')
+                ? view('auth.partials.login-hero')
+                : '')
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class, ShareErrorsFromSession::class,

@@ -3,44 +3,52 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login — SIMASTER</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="{{ asset('css/simaster.css') }}" rel="stylesheet">
+    <meta name="theme-color" content="#143c34">
+    <title>Masuk — SIMAWAR</title>
+    <link href="{{ asset('css/auth.css') }}" rel="stylesheet">
 </head>
-<body class="bg-light">
-    <div class="container" style="max-width: 420px; margin-top: 8rem;">
-        <h1 class="h4 mb-3 text-center">Login SIMASTER</h1>
+<body class="simawar-auth-page">
+    <main class="simawar-auth-shell">
+        @include('auth.partials.login-hero')
 
-        @if ($errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
-        @endif
-        @if (session('status'))
-            <div class="alert alert-success">{{ session('status') }}</div>
-        @endif
-
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" action="{{ route('login') }}">
-                    @csrf
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}"
-                               class="form-control" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" id="password" name="password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-brand w-100">Login</button>
-                </form>
-                <div class="text-center mt-3">
-                    <a href="{{ route('register') }}">Buat akun baru</a>
+        <section class="simawar-auth-form-side" aria-labelledby="login-title">
+            <div class="simawar-auth-form-wrap">
+                <div class="simawar-auth-index"><span>AKSES SISTEM</span><span>SIMAWAR / 01</span></div>
+                <div class="simawar-auth-intro">
+                    <p class="simawar-auth-kicker">PORTAL INTERNAL</p>
+                    <h1 id="login-title">Selamat datang kembali.</h1>
+                    <p>Masuk dengan akun yang telah terdaftar untuk melanjutkan pekerjaan Anda.</p>
                 </div>
+
+                @if ($errors->any())
+                    <div class="simawar-auth-alert simawar-auth-alert-error" role="alert">{{ $errors->first() }}</div>
+                @endif
+                @if (session('status'))
+                    <div class="simawar-auth-alert simawar-auth-alert-success" role="status">{{ session('status') }}</div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" class="simawar-auth-form">
+                    @csrf
+                    <div class="simawar-auth-field">
+                        <label for="email">Email akun</label>
+                        <input type="email" id="email" name="email" value="{{ old('email') }}"
+                               autocomplete="username" inputmode="email" placeholder="nama@email.com"
+                               required>
+                    </div>
+                    <div class="simawar-auth-field">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password"
+                               autocomplete="current-password" placeholder="Masukkan password" required>
+                    </div>
+                    <button type="submit" class="simawar-auth-submit">
+                        <span>Masuk ke SIMAWAR</span><span aria-hidden="true">↗</span>
+                    </button>
+                </form>
+
+                <p class="simawar-auth-register">Belum memiliki akun? <a href="{{ route('register') }}">Ajukan akses</a></p>
+                <p class="simawar-auth-note">Akses sistem hanya untuk pengguna yang telah disetujui.</p>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 </body>
 </html>
