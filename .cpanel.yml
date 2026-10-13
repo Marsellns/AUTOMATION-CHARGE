@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/bash -euo pipefail -- /home3/simawarw/beta.simawar.web.id/scripts/cpanel-deploy-beta.sh

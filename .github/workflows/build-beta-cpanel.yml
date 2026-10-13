@@ -1,0 +1,61 @@
+name: Build SIMAWAR beta for cPanel Git
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: simawar-beta-build-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, simplexml, xml, xmlreader, xmlwriter, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Build runtime package
+        run: |
+          set -euo pipefail
+          composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+          npm ci
+          npm run build
+          php scripts/build-cpanel-package.php
+          package="$(find storage/app/releases -maxdepth 1 -type f -name 'simaster-cpanel-filament-php82-*.zip' -print -quit)"
+          test -n "$package"
+          mkdir -p dist
+          asset="dist/simawar-beta-$GITHUB_SHA.zip"
+          cp "$package" "$asset"
+          sha256sum "$asset" > "$asset.sha256"
+
+      - name: Publish package for the matching Git commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="beta-$GITHUB_SHA"
+          asset="dist/simawar-beta-$GITHUB_SHA.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" "$asset.sha256" --clobber
+          else
+            gh release create "$tag" "$asset" "$asset.sha256" \
+              --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "SIMAWAR beta $GITHUB_SHA" \
+              --notes "Paket runtime beta untuk commit $GITHUB_SHA. Tidak memuat .env, database, atau dokumen operasional."
+          fi

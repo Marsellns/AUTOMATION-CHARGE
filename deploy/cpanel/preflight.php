@@ -18,8 +18,9 @@ $fail = static function (string $message): never {
 if (! $app->environment('production') || config('app.debug') !== false) {
     $fail('APP_ENV must be production and APP_DEBUG must be false');
 }
-if (config('app.url') !== 'https://simawars.web.id') {
-    $fail('APP_URL must be https://simawars.web.id');
+$expectedAppUrl = $argv[1] ?? 'https://simawars.web.id';
+if (config('app.url') !== $expectedAppUrl) {
+    $fail('APP_URL must be '.$expectedAppUrl);
 }
 $key = (string) config('app.key');
 $decodedKey = str_starts_with($key, 'base64:') ? base64_decode(substr($key, 7), true) : $key;
