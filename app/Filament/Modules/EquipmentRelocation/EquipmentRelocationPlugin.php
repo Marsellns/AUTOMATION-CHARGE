@@ -17,4 +17,9 @@ class EquipmentRelocationPlugin extends ReportModulePlugin
             Pages\EquipmentRelocationPage::class,
         ];
     }
+
+    public function dashboardGroups(): array
+    {
+        return ['Equipment' => 'equipment-relocation.index'];
+    }
 }

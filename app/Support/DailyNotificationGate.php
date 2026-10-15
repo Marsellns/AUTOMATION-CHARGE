@@ -19,6 +19,19 @@ final class DailyNotificationGate
     public static function reserve(string $channel, string $topic): ?string
     {
         $now = CarbonImmutable::now(self::timezone());
+        $slot = self::currentSlotStart();
+        if ($slot === null) {
+            return null;
+        }
+
+        $key = self::key($channel, $topic, $slot->format('Y-m-d@H:i'));
+
+        return Cache::add($key, true, $now->addDays(2)) ? $key : null;
+    }
+
+    public static function currentSlotStart(): ?CarbonImmutable
+    {
+        $now = CarbonImmutable::now(self::timezone());
         $times = [
             (string) config('notifications.daily_at', '08:00'),
             (string) config('notifications.evening_at', '17:00'),
@@ -29,10 +42,8 @@ final class DailyNotificationGate
         if ($dueTimes === []) {
             return null;
         }
-        $slot = $dueTimes[count($dueTimes) - 1];
-        $key = self::key($channel, $topic, $now->toDateString().'@'.$slot);
 
-        return Cache::add($key, true, $now->addDays(2)) ? $key : null;
+        return $now->setTimeFromTimeString($dueTimes[count($dueTimes) - 1]);
     }
 
     public static function release(string $key): void

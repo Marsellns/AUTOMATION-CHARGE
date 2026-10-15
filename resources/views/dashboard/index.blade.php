@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard — SIMASTER')
+@section('title', 'Dashboard — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">

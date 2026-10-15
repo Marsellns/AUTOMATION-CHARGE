@@ -218,6 +218,11 @@
     margin: clamp(2.75rem, 6vh, 5rem) 0 2.25rem;
 }
 
+.simawar-auth-intro-register {
+    margin-top: clamp(2rem, 4vh, 3.25rem);
+    margin-bottom: 1.75rem;
+}
+
 .simawar-auth-kicker {
     margin: 0 0 0.9rem;
     color: var(--simawar-red);
@@ -253,7 +258,8 @@
     font-weight: 700;
 }
 
-.simawar-auth-field input {
+.simawar-auth-field input,
+.simawar-auth-field select {
     display: block;
     width: 100%;
     height: 3.3rem;
@@ -268,13 +274,30 @@
     transition: border-color .15s ease, box-shadow .15s ease;
 }
 
+.simawar-auth-field select {
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
 .simawar-auth-field input::placeholder {
     color: #8a9890;
 }
 
-.simawar-auth-field input:focus {
+.simawar-auth-field input:focus,
+.simawar-auth-field select:focus {
     border-color: var(--simawar-green);
     box-shadow: 0 0 0 3px rgba(20, 60, 52, .14);
+}
+
+.simawar-auth-field [aria-invalid="true"] {
+    border-color: var(--simawar-red);
+}
+
+.simawar-auth-field-hint {
+    margin: 0.45rem 0 0;
+    color: #64746c;
+    font-size: 0.76rem;
+    line-height: 1.45;
 }
 
 .simawar-auth-submit {
@@ -426,8 +449,20 @@ body:has(.fi-simple-layout > .simawar-login-hero) {
     color: var(--simawar-ink);
 }
 
-.fi-simple-layout:has(> .simawar-login-hero) .fi-checkbox-input {
-    background: #fbfaf5;
+.fi-simple-layout:has(> .simawar-login-hero) .fi-input {
+    color-scheme: light;
+}
+
+.fi-simple-layout:has(> .simawar-login-hero) .fi-input:-webkit-autofill,
+.fi-simple-layout:has(> .simawar-login-hero) .fi-input:-webkit-autofill:hover,
+.fi-simple-layout:has(> .simawar-login-hero) .fi-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--simawar-ink);
+    caret-color: var(--simawar-ink);
+    box-shadow: 0 0 0 1000px #fbfaf5 inset;
+}
+
+.fi-simple-layout:has(> .simawar-login-hero) .fi-checkbox-input:not(:checked) {
+    background-color: #fbfaf5;
 }
 
 .fi-simple-layout:has(> .simawar-login-hero) .fi-ac-btn-action {

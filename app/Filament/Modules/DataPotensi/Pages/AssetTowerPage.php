@@ -10,6 +10,6 @@ class AssetTowerPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Data Potensi', 'Asset Tower', 'data-potensi.asset-tower.index', 'data-potensi.asset-tower.*', 'heroicon-o-signal'];
+        return ['Feasibility Site', 'Asset Tower', 'data-potensi.asset-tower.index', 'data-potensi.asset-tower.*', 'heroicon-o-signal'];
     }
 }

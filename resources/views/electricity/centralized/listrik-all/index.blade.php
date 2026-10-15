@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Listrik All — Electricity Centralized — SIMASTER')
+@section('title', 'Listrik All — Electricity Centralized — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

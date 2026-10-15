@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Upload '.$definition['label'].' — SIMASTER')
+@section('title', 'Upload '.$definition['label'].' — SIMAWAR')
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Upload {{ $definition['label'] }}</h1>

@@ -10,6 +10,6 @@ class InputTagihanIbcPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Input Tagihan IBC', 'electricity.inbuilding.input-tagihan-ibc.index', 'electricity.inbuilding.input-tagihan-ibc.*', 'heroicon-o-pencil-square', 6 => 'Listrik Inbuilding'];
+        return ['Electricity Monitoring', 'Input Tagihan IBC', 'electricity.inbuilding.input-tagihan-ibc.index', 'electricity.inbuilding.input-tagihan-ibc.*', 'heroicon-o-pencil-square', 6 => 'Listrik Inbuilding'];
     }
 }

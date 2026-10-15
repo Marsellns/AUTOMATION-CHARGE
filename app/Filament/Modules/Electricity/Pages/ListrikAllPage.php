@@ -10,6 +10,6 @@ class ListrikAllPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Listrik All', 'electricity.centralized.listrik-all.index', 'electricity.centralized.listrik-all.*', 'heroicon-o-table-cells', 6 => 'Listrik Centralized'];
+        return ['Electricity Monitoring', 'Listrik All', 'electricity.centralized.listrik-all.index', 'electricity.centralized.listrik-all.*', 'heroicon-o-table-cells', 6 => 'Listrik Centralized'];
     }
 }

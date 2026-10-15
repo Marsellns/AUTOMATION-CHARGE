@@ -29,6 +29,7 @@ use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\InfrastructureUploadController;
 use App\Http\Controllers\InfrastructureDashboardController;
 use App\Http\Controllers\PresalesController;
+use App\Http\Controllers\ModuleDashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -80,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/rru', '/equipment-relocation')->name('rru.index');
 
     // Presales adalah alur sirkulasi dan persetujuan dokumen dari sistem acuan.
+    Route::get('/po-monitoring', [ModuleDashboardController::class, 'purchaseOrders'])->name('po-monitoring.dashboard');
     Route::prefix('po-monitoring/presales')->name('presales.')->group(function () {
         Route::get('/', [PresalesController::class, 'index'])->name('index');
         Route::get('/create', [PresalesController::class, 'create'])->name('create');
@@ -113,6 +115,7 @@ Route::middleware('auth')->group(function () {
 
     // Data Potensi
     Route::prefix('data-potensi')->name('data-potensi.')->group(function () {
+        Route::get('/', [ModuleDashboardController::class, 'feasibility'])->name('dashboard');
         Route::get('site-owner', [DataPotensiSiteOwnerController::class, 'index'])->name('site-owner.index');
         Route::get('site-owner/data', [DataPotensiSiteOwnerController::class, 'data'])->name('site-owner.data');
         Route::get('site-owner/export-excel', [DataPotensiSiteOwnerController::class, 'exportExcel'])->name('site-owner.export-excel');

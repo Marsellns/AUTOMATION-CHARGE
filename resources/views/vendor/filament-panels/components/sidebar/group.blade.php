@@ -24,10 +24,29 @@
     $groupItemsId = 'fi-sidebar-group-items-' . Str::slug($groupLabel) . '-' . substr(md5($groupLabel), 0, 8);
     $dashboardUrl = $attributes->get('data-simaster-dashboard-url');
     $dashboardCurrent = $attributes->get('data-simaster-dashboard-current') === 'true';
+    $moduleImage = $attributes->get('data-simaster-module-image');
+    $moduleUrl = $dashboardUrl ?: $attributes->get('data-simaster-module-url');
 @endphp
 
 <li
-    x-data="{ label: @js($subNavigation ? "sub_navigation_{$label}" : $label) }"
+    x-data="{
+        label: @js($subNavigation ? "sub_navigation_{$label}" : $label),
+        openModule() {
+            $store.sidebar.open();
+            if ($store.sidebar.groupIsCollapsed(this.label)) $store.sidebar.toggleCollapsedGroup(this.label);
+        },
+        toggleModule() {
+            if (! $store.sidebar.isOpen) {
+                $store.sidebar.open();
+                if ($store.sidebar.groupIsCollapsed(this.label)) $store.sidebar.toggleCollapsedGroup(this.label);
+            } else {
+                $store.sidebar.toggleCollapsedGroup(this.label);
+            }
+        }
+    }"
+    @if ($moduleImage)
+        x-init="@if ($active || $dashboardCurrent) if ($store.sidebar.groupIsCollapsed(label)) $store.sidebar.toggleCollapsedGroup(label) @else $store.sidebar.collapseGroup(label) @endif"
+    @endif
     data-group-label="{{ $subNavigation ? "sub_navigation_{$label}" : $label }}"
     x-bind:class="{ 'fi-collapsed': $store.sidebar.groupIsCollapsed(label) }"
     {{
@@ -35,10 +54,25 @@
             'fi-sidebar-group',
             'fi-active' => $active,
             'fi-collapsible' => $collapsible,
+            'simaster-module-group' => (bool) $moduleImage,
         ])
     }}
 >
-    @if ($label)
+    @if ($moduleImage)
+        <div class="simaster-module-tile" x-bind:class="{ 'simaster-module-selected': ! $store.sidebar.groupIsCollapsed(label) }">
+            <a href="{{ $moduleUrl }}" class="fi-sidebar-group-label simaster-sidebar-group-link simaster-module-trigger"
+               aria-label="Buka grafik {{ $label }}" aria-controls="{{ $groupItemsId }}"
+               @if ($dashboardCurrent) aria-current="page" @endif
+               x-bind:aria-expanded="! $store.sidebar.groupIsCollapsed(label)" x-on:click="openModule()">
+                <img src="{{ $moduleImage }}" alt="" width="68" height="68" class="simaster-module-image">
+                <span class="simaster-module-caption">{{ $label }}</span>
+            </a>
+            <button type="button" class="simaster-module-toggle" aria-label="Tampilkan submodul {{ $label }}" aria-controls="{{ $groupItemsId }}"
+                    x-bind:aria-expanded="! $store.sidebar.groupIsCollapsed(label)" x-on:click="toggleModule()">
+                {{ \Filament\Support\generate_icon_html('heroicon-m-chevron-down', size: IconSize::Small) }}
+            </button>
+        </div>
+    @elseif ($label)
         <div
             @if ($collapsible && ! $dashboardUrl)
                 x-on:click="$store.sidebar.toggleCollapsedGroup(label)"
@@ -86,7 +120,7 @@
         </div>
     @endif
 
-    @if ($hasDropdown)
+    @if ($hasDropdown && ! $moduleImage)
         <x-filament::dropdown
             :placement="(__('filament-panels::layout.direction') === 'rtl') ? 'left-start' : 'right-start'"
             x-show="! $store.sidebar.isOpen"
@@ -188,7 +222,7 @@
             id="{{ $groupItemsId }}"
 
             @if ($sidebarCollapsible)
-                x-show="$store.sidebar.isOpen ? ! $store.sidebar.groupIsCollapsed(label) : ! @js($hasDropdown)"
+                x-show="$store.sidebar.isOpen ? ! $store.sidebar.groupIsCollapsed(label) : @js(! $moduleImage && ! $hasDropdown)"
             @else
                 x-show="! $store.sidebar.groupIsCollapsed(label)"
             @endif
@@ -199,8 +233,12 @@
             x-transition:enter-start="fi-transition-enter-start"
             x-transition:enter-end="fi-transition-enter-end"
         @endif
-        class="fi-sidebar-group-items"
+        class="fi-sidebar-group-items {{ $moduleImage ? 'simaster-module-submenu' : '' }}"
+        @if ($moduleImage) x-cloak @endif
     >
+        @if ($moduleImage)
+            <li class="simaster-module-submenu-heading">{{ $label }}</li>
+        @endif
         @foreach ($items as $item)
             @php
                 $isItemChildItemsActive = $item->isChildItemsActive();

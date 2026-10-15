@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Profit & Loss — SIMASTER')
+@section('title', 'Profit & Loss — SIMAWAR')
 
 @section('content')
     @if (session('success'))
@@ -82,34 +82,15 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3" aria-live="polite">
-        <div class="col-md-6">
-            <button type="button" class="card pnl-highlight pnl-highlight-profit h-100 w-100 text-start"
-                    id="pnl-highlight-profit"
-                    aria-controls="pnl-table" aria-pressed="false" aria-busy="true" disabled>
-                <div class="card-body">
-                    <div class="small fw-semibold text-body-secondary mb-2">Profit Site Terbesar</div>
-                    <div class="pnl-highlight-value text-profit mb-2" id="pnl-highlight-profit-value">Memuat...</div>
-                    <div class="fw-semibold text-truncate" id="pnl-highlight-profit-name">&nbsp;</div>
-                    <div class="small text-body-secondary" id="pnl-highlight-profit-meta">&nbsp;</div>
-                </div>
-            </button>
-        </div>
-        <div class="col-md-6">
-            <button type="button" class="card pnl-highlight pnl-highlight-loss h-100 w-100 text-start"
-                    id="pnl-highlight-loss"
-                    aria-controls="pnl-table" aria-pressed="false" aria-busy="true" disabled>
-                <div class="card-body">
-                    <div class="small fw-semibold text-body-secondary mb-2">Loss Site Terbesar</div>
-                    <div class="pnl-highlight-value text-loss mb-2" id="pnl-highlight-loss-value">Memuat...</div>
-                    <div class="fw-semibold text-truncate" id="pnl-highlight-loss-name">&nbsp;</div>
-                    <div class="small text-body-secondary" id="pnl-highlight-loss-meta">&nbsp;</div>
-                </div>
-            </button>
-        </div>
+    <div class="row g-3 mb-3" id="pnl-financial-summary" aria-live="polite">
+        @foreach (['revenue' => 'Total Revenue', 'cost' => 'Total Cost', 'profit_loss' => 'Net Profit / Loss', 'margin' => 'Margin P&L'] as $key => $label)
+            <div class="col-xl-3 col-6"><div class="card h-100"><div class="card-body">
+                <div class="small text-body-secondary mb-2">{{ $label }}</div>
+                <div class="pnl-summary-value" id="pnl-summary-{{ $key }}">—</div>
+            </div></div></div>
+        @endforeach
     </div>
-
-    {{-- Main PnL Table --}}
+    {{-- Grafik utama P&L --}}
     <div class="row g-3 mb-3">
         <div class="col-lg-8">
             <div class="card h-100">
@@ -132,6 +113,24 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div><h2 class="h5 mb-1">Performa Site</h2><p class="small text-body-secondary mb-0" id="pnl-ranking-caption">Memuat ringkasan periode dan NOP…</p></div>
+        <span class="small text-body-secondary">Pilih site untuk memfilter tabel, atau buka rincian historinya.</span>
+    </div>
+    <div class="row g-3 mb-4">
+        @foreach (['profit' => 'Top 3 Site Profit', 'loss' => 'Top 3 Site Loss'] as $type => $title)
+            <div class="col-xl-6">
+                <section class="card pnl-ranking-panel h-100 pnl-ranking-{{ $type }}" aria-labelledby="pnl-ranking-title-{{ $type }}">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <span class="pnl-ranking-symbol" aria-hidden="true">{{ $type === 'profit' ? '↗' : '↘' }}</span>
+                        <div><h3 class="h6 mb-1" id="pnl-ranking-title-{{ $type }}">{{ $title }}</h3><p class="small text-body-secondary mb-0">{{ $type === 'profit' ? 'Laba tertinggi' : 'Kerugian terbesar' }} berdasarkan net P&L</p></div>
+                    </div>
+                    <div id="pnl-ranking-{{ $type }}" class="pnl-ranking-list" aria-live="polite" aria-busy="true" aria-controls="pnl-table"><p class="text-body-secondary p-3 mb-0">Memuat peringkat site…</p></div>
+                </section>
+            </div>
+        @endforeach
     </div>
 
     <div class="card" id="pnl-table-card" tabindex="-1">
@@ -208,6 +207,19 @@
     .pnl-highlight-profit { border-left: 4px solid #14b8a6; }
     .pnl-highlight-loss { border-left: 4px solid #ef7357; }
     .pnl-highlight-value { font-size: clamp(1.35rem, 2vw, 1.8rem); font-weight: 700; line-height: 1.2; }
+    .pnl-summary-value { font-size: clamp(1rem, 1.5vw, 1.45rem); font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .pnl-ranking-panel { overflow: hidden; }
+    .pnl-ranking-symbol { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; font-size: 1.5rem; font-weight: 700; background: rgba(20,184,166,.12); color: #0d9488; }
+    .pnl-ranking-loss .pnl-ranking-symbol { background: rgba(239,115,87,.12); color: #dc6247; }
+    .pnl-rank-row { position: relative; padding: 1rem; border-top: 1px solid var(--bs-border-color); }
+    .pnl-rank-row:first-child { border-top: 0; }
+    .pnl-rank-row > .pnl-highlight { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: start; gap: .65rem; padding: 0; width: 100%; border: 0; background: transparent; color: inherit; text-align: left; }
+    .pnl-rank-number { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 9px; background: var(--bs-tertiary-bg); font-weight: 800; color: var(--bs-secondary-color); }
+    .pnl-rank-amount { text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .pnl-rank-metrics { display: flex; flex-wrap: wrap; align-items: end; gap: .55rem 1.25rem; margin-top: .7rem; padding-left: 2.4rem; font-size: .78rem; }
+    .pnl-rank-metrics span { display: block; color: var(--bs-secondary-color); margin-bottom: .15rem; }
+    .pnl-rank-detail { margin-left: auto; }
+    @media(max-width:575px) { .pnl-rank-row > .pnl-highlight { grid-template-columns: 26px minmax(0,1fr); } .pnl-rank-amount { grid-column: 2; text-align: left; } .pnl-rank-metrics { gap: .6rem; padding-left: 0; } }
     #pnl-table tbody tr.pnl-highlighted-row > * { background-color: rgba(59, 130, 246, .14); }
 </style>
 @endpush
@@ -231,6 +243,7 @@ $(function () {
     let chartRequest = null;
     let highlightRequest = null;
     let highlightSiteFilterActive = false;
+    const fmtNumber = (value, decimals = 0) => Number(value || 0).toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
     function populateMonths(tahun, selectedBulan) {
         const months = availablePeriods
@@ -321,31 +334,34 @@ $(function () {
         };
     }
 
-    function renderHighlightCard(type, site) {
-        const $card = $(`#pnl-highlight-${type}`).attr('aria-busy', 'false');
-        const $value = $card.find(`#pnl-highlight-${type}-value`);
-        const $name = $card.find(`#pnl-highlight-${type}-name`);
-        const $meta = $card.find(`#pnl-highlight-${type}-meta`);
-
-        if (!site) {
-            $card.prop('disabled', true).removeAttr('data-site-id');
-            $value.text('—');
-            $name.text(`Tidak ada site ${type === 'profit' ? 'profit' : 'loss'} untuk filter ini`);
-            $meta.empty();
+    function renderRanking(type, sites) {
+        const $list = $(`#pnl-ranking-${type}`).empty().attr('aria-busy', 'false');
+        if (!sites.length) {
+            $('<p class="p-3 mb-0 text-body-secondary">').text(`Tidak ada site ${type} untuk filter ini.`).appendTo($list);
             return;
         }
-
-        $card.prop('disabled', false).attr('data-site-id', site.site_id);
-        $value.text(fmtRupiah(site.profit_loss));
-        $name.text(site.site_name || site.site_id);
-        $meta.text(`${site.site_id}${site.nop ? ` · ${site.nop}` : ''}`);
+        sites.forEach((site, index) => {
+            const $row = $('<div class="pnl-rank-row">').appendTo($list);
+            const $button = $('<button type="button" class="pnl-highlight" aria-controls="pnl-table" aria-pressed="false">').attr('data-site-id', site.site_id).appendTo($row);
+            $('<span class="pnl-rank-number">').text(index + 1).appendTo($button);
+            const $name = $('<span class="min-w-0">').appendTo($button);
+            $('<span class="d-block fw-semibold">').text(site.site_name || site.site_id).appendTo($name);
+            $('<span class="d-block small text-body-secondary mt-1">').text(`${site.site_id}${site.nop ? ` · ${site.nop}` : ''}`).appendTo($name);
+            $('<span class="pnl-rank-amount">').addClass(type === 'profit' ? 'text-profit' : 'text-loss').text(fmtRupiah(site.profit_loss)).appendTo($button);
+            const $metrics = $('<div class="pnl-rank-metrics">').appendTo($row);
+            [['Revenue', fmtRupiah(site.revenue)], ['Cost', fmtRupiah(site.cost)], ['Margin', site.margin === null ? '—' : `${fmtNumber(site.margin, 2)}%`]].forEach(([label, value]) => {
+                const $metric = $('<div>').appendTo($metrics);
+                $('<span>').text(label).appendTo($metric);
+                $('<strong>').text(value).appendTo($metric);
+            });
+            $('<button type="button" class="btn btn-sm btn-outline-secondary pnl-rank-detail">').text('Rincian').on('click', () => openSiteHistory(site)).appendTo($metrics);
+        });
     }
 
     function loadPnlHighlights() {
         if (highlightRequest) highlightRequest.abort();
-        $('.pnl-highlight').attr('aria-busy', 'true').prop('disabled', true).removeAttr('data-site-id');
-        $('#pnl-highlight-profit-value, #pnl-highlight-loss-value').text('Memuat...');
-        $('#pnl-highlight-profit-name, #pnl-highlight-loss-name, #pnl-highlight-profit-meta, #pnl-highlight-loss-meta').empty();
+        $('.pnl-ranking-list').attr('aria-busy', 'true').html('<p class="p-3 mb-0 text-body-secondary">Memuat peringkat site…</p>');
+        $('#pnl-financial-summary .pnl-summary-value').text('—');
 
         let request;
         request = $.ajax({
@@ -353,15 +369,18 @@ $(function () {
             method: 'GET',
             data: getChartFilters(),
             success: function (res) {
-                renderHighlightCard('profit', res.profit);
-                renderHighlightCard('loss', res.loss);
+                renderRanking('profit', res.top_profit || []);
+                renderRanking('loss', res.top_loss || []);
+                const summary = res.summary || {};
+                ['revenue', 'cost', 'profit_loss'].forEach(key => $(`#pnl-summary-${key}`).text(fmtRupiah(summary[key])));
+                $('#pnl-summary-profit_loss').toggleClass('text-profit', summary.profit_loss > 0).toggleClass('text-loss', summary.profit_loss < 0);
+                $('#pnl-summary-margin').text(summary.margin === null ? '—' : `${fmtNumber(summary.margin, 2)}%`);
+                $('#pnl-ranking-caption').text(`${summary.sites_count || 0} site dengan data finansial · ${$('#filter-nop').val() || 'Semua NOP'} · mengikuti periode terpilih`);
             },
             error: function (_xhr, status) {
                 if (status === 'abort') return;
-                $('.pnl-highlight').attr('aria-busy', 'false');
-                $('#pnl-highlight-profit-value, #pnl-highlight-loss-value').text('—');
-                $('#pnl-highlight-profit-name, #pnl-highlight-loss-name').text('Gagal memuat ringkasan.');
-                $('#pnl-highlight-profit-meta, #pnl-highlight-loss-meta').empty();
+                $('.pnl-ranking-list').attr('aria-busy', 'false').html('<p class="p-3 mb-0 text-danger">Gagal memuat peringkat. Ubah filter untuk mencoba kembali.</p>');
+                $('#pnl-ranking-caption').text('Ringkasan belum tersedia.');
             },
             complete: function () {
                 if (highlightRequest === request) highlightRequest = null;
@@ -526,7 +545,7 @@ $(function () {
         table.page('first').draw();
     }
 
-    $('.pnl-highlight').on('click', function () {
+    $(document).on('click', '.pnl-highlight', function () {
         showHighlightInTable($(this));
     });
 
@@ -571,7 +590,10 @@ $(function () {
     $('#pnl-table tbody').on('click', 'tr', function () {
         const row = table.row(this).data();
         if (!row || !row.id) return;
+        openSiteHistory(row);
+    });
 
+    function openSiteHistory(row) {
         $('#modal-site-id').text(row.site_id);
         $('#modal-site-name').text('(' + (row.site_name || '-') + ') — NOP: ' + (row.nop || '-'));
         $('#modal-site-body').html('<div class="text-center text-body-secondary py-4">Memuat data histori & grafik...</div>');
@@ -587,7 +609,7 @@ $(function () {
                 $('#modal-site-body').html('<div class="alert alert-danger mb-0">Gagal memuat rincian histori site.</div>');
             }
         });
-    });
+    }
 
     $('#siteDetailModal').on('shown.bs.modal', function () {
         if (pnlModalChart) {

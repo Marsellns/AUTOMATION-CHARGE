@@ -398,7 +398,7 @@ class PnlViewController extends Controller
             ->when($bulan !== null, fn ($query) => $query->where('m.bulan', $bulan))
             ->when($bulan === null, fn ($query) => $query->where('m.is_anomaly', 0))
             ->select('m.site_id')
-            ->selectRaw('SUM(m.profit_loss) as net_pnl')
+            ->selectRaw('SUM(m.revenue) as revenue, SUM(m.cost) as cost, SUM(m.profit_loss) as net_pnl, COUNT(*) as months_count')
             ->groupBy('m.site_id');
 
         $siteTotals = DB::table('sites as s')
@@ -411,17 +411,24 @@ class PnlViewController extends Controller
                         ->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]);
                 });
             })
-            ->select('s.id', 's.site_id', 's.site_name', 'm.net_pnl');
+            ->select('s.id', 's.site_id', 's.site_name', 'm.revenue', 'm.cost', 'm.net_pnl', 'm.months_count');
 
-        $profit = DB::query()->fromSub($siteTotals, 'site_pnl')
+        $profits = DB::query()->fromSub($siteTotals, 'site_pnl')
             ->where('net_pnl', '>', 0)
             ->orderByDesc('net_pnl')
             ->orderBy('site_id')
-            ->first();
+            ->limit(3)->get();
         $loss = DB::query()->fromSub($siteTotals, 'site_pnl')
             ->where('net_pnl', '<=', 0)
             ->orderBy('net_pnl')
             ->orderBy('site_id')
+            ->first();
+        $losses = DB::query()->fromSub($siteTotals, 'site_pnl')
+            ->where('net_pnl', '<', 0)
+            ->orderBy('net_pnl')->orderBy('site_id')
+            ->limit(3)->get();
+        $summary = DB::query()->fromSub($siteTotals, 'site_pnl')
+            ->selectRaw('COALESCE(SUM(revenue), 0) as revenue, COALESCE(SUM(cost), 0) as cost, COALESCE(SUM(net_pnl), 0) as net_pnl, COUNT(*) as sites_count')
             ->first();
 
         $toCard = static function ($site) use ($nop): ?array {
@@ -434,16 +441,30 @@ class PnlViewController extends Controller
                 ->value('nop');
 
             return [
+                'id' => $site->id,
                 'site_id' => $site->site_id,
                 'site_name' => $site->site_name,
                 'nop' => $siteNop,
                 'profit_loss' => (float) $site->net_pnl,
+                'revenue' => (float) $site->revenue,
+                'cost' => (float) $site->cost,
+                'margin' => (float) $site->revenue != 0 ? round((float) $site->net_pnl / (float) $site->revenue * 100, 2) : null,
+                'months_count' => (int) $site->months_count,
             ];
         };
 
         return response()->json([
-            'profit' => $toCard($profit),
+            'profit' => $toCard($profits->first()),
             'loss' => $toCard($loss),
+            'top_profit' => $profits->map($toCard)->values(),
+            'top_loss' => $losses->map($toCard)->values(),
+            'summary' => [
+                'revenue' => (float) $summary->revenue,
+                'cost' => (float) $summary->cost,
+                'profit_loss' => (float) $summary->net_pnl,
+                'margin' => (float) $summary->revenue != 0 ? round((float) $summary->net_pnl / (float) $summary->revenue * 100, 2) : null,
+                'sites_count' => (int) $summary->sites_count,
+            ],
         ]);
     }
 

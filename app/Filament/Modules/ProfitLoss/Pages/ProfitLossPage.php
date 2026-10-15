@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Modules\Dashboard\Pages;
+namespace App\Filament\Modules\ProfitLoss\Pages;
 
 use App\Filament\Modules\ModuleReportPage;
 
@@ -10,6 +10,6 @@ class ProfitLossPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Dashboard', 'Profit & Loss', 'pnl.index', 'pnl.*', 'heroicon-o-banknotes'];
+        return ['Profit & Loss', 'Analisis Profit & Loss', 'pnl.index', 'pnl.*', 'heroicon-o-banknotes'];
     }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Persetujuan Akun — SIMASTER')
+@section('title', 'Persetujuan Akun — SIMAWAR')
 
 @section('content')
     <h1 class="visually-hidden">Persetujuan Akun</h1>

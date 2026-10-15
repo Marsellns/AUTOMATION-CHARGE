@@ -58,13 +58,16 @@ class FilamentReportPanelTest extends TestCase
         $this->actingAs($this->userWithRole('viewer'));
         $this->get(route('dashboard'))->assertOk()
             ->assertSee('Infrastruktur Management')
-            ->assertSee('class="fi-sidebar-group-label simaster-sidebar-group-link"', false)
+            ->assertSee('class="fi-sidebar-group-label simaster-sidebar-group-link simaster-module-trigger"', false)
             ->assertSee('data-simaster-dashboard-url="'.route('infrastruktur.index').'"', false)
             ->assertSee('data-simaster-dashboard-url="'.route('electricity.dashboard').'"', false)
             ->assertDontSee('Dashboard Infrastruktur')
             ->assertDontSee('Dashboard Electricity');
         $this->get(route('infrastruktur.index'))->assertOk()->assertSee('Infrastruktur Performance');
-        $this->get(route('electricity.dashboard'))->assertOk()->assertSee('Dashboard Electricity');
+        $this->get(route('electricity.dashboard'))->assertOk()->assertSee('Electricity Monitoring');
+        $this->assertSame('Feasibility Site', collect(Filament::getNavigation())->last()->getLabel());
+        $this->get(route('dashboard'))->assertSee('assets/modules/infrastructure.svg', false)
+            ->assertSee('assets/modules/feasibility.svg', false)->assertDontSee('data-group-label="Data Potensi"', false);
         $descendants = function ($items) use (&$descendants) {
             return collect($items)->flatMap(fn ($item) => [$item, ...$descendants($item->getChildItems())]);
         };
@@ -76,13 +79,17 @@ class FilamentReportPanelTest extends TestCase
             $items = $group->getItems();
             $nested = $descendants($items);
             $this->assertCount($expected->count(), $nested);
+            $this->assertNotContains('Ringkasan', $nested->map->getLabel()->all());
+            $this->get(route($dashboardRoute))->assertOk()
+                ->assertSee('href="'.route($dashboardRoute).'" class="fi-sidebar-group-label simaster-sidebar-group-link simaster-module-trigger"', false)
+                ->assertSee('aria-label="Buka grafik '.e($label).'"', false);
             foreach ($expected as $module) {
                 $this->assertTrue($nested->contains(fn ($item) => $item->getUrl() === route($module[2], $module[5] ?? [])));
             }
             if ($label === 'Infrastruktur Management') {
                 $sewa = collect($items)->first(fn ($item) => $item->getLabel() === 'Sewa Lahan');
                 $this->assertEqualsCanonicalizing(['Site TP', 'Site Telkomsel'], collect($sewa->getChildItems())->map->getLabel()->all());
-            } else {
+            } elseif ($label === 'Electricity Monitoring') {
                 $this->assertEqualsCanonicalizing(['Listrik Centralized', 'Listrik Inbuilding'], collect($items)->map->getLabel()->all());
                 foreach ($items as $scope) {
                     $this->assertCount(5, $scope->getChildItems());
@@ -102,6 +109,17 @@ class FilamentReportPanelTest extends TestCase
         $labels = collect(Filament::getNavigation())->flatMap(fn ($group) => collect($group->getItems())->map(fn ($item) => $item->getLabel()));
         $this->assertNotContains('Persetujuan Akun', $labels);
         $this->assertNotContains('Ringkasan Laporan', $labels);
+    }
+
+    public function test_profit_loss_has_its_own_module_and_livewire_component(): void
+    {
+        $this->actingAs($this->userWithRole('viewer'))->get(route('pnl.index'))->assertOk()
+            ->assertSee('simaster.modules.profit-loss.pages.profit-loss-page', false)
+            ->assertSee('assets/modules/profit-loss.svg', false);
+        $groups = collect(Filament::getNavigation())->keyBy->getLabel();
+        $this->assertSame(['Dashboard Utama'], collect($groups['Dashboard']->getItems())->map->getLabel()->all());
+        $this->assertSame(['Analisis Profit & Loss'], collect($groups['Profit & Loss']->getItems())->map->getLabel()->all());
+        $this->assertSame(['Dashboard', 'Profit & Loss', 'Infrastruktur Management', 'Electricity Monitoring', 'PO Monitoring', 'Equipment', 'Feasibility Site'], $groups->keys()->all());
     }
 
     public function test_header_notifications_read_existing_data_and_preserve_account_isolation(): void
@@ -226,9 +244,9 @@ class FilamentReportPanelTest extends TestCase
     {
         $panel = Filament::getPanel('report');
         $this->assertSame([
-            'simaster-dashboard', 'simaster-infrastructure', 'simaster-electricity',
-            'simaster-po-monitoring', 'simaster-data-potensi',
-            'simaster-equipment-relocation', 'simaster-accounts',
+            'simaster-dashboard', 'simaster-profit-loss', 'simaster-infrastructure', 'simaster-electricity',
+            'simaster-po-monitoring', 'simaster-equipment-relocation',
+            'simaster-accounts', 'simaster-data-potensi',
         ], array_keys($panel->getPlugins()));
         $aliases = [];
         foreach (ReportModuleRegistry::pages() as $page) {

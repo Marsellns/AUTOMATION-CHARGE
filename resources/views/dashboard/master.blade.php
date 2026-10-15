@@ -91,7 +91,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 page-hero">
         <div>
             <h1 class="h4 mb-1">Grafik Dashboard</h1>
-            <p class="text-body-secondary small mb-0">Ringkasan grafik finansial dan operasional SIMASTER.</p>
+            <p class="text-body-secondary small mb-0">Ringkasan grafik finansial dan operasional SIMAWAR.</p>
         </div>
 
         {{-- Main dashboard navigation tabs --}}
@@ -146,6 +146,7 @@
             {{-- Card 1: Total Records / PnL --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-sites" role="button" tabindex="0">
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/dashboard.svg') }}" alt="" width="35" height="35"><span>Profit &amp; Loss</span></div>
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Total Sites / Master</span>
                         <span class="kpi-trend-badge kpi-trend-up" id="kpi-sites-trend">—</span>
@@ -163,6 +164,7 @@
             {{-- Card 2: Active Queries / Electricity --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-pln" role="button" tabindex="0">
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/electricity.svg') }}" alt="" width="35" height="35"><span>Electricity Monitoring</span></div>
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Electricity PLN</span>
                         <span class="kpi-trend-badge kpi-trend-neutral">
@@ -183,6 +185,7 @@
             {{-- Card 3: Storage Used / Infrastruktur --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-infra" role="button" tabindex="0">
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Infrastruktur Management</span></div>
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Infrastruktur Assets</span>
                         <span class="badge text-bg-light border small">{{ number_format($infraDataSourceCount) }} sumber data</span>
@@ -197,6 +200,7 @@
             {{-- Card 4: System Health & PO HQ --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-po" role="button" tabindex="0">
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/purchase-order.svg') }}" alt="" width="35" height="35"><span>PO Monitoring</span></div>
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">PO HQ &amp; Health</span>
                         <span class="kpi-trend-badge kpi-trend-up">
@@ -581,7 +585,7 @@ $(function () {
         // Update titles
         if (tab === 'overview') {
             $('#current-view-title').text('System Overview');
-            $('#current-view-subtitle').text('Real-time operational & financial metrics for SIMASTER Telkomsel');
+            $('#current-view-subtitle').text('Real-time operational & financial metrics for SIMAWAR Telkomsel');
         } else if (tab === 'analytics') {
             $('#current-view-title').text('Detailed Analytics & Reports');
             $('#current-view-subtitle').text('Review system performance, storage metrics, and incident logs');

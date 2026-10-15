@@ -6,6 +6,7 @@ use App\Exports\DataAssetTowerExport;
 use App\Models\DataAssetTower;
 use App\Models\SiteOwner;
 use App\Support\CityClassifier;
+use App\Support\DatasetCategoryFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -33,10 +34,11 @@ class DataPotensiAssetTowerController extends Controller
         $query = $this->filteredQuery($request)
             ->select([
                 'id', 'site_id', 'site_name', 'site_company', 'site_type',
-                'grouping', 'brand', 'part_name', 'owner',
+                'grouping', 'brand', 'part_name', 'owner', 'tower_type', 'ownership_status', 'tower_height',
             ]);
 
         return DataTables::of($query)
+            ->skipAutoFilter()
             ->addIndexColumn()
             ->toJson();
     }
@@ -62,7 +64,7 @@ class DataPotensiAssetTowerController extends Controller
     {
         return Excel::download(
             new DataAssetTowerExport($this->filteredQuery($request)),
-            'data-asset-tower-' . now()->format('Ymd-His') . '.xlsx'
+            'data-asset-tower-'.now()->format('Ymd-His').'.xlsx'
         );
     }
 
@@ -70,7 +72,7 @@ class DataPotensiAssetTowerController extends Controller
     {
         $search = trim((string) $request->input('search.value', $request->input('search', '')));
 
-        return DataAssetTower::query()
+        return DatasetCategoryFilters::apply(DataAssetTower::query(), $request, ['tower_type'])
             ->when($request->filled('nop'), fn ($query) => $query->whereExists(
                 fn ($subquery) => $subquery
                     ->selectRaw('1')
@@ -83,7 +85,7 @@ class DataPotensiAssetTowerController extends Controller
                     ->selectRaw('1')
                     ->from('site_owners')
                     ->whereRaw('UPPER(TRIM(site_owners.site_code)) = UPPER(TRIM(data_asset_towers.site_id))')
-                    ->whereRaw(CityClassifier::expression('site_owners.city') . ' = ?', [CityClassifier::normalize($request->input('city'))])
+                    ->whereRaw(CityClassifier::expression('site_owners.city').' = ?', [CityClassifier::normalize($request->input('city'))])
             ))
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
@@ -92,5 +94,4 @@ class DataPotensiAssetTowerController extends Controller
             }))
             ->orderBy('id');
     }
-
 }

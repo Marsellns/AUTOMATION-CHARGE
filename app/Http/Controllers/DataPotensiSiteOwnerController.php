@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\SiteOwnerExport;
 use App\Models\SiteOwner;
 use App\Support\CityClassifier;
+use App\Support\DatasetCategoryFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -31,19 +32,11 @@ class DataPotensiSiteOwnerController extends Controller
     public function data(Request $request): JsonResponse
     {
         $query = $this->filteredQuery($request)
-            ->select(['id', 'site_code', 'site_name', 'site_class', 'site_owner']);
+            ->select(['id', 'site_code', 'site_name', 'site_class', 'site_owner', 'nop', 'coverage_type', 'status_mla']);
 
         return DataTables::of($query)
-            ->filter(function ($query) use ($request) {
-                $search = trim((string) $request->input('search.value', ''));
-                if ($search !== '') {
-                    $query->where(function ($searchQuery) use ($search) {
-                        $searchQuery
-                            ->where('site_code', 'like', "%{$search}%")
-                            ->orWhere('site_name', 'like', "%{$search}%");
-                    });
-                }
-            }, true)
+            // Search is already applied by the query shared with Excel.
+            ->skipAutoFilter()
             ->addIndexColumn()
             ->toJson();
     }
@@ -73,28 +66,8 @@ class DataPotensiSiteOwnerController extends Controller
     private function filteredQuery(Request $request)
     {
         $search = trim((string) $request->input('search.value', $request->input('search', '')));
-        $siteOwner = trim((string) $request->input('site_owner', ''));
-        $nop = trim((string) $request->input('nop', ''));
 
-        return SiteOwner::query()
-            ->when($siteOwner !== '', function ($query) use ($siteOwner) {
-                if (strcasecmp($siteOwner, 'Belum teridentifikasi') === 0) {
-                    return $query->where(function ($ownerQuery) {
-                        $ownerQuery
-                            ->whereNull('site_owner')
-                            ->orWhereRaw("TRIM(site_owner) = ''");
-                    });
-                }
-
-                return $query->whereRaw(
-                    'UPPER(TRIM(site_owner)) = ?',
-                    [strtoupper($siteOwner)]
-                );
-            })
-            ->when($nop !== '' && strcasecmp($nop, 'all') !== 0, fn ($q) => $q->whereRaw(
-                'UPPER(TRIM(nop)) = ?',
-                [strtoupper($nop)]
-            ))
+        return DatasetCategoryFilters::apply(SiteOwner::query(), $request, ['site_owner', 'nop', 'site_class', 'coverage_type', 'status_mla'])
             ->when($request->filled('city'), fn ($q) => $q->whereRaw(
                 CityClassifier::expression('city').' = ?',
                 [CityClassifier::normalize($request->input('city'))]

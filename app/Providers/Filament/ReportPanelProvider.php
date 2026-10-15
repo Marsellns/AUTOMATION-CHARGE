@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\AccountApprovals;
+use App\Filament\Pages\UserManagement;
 use App\Filament\Pages\Login as ReportLogin;
 use App\Filament\Pages\OperationalReport;
 use App\Livewire\ReportNotifications;
@@ -45,6 +46,8 @@ class ReportPanelProvider extends PanelProvider
             ->colors(['primary' => Color::Red])
             ->maxContentWidth('full')
             ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('19rem')
+            ->collapsedSidebarWidth('7rem')
             ->homeUrl(fn () => route('dashboard'))
             ->plugins(ReportModuleRegistry::plugins())
             ->databaseNotifications(livewireComponent: ReportNotifications::class, isLazy: false)
@@ -54,9 +57,15 @@ class ReportPanelProvider extends PanelProvider
                     ->icon('heroicon-o-user-group')
                     ->url(fn () => AccountApprovals::getUrl())
                     ->visible(fn () => AccountApprovals::canAccess()),
+                Action::make('userManagement')
+                    ->label('Kelola Pengguna')
+                    ->icon('heroicon-o-users')
+                    ->url(fn () => UserManagement::getUrl())
+                    ->visible(fn () => UserManagement::canAccess()),
             ])
             ->navigation(fn (NavigationBuilder $builder) => $builder->groups(ModuleNavigation::groups()))
             ->renderHook('panels::head.end', fn () => view('filament.partials.report-assets'))
+            ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.partials.module-heading'))
             ->renderHook(PanelsRenderHook::SIMPLE_LAYOUT_START, fn () => request()->routeIs('filament.report.auth.login')
                 ? view('auth.partials.login-hero')
                 : '')

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Listrik Inbuilding — SIMASTER')
+@section('title', 'Listrik Inbuilding — SIMAWAR')
 
 @section('content')
     {{-- Header --}}

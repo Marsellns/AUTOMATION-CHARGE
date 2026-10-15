@@ -15,7 +15,11 @@ class DashboardPlugin extends ReportModulePlugin
     {
         return [
             Pages\ExecutiveDashboardPage::class,
-            Pages\ProfitLossPage::class,
         ];
+    }
+
+    public function dashboardGroups(): array
+    {
+        return ['Dashboard' => 'dashboard'];
     }
 }

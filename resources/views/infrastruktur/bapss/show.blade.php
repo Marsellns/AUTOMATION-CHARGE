@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Detail BAPSS — SIMASTER')
+@section('title', 'Detail BAPSS — SIMAWAR')
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
  <h1 class="h4 mb-0">Detail BAPSS — {{ $bapss->site_code }}</h1>

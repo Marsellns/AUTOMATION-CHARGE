@@ -60,8 +60,8 @@ class PnlHighlightsTest extends TestCase
             ->assertOk()
             ->assertViewHas('selectedAllMonths', true)
             ->assertViewHas('selectedPeriod', '0-2026')
-            ->assertSee('Profit Site Terbesar')
-            ->assertSee('Loss Site Terbesar')
+            ->assertSee('Top 3 Site Profit')
+            ->assertSee('Top 3 Site Loss')
             ->assertSee('aria-controls="pnl-table"', false)
             ->assertDontSee('Klik untuk tampilkan di tabel');
 
@@ -166,5 +166,43 @@ class PnlHighlightsTest extends TestCase
         $this->actingAs($user)
             ->getJson(route('pnl.highlights', ['tahun' => 2026, 'bulan' => 13]))
             ->assertUnprocessable();
+    }
+
+    public function test_top_three_rankings_include_financial_details_and_exclude_break_even_from_losses(): void
+    {
+        $user = User::factory()->create(['account_status' => 'approved']);
+        foreach ([60, 50, 50, -10, -30, -20, 0, 900] as $index => $pnl) {
+            $code = 'RANK'.str_pad((string) $index, 3, '0', STR_PAD_LEFT);
+            $site = DB::table('sites')->insertGetId(['site_id' => $code, 'site_name' => 'Ranking '.$index]);
+            DB::table('site_owners')->insert(['site_code' => $code, 'nop' => $index === 7 ? 'NOP BOGOR' : 'NOP BEKASI']);
+            DB::table('site_monthly_metrics')->insert([
+                'site_id' => $site, 'bulan' => 1, 'tahun' => 2026,
+                'revenue' => 1000, 'cost' => 1000 - $pnl, 'profit_loss' => $pnl, 'is_anomaly' => false,
+            ]);
+        }
+
+        $response = $this->actingAs($user)->getJson(route('pnl.highlights', [
+            'tahun' => 2026, 'bulan' => 'all', 'nop' => 'NOP BEKASI',
+        ]))->assertOk()->assertJsonCount(3, 'top_profit')->assertJsonCount(3, 'top_loss')
+            ->assertJsonPath('top_profit.0.site_id', 'RANK000')
+            ->assertJsonPath('top_profit.1.site_id', 'RANK001')
+            ->assertJsonPath('top_profit.2.site_id', 'RANK002')
+            ->assertJsonPath('top_profit.0.revenue', 1000)
+            ->assertJsonPath('top_profit.0.cost', 940)
+            ->assertJsonPath('top_profit.0.margin', 6)
+            ->assertJsonPath('top_profit.0.months_count', 1)
+            ->assertJsonPath('top_loss.0.site_id', 'RANK004')
+            ->assertJsonPath('top_loss.1.site_id', 'RANK005')
+            ->assertJsonPath('top_loss.2.site_id', 'RANK003')
+            ->assertJsonPath('summary.sites_count', 7)
+            ->assertJsonPath('summary.revenue', 7000)
+            ->assertJsonPath('summary.cost', 6900)
+            ->assertJsonPath('summary.profit_loss', 100)
+            ->assertJsonPath('summary.margin', 1.43);
+        $this->assertNotContains('RANK006', array_column($response->json('top_loss'), 'site_id'));
+
+        $this->getJson(route('pnl.highlights', ['tahun' => 2025, 'bulan' => 1]))
+            ->assertOk()->assertJsonCount(0, 'top_profit')->assertJsonCount(0, 'top_loss')
+            ->assertJsonPath('summary.sites_count', 0)->assertJsonPath('summary.margin', null);
     }
 }

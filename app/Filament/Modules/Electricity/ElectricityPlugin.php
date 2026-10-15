@@ -32,6 +32,6 @@ class ElectricityPlugin extends ReportModulePlugin
 
     public function dashboardGroups(): array
     {
-        return ['Electricity' => 'electricity.dashboard'];
+        return ['Electricity Monitoring' => 'electricity.dashboard'];
     }
 }

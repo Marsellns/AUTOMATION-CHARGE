@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Upload Excel Listrik Inbuilding — SIMASTER')
+@section('title', 'Upload Excel Listrik Inbuilding — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

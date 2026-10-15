@@ -1,0 +1,44 @@
+.simaster-module-heading { padding: 0 .25rem; }
+.simaster-module-heading > span { color: var(--gray-950); font-size: 1.1rem; font-weight: 800; letter-spacing: .12em; }
+.simaster-module-heading p { color: var(--gray-500); font-size: .78rem; margin-top: .15rem; }
+/* Each module and its submenu stay together in the sidebar's scroll flow. */
+.fi-main-sidebar .fi-sidebar-nav { min-height: 0; padding: 1.25rem 1rem; gap: 1.15rem; overflow-y: auto; overscroll-behavior: contain; }
+.fi-main-sidebar .fi-sidebar-nav-groups { display: flex; flex-direction: column; flex: none; gap: .8rem; margin: 0; width: 100%; }
+.fi-main-sidebar .simaster-module-group { display: flex; flex-direction: column; flex: none; gap: .35rem; min-width: 0; }
+.simaster-module-tile { position: relative; flex: none; min-width: 0; border: 1px solid var(--gray-200); border-radius: 1rem; background: #fff; box-shadow: 0 2px 5px rgb(15 23 42 / .025); transition: border-color .2s, box-shadow .2s, background .2s; }
+.simaster-module-tile > .simaster-sidebar-group-link { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; min-height: 112px; gap: .2rem; padding: .55rem 1.5rem .7rem; border: 0; border-radius: inherit; background: transparent; text-align: center; color: var(--gray-700); text-decoration: none; font-family: inherit; font-size: .84rem; line-height: 1.3; font-weight: 650; cursor: pointer; }
+.simaster-module-tile > .simaster-sidebar-group-link > .simaster-module-caption { min-height: 1.3rem; display: flex; align-items: center; }
+.simaster-module-image { display: block; flex-shrink: 0; width: 64px; height: 64px; filter: drop-shadow(0 3px 3px rgb(15 23 42 / .08)); transition: transform .25s cubic-bezier(.2,.8,.2,1), filter .25s; }
+.simaster-module-tile:hover { border-color: var(--primary-300); box-shadow: 0 6px 16px rgb(15 23 42 / .07); }
+.simaster-module-tile:hover .simaster-module-image { transform: translateY(-3px) rotate(-4deg) scale(1.06); filter: drop-shadow(0 6px 5px rgb(15 23 42 / .16)); }
+.simaster-module-tile.simaster-module-selected { border-color: var(--primary-400); background: var(--primary-50); }
+.simaster-module-tile .simaster-sidebar-group-link:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; border-radius: 1rem; }
+.simaster-module-toggle { position: absolute; right: .35rem; bottom: .35rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: .4rem; background: transparent; color: var(--gray-500); cursor: pointer; }
+.simaster-module-toggle:hover, .simaster-module-toggle:focus-visible { color: var(--primary-600); background: var(--primary-50); }
+.simaster-module-toggle .fi-icon { width: .9rem; height: .9rem; transition: transform .2s; }
+.simaster-module-toggle[aria-expanded="true"] .fi-icon { transform: rotate(180deg); }
+.fi-main-sidebar .simaster-module-submenu { border-left: 2px solid var(--gray-200); padding: .35rem 0 .35rem .4rem; margin: .1rem .25rem .2rem; }
+.simaster-module-submenu-heading { padding: .25rem .65rem .5rem; color: var(--gray-500); font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.simaster-module-submenu .fi-sidebar-item-label { font-size: .84rem; }
+.fi-main-sidebar:not(.fi-sidebar-open) .fi-sidebar-nav { padding: 1rem .5rem; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-heading { text-align: center; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-heading > span { font-size: .65rem; letter-spacing: .05em; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-heading p { display: none; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-tile > .simaster-sidebar-group-link { min-height: 88px; padding: .25rem .2rem .4rem; font-size: .6rem; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-image { width: 43px; height: 43px; }
+.fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-toggle { display: none; }
+.dark .simaster-module-heading > span { color: var(--gray-100); }
+.dark .simaster-module-tile { background: var(--gray-900); border-color: var(--gray-700); }
+.dark .simaster-module-tile > .simaster-sidebar-group-link { color: var(--gray-200); }
+.dark .simaster-module-tile.simaster-module-selected { background: rgb(239 68 68 / .08); border-color: var(--primary-500); }
+.dark .simaster-module-submenu { border-color: var(--gray-700); }
+.dark .simaster-module-toggle:hover, .dark .simaster-module-toggle:focus-visible { color: var(--primary-300); background: rgb(255 255 255 / .08); }
+.simaster-report .module-kpi-title { display: flex; align-items: center; gap: .55rem; color: var(--bs-emphasis-color); font-size: .86rem; font-weight: 750; padding-bottom: .7rem; margin-bottom: .75rem; border-bottom: 1px solid var(--bs-border-color); }
+.simaster-report .module-kpi-title img { width: 35px; height: 35px; }
+.simaster-report.simaster-infrastructure-report { font-size: .96rem; }
+.simaster-report.simaster-infrastructure-report .small { font-size: .86rem; }
+.simaster-report.simaster-infrastructure-report .card-header, .simaster-report.simaster-infrastructure-report .form-label, .simaster-report.simaster-infrastructure-report .enterprise-tab-btn { font-size: .96rem; }
+.simaster-report.simaster-infrastructure-report .table, .simaster-report.simaster-infrastructure-report table.dataTable, .simaster-report.simaster-infrastructure-report #infra-drilldown-table { font-size: .9rem; }
+.simaster-report.simaster-infrastructure-report h1.h4 { font-size: 1.6rem; }
+.simaster-report.simaster-infrastructure-report .infra-card-records-sub, .simaster-report #infra-records-sub { font-size: .8rem !important; line-height: 1.4 !important; }
+@media (prefers-reduced-motion: reduce) { .simaster-module-tile, .simaster-module-image, .simaster-module-toggle .fi-icon { transition: none; } .simaster-module-tile:hover .simaster-module-image { transform: none; } }

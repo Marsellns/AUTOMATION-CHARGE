@@ -4,6 +4,7 @@ namespace App\Filament\Modules\Accounts;
 
 use App\Filament\Modules\ReportModulePlugin;
 use App\Filament\Pages\AccountApprovals;
+use App\Filament\Pages\UserManagement;
 
 class AccountsPlugin extends ReportModulePlugin
 {
@@ -16,6 +17,7 @@ class AccountsPlugin extends ReportModulePlugin
     {
         return [
             AccountApprovals::class,
+            UserManagement::class,
             Pages\NotificationsPage::class,
             Pages\SiteLossNotificationsPage::class,
         ];

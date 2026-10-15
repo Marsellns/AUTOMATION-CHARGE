@@ -10,6 +10,6 @@ class CentralizedPaymentPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Payment Centralized', 'electricity.centralized.payment.index', 'electricity.centralized.payment.*', 'heroicon-o-credit-card', 6 => 'Listrik Centralized'];
+        return ['Electricity Monitoring', 'Payment Centralized', 'electricity.centralized.payment.index', 'electricity.centralized.payment.*', 'heroicon-o-credit-card', 6 => 'Listrik Centralized'];
     }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Data Asset Tower — Data Potensi — SIMASTER')
+@section('title', 'Data Asset Tower — Feasibility Site — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

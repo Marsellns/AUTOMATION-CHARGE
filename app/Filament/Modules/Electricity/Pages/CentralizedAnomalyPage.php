@@ -10,6 +10,6 @@ class CentralizedAnomalyPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Anomali Tagihan', 'electricity.centralized.anomali.index', 'electricity.centralized.anomali.*', 'heroicon-o-exclamation-triangle', 6 => 'Listrik Centralized'];
+        return ['Electricity Monitoring', 'Anomali Tagihan', 'electricity.centralized.anomali.index', 'electricity.centralized.anomali.*', 'heroicon-o-exclamation-triangle', 6 => 'Listrik Centralized'];
     }
 }

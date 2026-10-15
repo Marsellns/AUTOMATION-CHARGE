@@ -14,9 +14,15 @@ class PoMonitoringPlugin extends ReportModulePlugin
     public function pages(): array
     {
         return [
+            Pages\PoDashboardPage::class,
             Pages\PoVarcostPage::class,
             Pages\PoHqPage::class,
             Pages\PresalesPage::class,
         ];
+    }
+
+    public function dashboardGroups(): array
+    {
+        return ['PO Monitoring' => 'po-monitoring.dashboard'];
     }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit PO — SIMASTER')
+@section('title', 'Edit PO — SIMAWAR')
 
 @section('content')
     <h1 class="h4 mb-3">Edit PO {{ $po->po_number }}</h1>

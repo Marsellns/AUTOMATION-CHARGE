@@ -10,6 +10,6 @@ class SearchAllResourcePage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Data Potensi', 'Search All Resource', 'data-potensi.search-all-resource.index', 'data-potensi.search-all-resource.*', 'heroicon-o-magnifying-glass'];
+        return ['Feasibility Site', 'Search All Resource', 'data-potensi.search-all-resource.index', 'data-potensi.search-all-resource.*', 'heroicon-o-magnifying-glass'];
     }
 }

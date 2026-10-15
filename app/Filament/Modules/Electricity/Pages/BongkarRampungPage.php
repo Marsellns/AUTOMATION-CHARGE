@@ -10,6 +10,6 @@ class BongkarRampungPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Bongkar Rampung', 'electricity.centralized.bongkar-rampung-mandiri.index', 'electricity.centralized.bongkar-rampung-mandiri.*', 'heroicon-o-wrench-screwdriver', 6 => 'Listrik Centralized'];
+        return ['Electricity Monitoring', 'Bongkar Rampung', 'electricity.centralized.bongkar-rampung-mandiri.index', 'electricity.centralized.bongkar-rampung-mandiri.*', 'heroicon-o-wrench-screwdriver', 6 => 'Listrik Centralized'];
     }
 }

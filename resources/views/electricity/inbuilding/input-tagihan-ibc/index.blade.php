@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ($showForm ? 'Input Data Tagihan IBC' : 'Daftar Tagihan Listrik IBC Tersimpan').' — SIMASTER')
+@section('title', ($showForm ? 'Input Data Tagihan IBC' : 'Daftar Tagihan Listrik IBC Tersimpan').' — SIMAWAR')
 
 @section('content')
     {{-- Header --}}

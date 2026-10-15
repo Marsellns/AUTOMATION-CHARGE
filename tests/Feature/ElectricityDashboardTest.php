@@ -24,7 +24,10 @@ class ElectricityDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('electricity.dashboard'))
             ->assertOk()
-            ->assertSee('Dashboard Electricity')
+            ->assertSee('Electricity Monitoring')
+            ->assertSee('electricity-panel-overview')
+            ->assertSee('electricity-panel-sites')
+            ->assertSee('electricity-panel-anomalies')
             ->assertSee('Tren Biaya Listrik Bulanan')
             ->assertSee('electricity\/dashboard-data', false);
     }

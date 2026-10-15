@@ -10,6 +10,6 @@ class InbuildingAllPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Inbuilding All', 'electricity.inbuilding.inbuilding-all.index', 'electricity.inbuilding.inbuilding-all.*', 'heroicon-o-table-cells', 6 => 'Listrik Inbuilding'];
+        return ['Electricity Monitoring', 'Inbuilding All', 'electricity.inbuilding.inbuilding-all.index', 'electricity.inbuilding.inbuilding-all.*', 'heroicon-o-table-cells', 6 => 'Listrik Inbuilding'];
     }
 }

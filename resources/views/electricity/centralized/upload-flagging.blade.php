@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Upload Excel Tagihan Listrik Centralized — SIMASTER')
+@section('title', 'Upload Excel Tagihan Listrik Centralized — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

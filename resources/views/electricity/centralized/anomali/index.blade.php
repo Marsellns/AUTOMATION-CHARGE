@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Anomali Tagihan — Electricity Centralized — SIMASTER')
+@section('title', 'Anomali Tagihan — Electricity Centralized — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

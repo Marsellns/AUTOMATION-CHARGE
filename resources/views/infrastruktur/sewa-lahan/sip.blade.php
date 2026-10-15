@@ -25,7 +25,7 @@
 <body>
     <div class="header">
         <h1>Surat Izin Perpanjangan (SIP)</h1>
-        <p>Sewa Lahan — Infrastruktur Management | SIMASTER</p>
+        <p>Sewa Lahan — Infrastruktur Management | SIMAWAR</p>
     </div>
 
     <h2>Identitas Site</h2>
@@ -100,7 +100,7 @@
         <table>
             <tr>
                 <td>Dicetak: {{ now()->format('d/m/Y H:i') }} WIB</td>
-                <td style="text-align: right;">SIMASTER — Infrastruktur Management</td>
+                <td style="text-align: right;">SIMAWAR — Infrastruktur Management</td>
             </tr>
         </table>
     </div>

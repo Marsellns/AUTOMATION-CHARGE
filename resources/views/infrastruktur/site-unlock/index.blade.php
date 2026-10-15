@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Data Site Unlock — Infrastruktur Management — SIMASTER')
+@section('title', 'Data Site Unlock — Infrastruktur Management — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -47,7 +47,7 @@
 
 @push('styles')
 <style>
-    /* Badge status colors — mengikuti design system SIMASTER */
+    /* Badge status colors — mengikuti design system SIMAWAR */
     .badge-done   { background: #DCFCE7; color: #166534; }
     .badge-progress { background: #DBEAFE; color: #1E40AF; }
     .badge-pending  { background: #FEF3C7; color: #92400E; }

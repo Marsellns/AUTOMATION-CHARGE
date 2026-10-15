@@ -36,12 +36,26 @@ class ModuleNavigation
 
         return collect($groups)->map(function ($items, $label) use ($dashboards) {
             $group = NavigationGroup::make($label)->items($items);
+            $images = [
+                'Dashboard' => 'dashboard',
+                'Profit & Loss' => 'profit-loss',
+                'Infrastruktur Management' => 'infrastructure',
+                'Electricity Monitoring' => 'electricity',
+                'PO Monitoring' => 'purchase-order',
+                'Equipment' => 'equipment',
+                'Feasibility Site' => 'feasibility',
+            ];
+            $attributes = [
+                'data-simaster-module-image' => asset('assets/modules/'.($images[$label] ?? 'dashboard').'.svg'),
+                'data-simaster-module-url' => $items[0]->getUrl(),
+            ];
             if ($dashboardRoute = $dashboards[$label] ?? null) {
-                $group->extraSidebarAttributes([
+                $attributes = array_merge($attributes, [
                     'data-simaster-dashboard-url' => route($dashboardRoute),
                     'data-simaster-dashboard-current' => request()->routeIs($dashboardRoute) ? 'true' : 'false',
                 ]);
             }
+            $group->extraSidebarAttributes($attributes);
 
             return $group;
         })->values()->all();

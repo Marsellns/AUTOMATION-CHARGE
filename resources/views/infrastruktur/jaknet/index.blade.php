@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Sewa Lahan (Jaknet & Dapot) — Infrastruktur Management — SIMASTER')
+@section('title', 'Sewa Lahan (Jaknet & Dapot) — Infrastruktur Management — SIMAWAR')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">

@@ -10,6 +10,6 @@ class InbuildingPaymentPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Payment Inbuilding', 'electricity.inbuilding.payment.index', 'electricity.inbuilding.payment.*', 'heroicon-o-credit-card', 6 => 'Listrik Inbuilding'];
+        return ['Electricity Monitoring', 'Payment Inbuilding', 'electricity.inbuilding.payment.index', 'electricity.inbuilding.payment.*', 'heroicon-o-credit-card', 6 => 'Listrik Inbuilding'];
     }
 }

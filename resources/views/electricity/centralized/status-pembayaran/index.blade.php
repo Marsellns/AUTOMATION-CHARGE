@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Status Pembayaran — ' . $listrikPln->id_pelanggan . ' — SIMASTER')
+@section('title', 'Status Pembayaran — ' . $listrikPln->id_pelanggan . ' — SIMAWAR')
 
 @section('content')
     {{-- Header --}}

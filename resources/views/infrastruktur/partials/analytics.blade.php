@@ -3,17 +3,17 @@
          data-ownership-scope="{{ $scope === 'sewa' ? (request('ownership_scope') ?: (request('filter_field') === 'ownership' ? request('filter_value') : '')) : '' }}"
          @if ($scope === 'all') id="infrastructure-data" @endif>
     @php($isOwnershipSubmodule = $scope === 'sewa' && in_array(strtolower(trim((string) (request('ownership_scope') ?: (request('filter_field') === 'ownership' ? request('filter_value') : '')))), ['telkomsel', 'tp'], true))
-    <h2 class="h5 mb-3">Analitik {{ $scope === 'sewa' ? 'Sewa Lahan' : ($scope === 'combat' ? 'Combat' : 'Detail Infrastruktur') }}</h2>
+    @if ($scope !== 'all')
+        <h2 class="h5 mb-3">Analitik {{ $scope === 'sewa' ? 'Sewa Lahan' : 'Combat' }}</h2>
+    @endif
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
         @foreach ([
             ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
-            ['id' => 'active', 'label' => 'Operational / Active', 'class' => 'success', 'icon' => 'check'],
             ['id' => 'contract', 'label' => 'Perlu Perhatian', 'class' => 'warning', 'icon' => 'contract'],
             ['id' => 'without_pks', 'label' => 'Tanpa PKS', 'class' => 'danger', 'icon' => 'alert'],
-            ['id' => 'off_air', 'label' => 'Off Air / Non-Operational', 'class' => 'secondary', 'icon' => 'offline'],
         ] as $card)
-            <div class="col-xl-2 col-md-4 col-6">
+            <div class="col-md-4 col-6">
                 <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
                      data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
@@ -48,20 +48,39 @@
                 </div>
             </div>
         @endforeach
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card h-100 border-info infra-card-link infra-summary-card" data-filter-field="summary_status" data-filter-value="risk"
-                 role="link" tabindex="0" title="Buka data yang perlu perhatian"><div class="card-body py-2 infra-summary-card-body">
-                <div>
-                    <div class="small text-body-secondary">Nilai Risiko</div>
-                    <div class="fs-4 fw-bold infra-card-risk_value">—</div>
-                </div>
-                <span class="infra-summary-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14v11H5zM8 7V5h8v2M8 12h8M12 10v4M10 12h4"/></svg>
-                </span>
-            </div></div>
-        </div>
+
     </div>
     @endif
+    @php($charts = [
+        ['id' => 'status', 'title' => 'Komposisi Status Site', 'type' => 'pie', 'key' => 'status'],
+        ['id' => 'owner', 'title' => 'Site Owner', 'type' => 'pie', 'key' => 'owners'],
+        ['id' => 'renewal', 'title' => 'Distribusi Tahun Renewal / Justi', 'type' => 'column', 'key' => 'renewal_years'],
+        ['id' => 'pks-status', 'title' => 'PKS Status', 'type' => 'pie', 'key' => 'pks_status'],
+        ['id' => 'nop', 'title' => 'NOP Site', 'type' => 'pie', 'key' => 'nop'],
+        ['id' => 'vendor', 'title' => 'Site Owner', 'type' => 'column', 'key' => 'vendor'],
+        ['id' => 'health', 'title' => 'Contract Health / Aging Masa Sewa', 'type' => 'pie', 'key' => 'health'],
+        ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline', 'height' => 320, 'wide_on_overview' => true],
+        ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging', 'height' => 360],
+        ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography', 'height' => 360],
+    ])
+    @if ($scope === 'all')
+        @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
+    @endif
+    @if ($isOwnershipSubmodule)
+        {{-- Portfolio TP/Telkomsel sudah memiliki cakupan owner tunggal. --}}
+        @php($charts = array_values(array_filter($charts, fn ($chart) => !in_array($chart['key'], ['owners', 'vendor'], true))))
+    @endif
+    @php($chartTabs = $scope === 'all' ? [
+        'risk' => ['pks_status', 'health'],
+        'renewal' => ['pipeline'],
+        'distribution' => ['nop', 'vendor'],
+        'process' => ['aging', 'geography'],
+    ] : ['all' => []])
+    @foreach ($chartTabs as $chartTab => $chartKeys)
+    @if ($scope === 'all')
+        <div id="infra-panel-{{ $chartTab }}" class="infra-tab-panel d-none" data-infra-panel="{{ $chartTab }}" role="tabpanel" aria-labelledby="infra-tab-{{ $chartTab }}" hidden>
+    @endif
+    @if ($scope !== 'all' || $chartTab === 'risk')
     <div class="infra-alert-panel mb-3" role="status" aria-live="polite">
         <div class="small fw-semibold text-uppercase text-body-secondary mb-2">Peringatan {{ $scope === 'sewa' ? 'Sewa Lahan' : ($scope === 'combat' ? 'Combat' : 'Infrastruktur') }}</div>
         <div class="row g-2 infra-alert-grid">
@@ -88,27 +107,15 @@
             </div>
         </div>
     </div>
+    @endif
+    @if ($scope === 'all' && $chartTab === 'renewal')
+        <div class="row g-3 mb-3">
+            <div class="col-12 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Distribusi Tahun Renewal Sewa Lahan</div><div class="card-body"><div id="infra-renewal-chart" class="infra-overview-chart"></div></div></div></div>
+        </div>
+    @endif
     <div class="row g-3 infra-detail-chart-grid">
-        @php($charts = [
-            ['id' => 'status', 'title' => 'Komposisi Status Site', 'type' => 'pie', 'key' => 'status'],
-            ['id' => 'owner', 'title' => 'Site Owner', 'type' => 'pie', 'key' => 'owners'],
-            ['id' => 'renewal', 'title' => 'Distribusi Tahun Renewal / Justi', 'type' => 'column', 'key' => 'renewal_years'],
-            ['id' => 'pks-status', 'title' => 'PKS Status', 'type' => 'pie', 'key' => 'pks_status'],
-            ['id' => 'nop', 'title' => 'NOP Site', 'type' => 'pie', 'key' => 'nop'],
-            ['id' => 'vendor', 'title' => 'Site Owner', 'type' => 'column', 'key' => 'vendor'],
-            ['id' => 'health', 'title' => 'Contract Health / Aging Masa Sewa', 'type' => 'pie', 'key' => 'health'],
-            ['id' => 'pipeline', 'title' => 'Renewal Pipeline', 'type' => 'bar', 'key' => 'pipeline', 'height' => 320, 'wide_on_overview' => true],
-            ['id' => 'aging', 'title' => 'Rata-rata Process Aging (hari)', 'type' => 'column', 'key' => 'aging', 'height' => 360],
-            ['id' => 'geography', 'title' => 'Konsentrasi Area / Kota', 'type' => 'bar', 'key' => 'geography', 'height' => 360],
-        ])
-        @if ($scope === 'all')
-            @php($charts = array_values(array_filter($charts, fn ($chart) => in_array($chart['key'], ['pks_status', 'nop', 'vendor', 'health', 'pipeline', 'aging', 'geography'], true))))
-        @endif
-        @if ($isOwnershipSubmodule)
-            {{-- Portfolio TP/Telkomsel sudah memiliki cakupan owner tunggal. --}}
-            @php($charts = array_values(array_filter($charts, fn ($chart) => !in_array($chart['key'], ['owners', 'vendor'], true))))
-        @endif
         @foreach ($charts as $chart)
+            @continue($scope === 'all' && !in_array($chart['key'], $chartKeys, true))
             <div class="{{ !empty($chart['wide_on_overview']) && $scope === 'all' ? 'col-12' : 'col-xl-6' }} d-flex">
                 <div class="card h-100 w-100 infra-detail-chart-card">
                     <div class="card-header fw-semibold">{{ $chart['title'] }}</div>
@@ -117,12 +124,18 @@
             </div>
         @endforeach
     </div>
+    @if ($scope !== 'all' || $chartTab === 'risk')
     <button type="button" class="card mt-3 w-100 text-start infra-priority-trigger" aria-label="Tampilkan site Prioritas Tindakan">
         <span class="card-body d-flex align-items-center justify-content-between gap-3 py-3">
             <span><strong>Prioritas Tindakan</strong><small class="d-block text-body-secondary">Klik untuk menampilkan site yang memerlukan tindak lanjut.</small></span>
             <span class="badge text-bg-warning rounded-pill fs-6 infra-priority-count">—</span>
         </span>
     </button>
+    @endif
+    @if ($scope === 'all')
+        </div>
+    @endif
+    @endforeach
 </section>
 
 @once
@@ -199,6 +212,7 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
         credits: { enabled: false },
         exporting: { enabled: false },
         chart: {
+            style: { fontSize: '14px' },
             backgroundColor: background,
             plotBackgroundColor: background,
             style: { color: text }
@@ -211,7 +225,7 @@ window.infrastructureChartThemeOptions = function (requestedTheme) {
             verticalAlign: 'bottom',
             itemDistance: 12,
             maxHeight: 56,
-            itemStyle: { color: text, fontSize: '0.72rem', fontWeight: '500', textOverflow: 'ellipsis' },
+            itemStyle: { color: text, fontSize: '0.85rem', fontWeight: '500', textOverflow: 'ellipsis' },
             itemHoverStyle: { color: dark ? '#ffffff' : '#020617' },
             itemHiddenStyle: { color: dark ? '#64748b' : '#94a3b8' }
         },
@@ -274,10 +288,8 @@ window.infrastructureShortChartValue = function (value) {
     }).format(number);
 };
 
-// Pie charts reserve the right side for a compact, always-visible legend.
-// This makes both the count and percentage readable without relying on a
-// hover tooltip, while a long category list falls back to the safer bottom
-// legend instead of crowding the pie.
+// Keep the legend for category names and place only readable counts on slices.
+// Tiny slices retain their count in the legend instead of crowding the chart.
 window.infrastructurePieLabelOptions = function (pointCount) {
     const useSideLegend = Number(pointCount) <= 6;
 
@@ -302,7 +314,21 @@ window.infrastructurePieLabelOptions = function (pointCount) {
             pie: {
                 showInLegend: true,
                 size: useSideLegend ? '76%' : '68%',
-                dataLabels: { enabled: false }
+                dataLabels: {
+                    enabled: true,
+                    distance: -24,
+                    allowOverlap: false,
+                    padding: 2,
+                    borderRadius: 3,
+                    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+                    color: '#ffffff',
+                    formatter: function () {
+                        return this.y > 0 && this.percentage >= 8
+                            ? new Intl.NumberFormat('id-ID').format(this.y)
+                            : null;
+                    },
+                    style: { color: '#ffffff', fontSize: '0.85rem', fontWeight: '700', textOutline: 'none' }
+                }
             }
         },
         responsive: [{
@@ -345,7 +371,38 @@ window.infrastructureValueLabelOptions = function (type, pointCount) {
                             ? null
                             : window.infrastructureShortChartValue(this.y);
                     },
-                    style: { fontSize: '0.68rem', fontWeight: '600', textOutline: 'none' }
+                    style: { fontSize: '0.8rem', fontWeight: '600', textOutline: 'none' }
+                }
+            }
+        }
+    };
+};
+
+// Count charts show exact site totals at each bar end. Financial and aging
+// charts continue to use their own value labels and units.
+window.infrastructureSiteCountLabelOptions = function (type) {
+    const isBar = type === 'bar';
+
+    return {
+        yAxis: { maxPadding: 0.14 },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    enabled: true,
+                    allowOverlap: false,
+                    crop: false,
+                    overflow: 'allow',
+                    inside: false,
+                    align: isBar ? 'left' : 'center',
+                    x: isBar ? 5 : 0,
+                    y: isBar ? 0 : -4,
+                    padding: 1,
+                    formatter: function () {
+                        return this.y === null || this.y === undefined
+                            ? null
+                            : new Intl.NumberFormat('id-ID').format(this.y);
+                    },
+                    style: { fontSize: '0.85rem', fontWeight: '700', textOutline: 'none' }
                 }
             }
         }
@@ -363,7 +420,9 @@ window.addEventListener('simaster:theme-changed', function (event) {
                 : chart.series.reduce((total, series) => total + series.data.length, 0);
             const labels = type === 'pie'
                 ? window.infrastructurePieLabelOptions(pointCount)
-                : window.infrastructureValueLabelOptions(type, pointCount);
+                : chart.options.chart.className.includes('infra-site-count-chart')
+                    ? window.infrastructureSiteCountLabelOptions(type)
+                    : window.infrastructureValueLabelOptions(type, pointCount);
             chart.update(Highcharts.merge(options, labels), true, false);
         }
     });
@@ -783,9 +842,11 @@ $(function () {
                     })) }];
                 const labelOptions = type === 'pie'
                     ? window.infrastructurePieLabelOptions(source.length)
-                    : window.infrastructureValueLabelOptions(type, source.length);
+                    : isAging
+                        ? window.infrastructureValueLabelOptions(type, source.length)
+                        : window.infrastructureSiteCountLabelOptions(type);
                 Highcharts.chart(container, Highcharts.merge(base, {
-                    chart: { type, className: 'infra-analytics-chart' },
+                    chart: { type, className: `infra-analytics-chart${isAging ? '' : ' infra-site-count-chart'}` },
                     xAxis: { type: 'category' },
                     yAxis: { title: { text: isAging ? 'Hari' : 'Site unik' } },
                     plotOptions: {
@@ -799,9 +860,6 @@ $(function () {
                                         window.openInfrastructureDrilldown(scope, this.options.custom.filterField, this.options.custom.filterValue, this.options.custom.filterValue || this.options.custom.filterField, ownershipScope);
                                     }
                                 }
-                            },
-                            dataLabels: {
-                                enabled: false
                             }
                         },
                         series: {

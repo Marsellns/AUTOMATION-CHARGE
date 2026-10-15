@@ -9,6 +9,7 @@ use App\Filament\Modules\Electricity\ElectricityPlugin;
 use App\Filament\Modules\EquipmentRelocation\EquipmentRelocationPlugin;
 use App\Filament\Modules\Infrastructure\InfrastructurePlugin;
 use App\Filament\Modules\PoMonitoring\PoMonitoringPlugin;
+use App\Filament\Modules\ProfitLoss\ProfitLossPlugin;
 use App\Support\ReportModules;
 use Illuminate\Routing\Route;
 
@@ -20,12 +21,13 @@ class ReportModuleRegistry
     {
         return [
             new DashboardPlugin,
+            new ProfitLossPlugin,
             new InfrastructurePlugin,
             new ElectricityPlugin,
             new PoMonitoringPlugin,
-            new DataPotensiPlugin,
             new EquipmentRelocationPlugin,
             new AccountsPlugin,
+            new DataPotensiPlugin,
         ];
     }
 

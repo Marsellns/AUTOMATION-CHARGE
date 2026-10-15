@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Electricity')
+@section('title', 'Electricity Monitoring')
 
 @push('styles')
 <style>
@@ -66,6 +66,8 @@
         min-height: 100%;
         transition: opacity .2s ease;
     }
+    [data-electricity-panel][hidden] { display: none !important; }
+    .electricity-tabs-nav { display: flex; flex-wrap: wrap; gap: .25rem; }
     .electricity-chart {
         min-height: 330px;
         width: 100%;
@@ -126,11 +128,11 @@
 @endpush
 
 @section('content')
-    <section class="electricity-hero shadow-sm mb-4 p-4 p-lg-5">
+    <section class="electricity-hero shadow-sm mb-4 p-4">
         <div class="row align-items-center g-4 position-relative" style="z-index: 1;">
             <div class="col-lg-7">
-                <div class="electricity-eyebrow mb-2">SIMASTER · Electricity Management</div>
-                <h1 class="h2 fw-bold mb-2">Dashboard Electricity</h1>
+                <div class="electricity-eyebrow mb-2">SIMAWAR · Electricity Monitoring</div>
+                <h1 class="h2 fw-bold mb-2">Electricity Monitoring</h1>
                 <p class="mb-0 text-white-50 mw-100">
                     Monitoring terpadu site, kapasitas daya, tagihan, pembayaran, dan anomali untuk Centralized serta Inbuilding.
                 </p>
@@ -146,7 +148,7 @@
         </div>
     </section>
 
-    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;" data-simaster-filter-panel="Filter Dashboard Electricity">
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;" data-simaster-filter-panel="Filter Electricity Monitoring">
         <div class="card-body p-3">
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div>
@@ -177,6 +179,12 @@
 
     <div id="electricity-error" class="alert alert-danger d-none" role="alert"></div>
 
+    <div class="enterprise-tabs-nav electricity-tabs-nav mb-4" role="tablist" aria-label="Submodul Electricity Monitoring">
+        <button type="button" class="enterprise-tab-btn active" id="electricity-tab-overview" role="tab" aria-selected="true" aria-controls="electricity-panel-overview" data-electricity-tab="overview">Ringkasan &amp; Pembayaran</button>
+        <button type="button" class="enterprise-tab-btn" id="electricity-tab-sites" role="tab" aria-selected="false" aria-controls="electricity-panel-sites" data-electricity-tab="sites" tabindex="-1">Site &amp; Kapasitas</button>
+        <button type="button" class="enterprise-tab-btn" id="electricity-tab-anomalies" role="tab" aria-selected="false" aria-controls="electricity-panel-anomalies" data-electricity-tab="anomalies" tabindex="-1">Anomali Tagihan</button>
+    </div>
+    <section id="electricity-panel-overview" role="tabpanel" aria-labelledby="electricity-tab-overview" data-electricity-panel="overview">
     <div class="row g-3 mb-4" aria-live="polite">
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
@@ -267,18 +275,9 @@
         </div>
     </div>
 
+    </section>
+    <section id="electricity-panel-sites" role="tabpanel" aria-labelledby="electricity-tab-sites" data-electricity-panel="sites" hidden>
     <div class="row g-4 mb-4">
-        <div class="col-xl-7">
-            <section class="enterprise-card electricity-chart-card is-loading h-100">
-                <header class="enterprise-card-header">
-                    <div>
-                        <h2 class="enterprise-card-title">Anomali Tagihan per Bulan</h2>
-                        <div class="small text-body-secondary mt-1">Deteksi perubahan tagihan signifikan dari kedua sumber</div>
-                    </div>
-                </header>
-                <div class="enterprise-card-body"><div id="chart-electricity-anomaly" class="electricity-chart electricity-chart-sm"></div></div>
-            </section>
-        </div>
         <div class="col-xl-5">
             <section class="enterprise-card electricity-chart-card is-loading h-100">
                 <header class="enterprise-card-header">
@@ -290,9 +289,6 @@
                 <div class="enterprise-card-body"><div id="chart-electricity-sites" class="electricity-chart electricity-chart-sm"></div></div>
             </section>
         </div>
-    </div>
-
-    <div class="row g-4 mb-4">
         <div class="col-xl-7">
             <section class="enterprise-card electricity-chart-card is-loading h-100">
                 <header class="enterprise-card-header">
@@ -304,7 +300,9 @@
                 <div class="enterprise-card-body"><div id="chart-electricity-nop" class="electricity-chart electricity-chart-sm"></div></div>
             </section>
         </div>
-        <div class="col-xl-5">
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-12">
             <section class="enterprise-card h-100">
                 <header class="enterprise-card-header">
                     <div>
@@ -327,7 +325,21 @@
             </section>
         </div>
     </div>
-
+    </section>
+    <section id="electricity-panel-anomalies" role="tabpanel" aria-labelledby="electricity-tab-anomalies" data-electricity-panel="anomalies" hidden>
+    <div class="row g-4 mb-4">
+        <div class="col-xl-5">
+            <section class="enterprise-card electricity-chart-card is-loading h-100">
+                <header class="enterprise-card-header">
+                    <div>
+                        <h2 class="enterprise-card-title">Anomali Tagihan per Bulan</h2>
+                        <div class="small text-body-secondary mt-1">Deteksi perubahan tagihan signifikan dari kedua sumber</div>
+                    </div>
+                </header>
+                <div class="enterprise-card-body"><div id="chart-electricity-anomaly" class="electricity-chart electricity-chart-sm"></div></div>
+            </section>
+        </div>
+        <div class="col-xl-7">
     <section class="enterprise-card mb-4">
         <header class="enterprise-card-header">
             <div>
@@ -355,6 +367,9 @@
                 </table>
             </div>
         </div>
+    </section>
+        </div>
+    </div>
     </section>
 @endsection
 
@@ -702,6 +717,34 @@ document.addEventListener('DOMContentLoaded', () => {
     new MutationObserver(() => {
         if (currentData) renderAll(currentData);
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+
+    const moduleTabs = Array.from(document.querySelectorAll('[data-electricity-tab]'));
+    function activateElectricityTab(name) {
+        if (!moduleTabs.some(tab => tab.dataset.electricityTab === name)) return;
+        moduleTabs.forEach(tab => {
+            const active = tab.dataset.electricityTab === name;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+        });
+        document.querySelectorAll('[data-electricity-panel]').forEach(panel => {
+            panel.hidden = panel.dataset.electricityPanel !== name;
+        });
+        requestAnimationFrame(() => window.Highcharts?.charts.filter(Boolean).forEach(chart => {
+            if (chart.renderTo.closest(`[data-electricity-panel="${name}"]`)) chart.reflow();
+        }));
+    }
+    moduleTabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activateElectricityTab(tab.dataset.electricityTab));
+        tab.addEventListener('keydown', event => {
+            const next = event.key === 'ArrowRight' ? index + 1 : event.key === 'ArrowLeft' ? index - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? moduleTabs.length - 1 : null;
+            if (next === null) return;
+            event.preventDefault();
+            const target = moduleTabs[(next + moduleTabs.length) % moduleTabs.length];
+            activateElectricityTab(target.dataset.electricityTab);
+            target.focus();
+        });
+    });
 
     loadDashboard({ scope: 'all', bulan: 'all' });
 });

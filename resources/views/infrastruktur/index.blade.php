@@ -1,23 +1,45 @@
 @extends('layouts.app')
 
-@section('title', 'Infrastruktur — SIMASTER')
+@section('title', 'Infrastruktur — SIMAWAR')
+
+@push('styles')
+<style>
+    .infra-tabs-nav { display: flex; flex-wrap: wrap; max-width: 100%; }
+    .infra-tabs-nav .enterprise-tab-btn { white-space: nowrap; }
+    .infra-tab-panel .infra-alert-details .table-responsive { max-height: min(34vh, 300px); overflow-y: auto; }
+    @media (max-width: 575px) {
+        .infra-tabs-nav { width: 100%; }
+        .infra-tabs-nav .enterprise-tab-btn { flex: 1 1 auto; padding: .5rem .75rem; }
+        .infra-tab-panel .infra-summary-card-body { padding: .75rem; }
+        .infra-tab-panel .infra-summary-icon { display: none; }
+        .infra-tab-panel .infra-summary-card .fs-3 { font-size: 1.4rem !important; }
+    }
+</style>
+@endpush
 
 @section('content')
-<div class="page-hero mb-4">
+<div class="page-hero mb-3">
     <h1 class="h4 mb-1">Infrastruktur Performance</h1>
     <p class="text-body-secondary small mb-0">Ringkasan Sewa Lahan dan Combat berdasarkan data yang tersimpan di database.</p>
 </div>
 <div class="alert alert-info py-2 small">Dashboard ini menggunakan data database: <strong id="dataset-caption">Memuat jumlah baris...</strong>. Kartu Total Site menampilkan jumlah baris data; Site ID unik ditampilkan sebagai keterangan.</div>
 
+<div class="enterprise-tabs-nav infra-tabs-nav mb-3" id="infra-tabs" role="tablist" aria-label="Bagian Infrastruktur Management">
+    <button type="button" class="enterprise-tab-btn active" id="infra-tab-overview" role="tab" aria-selected="true" aria-controls="infra-panel-overview" data-infra-tab="overview">Ringkasan</button>
+    <button type="button" class="enterprise-tab-btn" id="infra-tab-risk" role="tab" aria-selected="false" aria-controls="infra-panel-risk" data-infra-tab="risk" tabindex="-1">Kontrak &amp; Risiko</button>
+    <button type="button" class="enterprise-tab-btn" id="infra-tab-renewal" role="tab" aria-selected="false" aria-controls="infra-panel-renewal" data-infra-tab="renewal" tabindex="-1">Perpanjangan</button>
+    <button type="button" class="enterprise-tab-btn" id="infra-tab-distribution" role="tab" aria-selected="false" aria-controls="infra-panel-distribution" data-infra-tab="distribution" tabindex="-1">Distribusi Site</button>
+    <button type="button" class="enterprise-tab-btn" id="infra-tab-process" role="tab" aria-selected="false" aria-controls="infra-panel-process" data-infra-tab="process" tabindex="-1">Proses &amp; Wilayah</button>
+</div>
+
+<div id="infra-panel-overview" class="infra-tab-panel" data-infra-panel="overview" role="tabpanel" aria-labelledby="infra-tab-overview">
 <div class="row g-3 mb-4">
     @foreach ([
         ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
-        ['id' => 'active', 'label' => 'Operational / Active', 'class' => 'success', 'icon' => 'check'],
         ['id' => 'contract', 'label' => 'Perlu Perhatian (Contract)', 'class' => 'warning', 'icon' => 'contract'],
         ['id' => 'without_pks', 'label' => 'Tanpa PKS (Risiko Legal)', 'class' => 'danger', 'icon' => 'alert'],
-        ['id' => 'off_air', 'label' => 'Off Air / Non-Operational', 'class' => 'secondary', 'icon' => 'offline'],
     ] as $card)
-        <div class="col-lg-4 col-md-6">
+        <div class="col-lg-4 col-md-6 col-6">
             <div class="card h-100 border-{{ $card['class'] }} infra-summary-link infra-summary-card"
                  data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'total' ? '' : $card['id'] }}"
                  role="link" tabindex="0" title="Buka data {{ $card['label'] }}">
@@ -51,37 +73,67 @@
             </div>
         </div>
     @endforeach
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100 border-info infra-summary-link infra-summary-card"
-             data-filter-field="summary_status" data-filter-value="risk"
-             role="link" tabindex="0" title="Buka data yang perlu perhatian">
-            <div class="card-body infra-summary-card-body">
-                <div>
-                    <div class="small text-body-secondary">Nilai Kontrak Berisiko</div>
-                    <div class="fs-3 fw-bold" id="infra-risk_value">—</div>
-                </div>
-                <span class="infra-summary-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14v11H5zM8 7V5h8v2M8 12h8M12 10v4M10 12h4"/></svg>
-                </span>
-            </div>
-        </div>
-    </div>
+
 </div>
 
 <div class="row g-3 infra-overview-chart-grid">
     <div class="col-lg-6 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Komposisi Status Site</div><div class="card-body"><div id="infra-status-chart" class="infra-overview-chart"></div></div></div></div>
     <div class="col-lg-6 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Site Owner (TP / Telkomsel)</div><div class="card-body"><div id="infra-owner-chart" class="infra-overview-chart"></div></div></div></div>
-    <div class="col-12 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Distribusi Tahun Renewal Sewa Lahan</div><div class="card-body"><div id="infra-renewal-chart" class="infra-overview-chart"></div></div></div></div>
+    <div class="col-12"><div class="card infra-overview-chart-card"><div class="card-header fw-semibold">Distribusi Tahun Renewal / Justi</div><div class="card-body"><div id="infra-renewal-chart" class="infra-overview-chart"></div></div></div></div>
 </div>
-<div class="mt-4">
-    <h2 class="h5 mb-3">Analitik Detail Infrastruktur</h2>
-    @include('infrastruktur.partials.analytics', ['scope' => 'all'])
 </div>
+@include('infrastruktur.partials.analytics', ['scope' => 'all'])
 @endsection
 
 @push('scripts')
 <script>
 $(function () {
+    const tabs = Array.from(document.querySelectorAll('#infra-tabs [data-infra-tab]'));
+    const panels = Array.from(document.querySelectorAll('[data-infra-panel]'));
+
+    function activateInfrastructureTab(name) {
+        if (!tabs.some(tab => tab.dataset.infraTab === name)) return;
+
+        tabs.forEach(tab => {
+            const active = tab.dataset.infraTab === name;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+        });
+        panels.forEach(panel => {
+            const active = panel.dataset.infraPanel === name;
+            panel.hidden = !active;
+            panel.classList.toggle('d-none', !active);
+        });
+
+        requestAnimationFrame(() => {
+            if (!window.Highcharts) return;
+            Highcharts.charts.filter(Boolean).forEach(chart => {
+                if (chart.renderTo.closest(`[data-infra-panel="${name}"]`)) chart.reflow();
+            });
+        });
+    }
+
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activateInfrastructureTab(tab.dataset.infraTab));
+        tab.addEventListener('keydown', event => {
+            const next = event.key === 'ArrowRight' ? index + 1
+                : event.key === 'ArrowLeft' ? index - 1
+                : event.key === 'Home' ? 0
+                : event.key === 'End' ? tabs.length - 1 : null;
+            if (next === null) return;
+            event.preventDefault();
+            const target = tabs[(next + tabs.length) % tabs.length];
+            activateInfrastructureTab(target.dataset.infraTab);
+            target.focus();
+        });
+    });
+    if (window.location.hash === '#infrastructure-data'
+        || new URLSearchParams(window.location.search).has('filter_field')
+        || new URLSearchParams(window.location.search).has('tahun')) {
+        activateInfrastructureTab('risk');
+    }
+
     $(document).on('click keydown', '.infra-summary-link', function (event) {
         if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
@@ -110,17 +162,17 @@ $(function () {
         const sewaRenewalClickOptions = { cursor: 'pointer', point: { events: { click: drilldownClick('sewa') } } };
 
         Highcharts.chart('infra-status-chart', themed(Highcharts.merge({
-            chart: { type: 'pie', className: 'infra-analytics-chart' },
-            plotOptions: { pie: { borderWidth: 0, dataLabels: { enabled: false } }, series: clickOptions },
+            chart: { type: 'pie', className: 'infra-analytics-chart infra-site-count-chart' },
+            plotOptions: { pie: { borderWidth: 0 }, series: clickOptions },
             series: [{ name: 'Site', data: drilldown(data.status) }]
         }, window.infrastructurePieLabelOptions(data.status.length))));
         Highcharts.chart('infra-owner-chart', themed(Highcharts.merge({
-            chart: { type: 'pie', className: 'infra-analytics-chart' },
-            plotOptions: { pie: { innerSize: '55%', borderWidth: 0, dataLabels: { enabled: false } }, series: clickOptions },
+            chart: { type: 'pie', className: 'infra-analytics-chart infra-site-count-chart' },
+            plotOptions: { pie: { innerSize: '55%', borderWidth: 0 }, series: clickOptions },
             series: [{ name: 'Site', data: drilldown(data.owners) }]
         }, window.infrastructurePieLabelOptions(data.owners.length))));
         Highcharts.chart('infra-renewal-chart', themed(Highcharts.merge({
-            chart: { type: 'column', className: 'infra-analytics-chart' },
+            chart: { type: 'column', className: 'infra-analytics-chart infra-site-count-chart' },
             xAxis: { type: 'category' },
             yAxis: { title: { text: 'Site unik' } },
             plotOptions: {
@@ -128,10 +180,10 @@ $(function () {
                 column: { borderWidth: 0, colorByPoint: true }
             },
             series: [{ name: 'Site', data: drilldown(data.renewal_years) }]
-        }, window.infrastructureValueLabelOptions('column', data.renewal_years.length))));
+        }, window.infrastructureSiteCountLabelOptions('column'))));
     }).fail(function (xhr) {
         const message = xhr.responseJSON?.message || 'Data Infrastruktur belum dapat dimuat.';
-        $('.card-body').first().prepend(`<div class="alert alert-danger mb-3">${$('<div>').text(message).html()}</div>`);
+        $('#dataset-caption').closest('.alert').after(`<div class="alert alert-danger mb-3" role="alert">${$('<div>').text(message).html()}</div>`);
     });
 });
 </script>

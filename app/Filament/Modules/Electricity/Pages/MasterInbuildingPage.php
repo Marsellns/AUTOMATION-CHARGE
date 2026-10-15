@@ -10,6 +10,6 @@ class MasterInbuildingPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Master Inbuilding', 'electricity.inbuilding.listrik-inbuilding.index', 'electricity.inbuilding.listrik-inbuilding.*', 'heroicon-o-building-office', 6 => 'Listrik Inbuilding'];
+        return ['Electricity Monitoring', 'Master Inbuilding', 'electricity.inbuilding.listrik-inbuilding.index', 'electricity.inbuilding.listrik-inbuilding.*', 'heroicon-o-building-office', 6 => 'Listrik Inbuilding'];
     }
 }

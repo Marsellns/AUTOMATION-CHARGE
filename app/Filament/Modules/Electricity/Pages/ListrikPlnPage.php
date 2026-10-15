@@ -10,6 +10,6 @@ class ListrikPlnPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Listrik PLN', 'electricity.centralized.listrik-pln.index', 'electricity.centralized.listrik-pln.*', 'heroicon-o-bolt', 6 => 'Listrik Centralized'];
+        return ['Electricity Monitoring', 'Listrik PLN', 'electricity.centralized.listrik-pln.index', 'electricity.centralized.listrik-pln.*', 'heroicon-o-bolt', 6 => 'Listrik Centralized'];
     }
 }

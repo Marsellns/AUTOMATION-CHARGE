@@ -10,6 +10,6 @@ class SiteOwnerPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Data Potensi', 'Site Owner', 'data-potensi.site-owner.index', 'data-potensi.site-owner.*', 'heroicon-o-users'];
+        return ['Feasibility Site', 'Site Owner', 'data-potensi.site-owner.index', 'data-potensi.site-owner.*', 'heroicon-o-users'];
     }
 }

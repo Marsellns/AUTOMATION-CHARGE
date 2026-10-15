@@ -10,6 +10,6 @@ class DataSitePage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Data Potensi', 'Data Site', 'data-potensi.data-site.index', 'data-potensi.data-site.*', 'heroicon-o-map-pin'];
+        return ['Feasibility Site', 'Data Site', 'data-potensi.data-site.index', 'data-potensi.data-site.*', 'heroicon-o-map-pin'];
     }
 }

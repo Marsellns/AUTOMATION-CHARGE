@@ -10,6 +10,6 @@ class InbuildingAnomalyPage extends ModuleReportPage
 
     public static function reportNavigation(): ?array
     {
-        return ['Electricity', 'Anomali Inbuilding', 'electricity.inbuilding.anomali.index', 'electricity.inbuilding.anomali.*', 'heroicon-o-exclamation-triangle', 6 => 'Listrik Inbuilding'];
+        return ['Electricity Monitoring', 'Anomali Inbuilding', 'electricity.inbuilding.anomali.index', 'electricity.inbuilding.anomali.*', 'heroicon-o-exclamation-triangle', 6 => 'Listrik Inbuilding'];
     }
 }

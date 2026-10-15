@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Grafik Tagihan — ' . $listrikPln->id_pelanggan . ' — SIMASTER')
+@section('title', 'Grafik Tagihan — ' . $listrikPln->id_pelanggan . ' — SIMAWAR')
 
 @section('content')
     {{-- Header --}}

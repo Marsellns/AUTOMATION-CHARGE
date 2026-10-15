@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tambah PO — SIMASTER')
+@section('title', 'Tambah PO — SIMAWAR')
 
 @section('content')
     <h1 class="h4 mb-3">Tambah PO HQ</h1>
