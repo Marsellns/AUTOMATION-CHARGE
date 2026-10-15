@@ -14,8 +14,10 @@ sha="$(git -C "$repo" rev-parse HEAD)"
 [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail 'invalid Git commit'
 
 php=''
-for candidate in /opt/cpanel/ea-php82/root/usr/bin/php /opt/alt/php82/usr/bin/php "$(command -v php || true)"; do
-    if [[ -n "$candidate" && -x "$candidate" ]] && "$candidate" -r 'exit(version_compare(PHP_VERSION,"8.2.0",">=") ? 0 : 1);'; then
+for candidate in /opt/alt/php83/usr/bin/php /opt/alt/php82/usr/bin/php /opt/cpanel/ea-php83/root/usr/bin/php /opt/cpanel/ea-php82/root/usr/bin/php "$(command -v php || true)"; do
+    if [[ -n "$candidate" && -x "$candidate" ]] &&
+       version="$("$candidate" "$repo/scripts/cpanel-deploy-check.php" version 2>/dev/null)" &&
+       [[ "$version" =~ ^[0-9]+$ ]] && [[ "$version" -ge 80200 ]]; then
         php="$candidate"
         break
     fi
@@ -75,13 +77,8 @@ if [[ ! -d "$release" ]]; then
     [[ -f "$app/artisan" && -f "$app/vendor/autoload.php" && -f "$app/public/build/manifest.json" ]] ||
         fail 'release lacks Laravel dependencies or built assets'
     [[ ! -e "$app/.env" ]] || fail 'release unexpectedly contains .env'
-    "$php" -r '
-        $m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
-        exit(($m["source_commit"] ?? null)===$argv[2]
-          && ($m["composer_lock_sha256"] ?? null)===hash_file("sha256",$argv[3])
-          && ($m["vite_manifest_sha256"] ?? null)===hash_file("sha256",$argv[4])
-          && ($m["includes_credentials"] ?? true)===false ? 0 : 1);
-    ' "$stage/extracted/RELEASE.json" "$sha" "$repo/composer.lock" "$app/public/build/manifest.json" ||
+    "$php" "$repo/scripts/cpanel-deploy-check.php" package \
+        "$stage/extracted/RELEASE.json" "$sha" "$repo/composer.lock" "$app/public/build/manifest.json" ||
         fail 'release metadata differs from the checked-out source'
     [[ -z "$(find "$app/storage" -type f -print -quit)" ]] || fail 'release contains storage data'
     find "$app/storage" -depth -type d -exec rmdir -- {} \;
@@ -95,7 +92,7 @@ fi
     fail 'saved release is incomplete'
 [[ "$(readlink "$release/.env")" == "$repo/.env" && "$(readlink "$release/storage")" == "$repo/storage" ]] ||
     fail 'saved release uses different persistent configuration'
-"$php" -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); exit(($m["source_commit"] ?? "")===$argv[2] ? 0 : 1);' \
+"$php" "$repo/scripts/cpanel-deploy-check.php" release \
     "$release/RELEASE.json" "$sha" || fail 'saved release belongs to another commit'
 (
     cd "$release"
