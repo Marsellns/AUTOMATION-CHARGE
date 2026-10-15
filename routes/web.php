@@ -68,6 +68,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pnl/template', [PnlViewController::class, 'downloadTemplate'])->name('pnl.template');
     Route::get('/pnl/data', [PnlViewController::class, 'data'])->name('pnl.data');
     Route::get('/pnl/highlights', [PnlViewController::class, 'highlights'])->name('pnl.highlights');
+    Route::get('/pnl/analytics', [PnlViewController::class, 'analytics'])->name('pnl.analytics');
     Route::get('/pnl/export-excel', [PnlViewController::class, 'exportExcel'])->name('pnl.export-excel');
     Route::get('/pnl/site-history/{site}', [PnlViewController::class, 'siteHistory'])->name('pnl.site-history');
 

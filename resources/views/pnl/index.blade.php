@@ -17,7 +17,7 @@
         </div>
     @endif
 
-    <div class="d-flex justify-content-between align-items-center mb-3 page-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 page-hero">
         <div>
             <h1 class="h4 mb-1">Profit & Loss (P & L) Data</h1>
             <p class="text-body-secondary mb-0 small">
@@ -57,8 +57,20 @@
                 <label for="filter-nop" class="form-label mb-0 small fw-semibold text-nowrap">NOP:</label>
                 <select id="filter-nop" class="form-select form-select-sm" style="min-width: 170px;">
                     <option value="">Semua NOP</option>
+                    <option value="__unmapped__" @selected($selectedNop === '__unmapped__')>Belum dipetakan</option>
                     @foreach ($nops as $nop)
                         <option value="{{ $nop }}" @selected($nop === $selectedNop)>{{ $nop }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <label for="filter-city" class="form-label mb-0 small fw-semibold">Kota:</label>
+                <select id="filter-city" class="form-select form-select-sm">
+                    <option value="">Semua Kota</option>
+                    <option value="__unmapped__" @selected($selectedCity === '__unmapped__')>Belum dipetakan</option>
+                    @foreach ($cities as $city)
+                        <option value="{{ $city }}" @selected(strcasecmp($city, $selectedCity) === 0)>{{ $city }}</option>
                     @endforeach
                 </select>
             </div>
@@ -90,23 +102,31 @@
             </div></div></div>
         @endforeach
     </div>
-    {{-- Grafik utama P&L --}}
+    @php($pnlTabs = ['site' => 'Site Performance', 'nop' => 'NOP Performance', 'monthly' => 'Tren Bulanan', 'nop-pnl' => 'Profit/Loss per NOP', 'city' => 'Profit/Loss per City', 'analysis' => 'Analisis Site'])
+    <div class="pnl-tabs mb-3" role="tablist" aria-label="Bagian Profit &amp; Loss">
+        @foreach ($pnlTabs as $key => $label)
+            <button type="button" id="pnl-tab-{{ $key }}" class="pnl-tab {{ $loop->first ? 'active' : '' }}" role="tab" aria-selected="{{ $loop->first ? 'true' : 'false' }}" aria-controls="pnl-panel-{{ $key }}" tabindex="{{ $loop->first ? '0' : '-1' }}" data-pnl-tab="{{ $key }}">{{ $label }}</button>
+        @endforeach
+    </div>
+    <p class="small text-body-secondary mb-3" id="pnl-chart-context" role="status">Memuat diagram sesuai periode dan wilayah…</p>
+    <div id="pnl-analytics-error" class="alert alert-danger d-none" role="alert"></div>
+    <section id="pnl-panel-site" data-pnl-panel="site" role="tabpanel" aria-labelledby="pnl-tab-site">
     <div class="row g-3 mb-3">
         <div class="col-lg-8">
             <div class="card h-100">
                 <div class="card-header">
-                    <h2 class="h6 mb-0">Perbandingan Revenue, Cost, dan Net PnL</h2>
-                    <span class="text-body-secondary small">Batang Net PnL di atas garis nol = profit, di bawah garis nol = loss (satuan: Miliar Rp)</span>
+                    <h2 class="h6 mb-0">Performa Site per NOP</h2>
+                    <span class="text-body-secondary small">Klik kelompok untuk melihat daftar site pada NOP dan status tersebut.</span>
                 </div>
                 <div class="card-body">
-                    <div id="pnl-growth-chart" style="height: 320px; width: 100%;"></div>
+                    <div id="pnl-site-status-chart" class="pnl-chart" aria-label="Jumlah site menurut NOP dan status"></div>
                 </div>
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card h-100">
                 <div class="card-header">
-                    <h2 class="h6 mb-0">Data by Category</h2>
+                    <h2 class="h6 mb-0">Komposisi Status Site</h2>
                 </div>
                 <div class="card-body">
                     <div id="pnl-category-chart" style="height: 270px; width: 100%;"></div>
@@ -133,6 +153,17 @@
         @endforeach
     </div>
 
+    </section>
+    @include('pnl.partials.analytics-panels')
+    <section id="pnl-panel-analysis" data-pnl-panel="analysis" role="tabpanel" aria-labelledby="pnl-tab-analysis" hidden>
+    <div class="card mb-3">
+        <div class="card-header"><h2 class="h6 mb-1">Revenue dan Cost per Site</h2><p class="small text-body-secondary mb-0">10 site dengan nilai absolut P&amp;L terbesar pada filter aktif. Klik batang untuk membuka histori.</p></div>
+        <div class="card-body"><div id="pnl-site-comparison-chart" class="pnl-chart" aria-label="Perbandingan revenue dan cost site"></div></div>
+    </div>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div><h2 class="h5 mb-1">Data Site</h2><p id="pnl-data-context" class="small text-body-secondary mb-0">Data mengikuti filter periode dan wilayah di atas.</p></div>
+        <button type="button" id="pnl-clear-drilldown" class="btn btn-sm btn-outline-secondary">Reset pilihan diagram</button>
+    </div>
     <div class="card" id="pnl-table-card" tabindex="-1">
         <div class="card-body">
             <table id="pnl-table" class="display align-middle text-nowrap" style="width:100%">
@@ -142,6 +173,7 @@
                         <th>Site ID</th>
                         <th>Site Name</th>
                         <th>NOP</th>
+                        <th>Kota</th>
                         <th>Revenue</th>
                         <th>Cost</th>
                         <th>Profit / Loss</th>
@@ -151,6 +183,7 @@
             </table>
         </div>
     </div>
+    </section>
 
     {{-- Modal Detail Site & Histori Bulanan --}}
     <div class="modal fade" id="siteDetailModal" tabindex="-1" aria-hidden="true">
@@ -192,6 +225,20 @@
 
 @push('styles')
 <style>
+    .pnl-tabs { display: flex; flex-wrap: wrap; gap: .65rem; }
+    .simaster-report .pnl-tab { border: 1px solid var(--bs-border-color); border-radius: .9rem; padding: .8rem 1rem; color: var(--bs-body-color); background: var(--bs-body-bg); font: inherit; font-size: .9rem; font-weight: 650; cursor: pointer; transition: background .2s, box-shadow .2s; }
+    .simaster-report .pnl-tab:hover { background: var(--bs-tertiary-bg); }
+    .simaster-report .pnl-tab.active { color: #fff; background: linear-gradient(120deg, #0d9488, #0f766e); border-color: #0f766e; box-shadow: 0 4px 12px rgb(13 148 136 / .16); }
+    .simaster-report .pnl-tab:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+    [data-pnl-panel][hidden] { display: none !important; }
+    .pnl-chart { height: 320px; min-width: 0; width: 100%; }
+    .pnl-chart-scroll { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; }
+    .pnl-summary-compact { display: none; }
+    .pnl-analytics-table { max-height: 370px; overflow: auto; }
+    .pnl-analytics-table button { text-align: left; }
+    @media (max-width: 575px) { .simaster-report .pnl-tab { flex: 1 1 42%; padding: .65rem .5rem; font-size: .78rem; } .pnl-chart { height: 290px; } }
+    @media (max-width: 575px) { .pnl-summary-full { display: none; } .pnl-summary-compact { display: inline; } }
+    @media (prefers-reduced-motion: reduce) { .simaster-report .pnl-tab { transition: none; } }
     #pnl-table tbody tr { cursor: pointer; }
     .pnl-highlight {
         border-radius: 12px;
@@ -230,7 +277,7 @@
 $(function () {
     const dataUrl = @json(route('pnl.data'));
     const highlightApiUrl = @json(route('pnl.highlights'));
-    const chartApiUrl = @json(route('dashboard.chart-data'));
+    const chartApiUrl = @json(route('pnl.analytics'));
     const historyBaseUrl = @json(url('pnl/site-history'));
     const exportBaseUrl = @json(route('pnl.export-excel'));
     const availablePeriods = @json($periods);
@@ -238,11 +285,10 @@ $(function () {
     const initialAllMonths = @json($selectedAllMonths ?? false);
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const palette = window.SimasterChartPalette;
-    let growthChart = null;
-    let categoryChart = null;
     let chartRequest = null;
     let highlightRequest = null;
     let highlightSiteFilterActive = false;
+    let selectedSiteCode = '';
     const fmtNumber = (value, decimals = 0) => Number(value || 0).toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
     function populateMonths(tahun, selectedBulan) {
@@ -255,7 +301,7 @@ $(function () {
         $month.append($('<option>').val('all').text('Semua Bulan'));
         months.forEach((bulan) => $month.append($('<option>').val(bulan).text(monthNames[bulan - 1])));
         // Pre-select: 'all' jika selectedBulan === 0 atau 'all', else nilai bulan
-        if (selectedBulan === 0 || selectedBulan === 'all' || selectedBulan === null) {
+        if (!months.length || selectedBulan === 0 || selectedBulan === 'all' || selectedBulan === null) {
             $month.val('all');
         } else {
             $month.val(months.includes(Number(selectedBulan)) ? Number(selectedBulan) : months[months.length - 1]);
@@ -264,6 +310,7 @@ $(function () {
 
     function initPeriodFilters() {
         const years = [...new Set(availablePeriods.map((period) => Number(period.tahun)))].sort((a, b) => b - a);
+        if (!years.length) years.push(initialPeriod[1]);
         const $year = $('#filter-year').empty();
         years.forEach((tahun) => $year.append($('<option>').val(tahun).text(tahun)));
         $year.val(initialPeriod[1]);
@@ -279,6 +326,7 @@ $(function () {
         { data: 'site_id', name: 'site_id' },
         { data: 'site_name', name: 'site_name' },
         { data: 'nop', name: 'nop', defaultContent: '-' },
+        { data: 'city', name: 'city', defaultContent: '-' },
         { data: 'revenue', name: 'revenue', className: 'text-end' },
         { data: 'cost', name: 'cost', className: 'text-end' },
         { data: 'profit_loss', name: 'profit_loss', className: 'text-end' },
@@ -298,6 +346,8 @@ $(function () {
                 d.tahun = $('#filter-year').val();
                 d.nop = $('#filter-nop').val();
                 d.status = $('#filter-status').val();
+                d.city = $('#filter-city').val();
+                d.site = selectedSiteCode;
             }
         },
         columns: columns,
@@ -318,8 +368,11 @@ $(function () {
         params.append('tahun', $('#filter-year').val());
         if (nop) params.append('nop', nop);
         if (status) params.append('status', status);
+        if ($('#filter-city').val()) params.append('city', $('#filter-city').val());
+        if (selectedSiteCode) params.append('site', selectedSiteCode);
 
         $('#btn-export').attr('href', exportBaseUrl + '?' + params.toString());
+        updatePnlDataContext();
     }
 
     updateExportUrl();
@@ -330,7 +383,8 @@ $(function () {
         return {
             tahun: $('#filter-year').val(),
             bulan: bulan === 'all' ? 'all' : bulan,
-            nop: $('#filter-nop').val()
+            nop: $('#filter-nop').val(),
+            city: $('#filter-city').val()
         };
     }
 
@@ -372,7 +426,13 @@ $(function () {
                 renderRanking('profit', res.top_profit || []);
                 renderRanking('loss', res.top_loss || []);
                 const summary = res.summary || {};
-                ['revenue', 'cost', 'profit_loss'].forEach(key => $(`#pnl-summary-${key}`).text(fmtRupiah(summary[key])));
+                ['revenue', 'cost', 'profit_loss'].forEach(key => {
+                    const value = Number(summary[key] || 0);
+                    const full = fmtRupiah(value);
+                    const $value = $('#pnl-summary-' + key).empty().attr('title', full);
+                    $('<span class="pnl-summary-full">').text(full).appendTo($value);
+                    $('<span class="pnl-summary-compact">').text('Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(value)).appendTo($value);
+                });
                 $('#pnl-summary-profit_loss').toggleClass('text-profit', summary.profit_loss > 0).toggleClass('text-loss', summary.profit_loss < 0);
                 $('#pnl-summary-margin').text(summary.margin === null ? '—' : `${fmtNumber(summary.margin, 2)}%`);
                 $('#pnl-ranking-caption').text(`${summary.sites_count || 0} site dengan data finansial · ${$('#filter-nop').val() || 'Semua NOP'} · mengikuti periode terpilih`);
@@ -389,127 +449,10 @@ $(function () {
         highlightRequest = request;
     }
 
-    function renderPnlCharts(res) {
-        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-        const textColor = isDark ? '#CBD5E1' : '#334155';
-        const gridColor = isDark ? '#1E293B' : '#F1F5F9';
-        const tooltipBg = isDark ? '#0F172A' : '#FFFFFF';
-        const tooltipText = isDark ? '#F8FAFC' : '#1E293B';
-        const pnl = res.pnl || {};
-        const formatMiliar = (value) => `Rp ${Number(value || 0).toFixed(2)} M`;
-
-        if (growthChart) growthChart.destroy();
-        growthChart = Highcharts.chart('pnl-growth-chart', {
-            chart: { type: 'column', backgroundColor: 'transparent' },
-            title: { text: null },
-            credits: { enabled: false },
-            xAxis: {
-                categories: pnl.labels || [],
-                labels: { style: { color: textColor, fontSize: '11px' } },
-                lineColor: gridColor
-            },
-            yAxis: {
-                title: { text: 'Miliar Rupiah (Rp)', style: { color: textColor, fontSize: '11px' } },
-                gridLineColor: gridColor,
-                labels: { style: { color: textColor, fontSize: '11px' } },
-                plotLines: [{
-                    value: 0,
-                    color: isDark ? '#94A3B8' : '#64748B',
-                    width: 1.5,
-                    zIndex: 5,
-                    label: { text: 'Rp 0', align: 'right', style: { color: textColor, fontSize: '10px' } }
-                }]
-            },
-            tooltip: {
-                shared: true,
-                backgroundColor: tooltipBg,
-                style: { color: tooltipText },
-                formatter: function () {
-                    let content = `<strong>${this.x}</strong><br/>`;
-                    this.points.forEach((point) => {
-                        const percentage = window.SimasterChartMetrics.format(window.SimasterChartMetrics.highcharts(point));
-                        content += `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${formatMiliar(point.y)}</b> ` +
-                            `(<b>${percentage}</b> dari total ${point.series.name})<br/>`;
-                    });
-                    return content;
-                }
-            },
-            legend: { itemStyle: { color: textColor, fontSize: '11px' } },
-            plotOptions: { column: { borderRadius: 4, borderWidth: 0 } },
-            series: [
-                { name: 'Revenue', data: pnl.revenue || [], color: palette.financial.revenue },
-                { name: 'Cost', data: pnl.cost || [], color: palette.financial.cost },
-                {
-                    name: 'Net PnL',
-                    data: (pnl.profit_loss || []).map((value) => ({
-                        y: Number(value) || 0,
-                        color: Number(value) > 0 ? palette.financial.profit : palette.financial.loss
-                    }))
-                }
-            ]
-        });
-
-        if (categoryChart) categoryChart.destroy();
-        categoryChart = Highcharts.chart('pnl-category-chart', {
-            chart: { type: 'pie', backgroundColor: 'transparent' },
-            title: { text: null },
-            credits: { enabled: false },
-            tooltip: {
-                pointFormat: '<b>{point.y}</b> site ({point.percentage:.1f}%)',
-                backgroundColor: tooltipBg,
-                style: { color: tooltipText }
-            },
-            plotOptions: {
-                pie: {
-                    innerSize: '65%',
-                    borderWidth: 0,
-                    dataLabels: { enabled: true, format: '{point.name}: {point.y} ({point.percentage:.1f}%)' },
-                    showInLegend: true
-                }
-            },
-            legend: { itemStyle: { color: textColor, fontSize: '11px' } },
-            series: [{
-                name: 'Total Site',
-                data: (res.pnl_status || []).map((point, index) => ({
-                    ...point,
-                    color: point.name === 'Profit Site'
-                        ? palette.financial.profit
-                        : (point.name === 'Loss Site'
-                            ? palette.financial.loss
-                            : (point.name === 'Tidak Aktif'
-                                ? palette.financial.inactive
-                                : palette.series[index % palette.series.length]))
-                }))
-            }]
-        });
-    }
-
-    function loadPnlCharts() {
-        if (chartRequest) chartRequest.abort();
-        $('#pnl-growth-chart, #pnl-category-chart').addClass('opacity-50');
-        let request;
-        request = $.ajax({
-            url: chartApiUrl,
-            method: 'GET',
-            data: getChartFilters(),
-            success: renderPnlCharts,
-            error: function (_xhr, status) {
-                if (status === 'abort') return;
-                $('#pnl-growth-chart, #pnl-category-chart').html('<div class="text-center text-body-secondary py-5">Gagal memuat diagram.</div>');
-            },
-            complete: function () {
-                if (chartRequest !== request) return;
-                $('#pnl-growth-chart, #pnl-category-chart').removeClass('opacity-50');
-                chartRequest = null;
-            }
-        });
-        chartRequest = request;
-    }
-
-    loadPnlCharts();
-    loadPnlHighlights();
+    @include('pnl.partials.analytics-script')
 
     function clearHighlightSiteFilter() {
+        selectedSiteCode = '';
         if (!highlightSiteFilterActive) return;
         table.column(1).search('');
         highlightSiteFilterActive = false;
@@ -526,7 +469,9 @@ $(function () {
         $('.pnl-highlight').removeClass('is-selected').attr('aria-pressed', 'false');
         $card.addClass('is-selected').attr('aria-pressed', 'true');
         highlightSiteFilterActive = true;
+        selectedSiteCode = siteId;
         updateExportUrl();
+        activatePnlTab('analysis');
 
         $('#pnl-table').one('draw.dt.pnlHighlight', function () {
             const matchingRow = $(table.rows({ page: 'current' }).nodes().toArray()).filter(function () {
@@ -564,7 +509,7 @@ $(function () {
         loadPnlHighlights();
     });
 
-    $('#filter-month, #filter-nop').on('change', function () {
+    $('#filter-month, #filter-nop, #filter-city').on('change', function () {
         clearHighlightSiteFilter();
         updateExportUrl();
         table.draw();

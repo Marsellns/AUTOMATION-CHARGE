@@ -1,5 +1,6 @@
 @import './report-scoped.css';
 @import './module-navigation.css';
+@import './report-surfaces.css';
 
 /* Filament remains responsible for the panel's layout and color scheme. */
 .simaster-report.app-main {

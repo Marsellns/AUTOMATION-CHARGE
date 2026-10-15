@@ -65,6 +65,7 @@ class ReportPanelProvider extends PanelProvider
             ])
             ->navigation(fn (NavigationBuilder $builder) => $builder->groups(ModuleNavigation::groups()))
             ->renderHook('panels::head.end', fn () => view('filament.partials.report-assets'))
+            ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => view('filament.partials.report-title'))
             ->renderHook(PanelsRenderHook::SIDEBAR_NAV_START, fn () => view('filament.partials.module-heading'))
             ->renderHook(PanelsRenderHook::SIMPLE_LAYOUT_START, fn () => request()->routeIs('filament.report.auth.login')
                 ? view('auth.partials.login-hero')

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Site;
+use App\Services\PnlAnalyticsService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\Exportable;
@@ -20,6 +21,8 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
         private readonly int $tahun,
         private readonly ?string $status = null,
         private readonly ?string $nop = null,
+        private readonly ?string $city = null,
+        private readonly ?string $siteCode = null,
     ) {}
 
     public function chunkSize(): int
@@ -28,6 +31,15 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
     }
 
     public function query(): Builder
+    {
+        $query = $this->baseQuery();
+        $query->addSelect('so.city as city');
+        PnlAnalyticsService::applyDrilldownFilters($query, $this->city, $this->siteCode);
+
+        return $query;
+    }
+
+    private function baseQuery(): Builder
     {
         $bulan = $this->bulan;
         $tahun = $this->tahun;
@@ -38,7 +50,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
                 ->leftJoin('site_owners as so', function ($join) {
                     $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
                 })
-                ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+                ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
                 ->select('sites.*', 'so.nop as nop')
                 ->orderBy('sites.site_id');
         }
@@ -57,7 +69,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
                     ->leftJoin('site_owners as so', function ($join) {
                         $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
                     })
-                    ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+                    ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
                     ->select(
                         'sites.id',
                         'sites.site_id',
@@ -82,7 +94,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
                 ->leftJoin('site_owners as so', function ($join) {
                     $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
                 })
-                ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+                ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
                 ->select(
                     'sites.id',
                     'sites.site_id',
@@ -111,7 +123,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
                     ->leftJoin('site_owners as so', function ($join) {
                         $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
                     })
-                    ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+                    ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
                     ->select(
                         'sites.id',
                         'sites.site_id',
@@ -136,7 +148,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
                 ->leftJoin('site_owners as so', function ($join) {
                     $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
                 })
-                ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+                ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
                 ->select(
                     'sites.id',
                     'sites.site_id',
@@ -173,7 +185,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
             ->leftJoin('site_owners as so', function ($join) {
                 $join->on(DB::raw('UPPER(TRIM(so.site_code))'), '=', DB::raw('UPPER(TRIM(sites.site_id))'));
             })
-            ->when($this->nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
+            ->when($this->nop !== null, fn ($query) => $this->nop === PnlAnalyticsService::UNMAPPED ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''") : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($this->nop)]))
             ->select(
                 'sites.id',
                 'sites.site_id',
@@ -195,6 +207,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
             'Site ID',
             'Site Name',
             'NOP',
+            'Kota',
             'Revenue (Rp)',
             'Cost (Rp)',
             'Profit/Loss (Rp)',
@@ -221,6 +234,7 @@ class PnlExport implements FromQuery, WithHeadings, WithMapping, WithCustomChunk
             $row->site_id,
             $row->site_name ?? '-',
             $row->nop ?? '-',
+            $row->city ?? '-',
             $row->revenue !== null ? (float) $row->revenue : 0,
             $row->cost !== null ? (float) $row->cost : 0,
             $pnl ?? 0,

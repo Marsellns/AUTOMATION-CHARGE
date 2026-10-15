@@ -1,0 +1,76 @@
+/* Presentation shared by report modules; semantic status colors keep their meaning. */
+.simaster-report {
+    --report-blue: #3b82f6;
+    --report-mint: #0d9488;
+    --report-amber: #d97706;
+    --report-violet: #8b5cf6;
+    --report-tint: 5%;
+}
+.simaster-report[data-bs-theme="dark"] { --report-tint: 9%; }
+.simaster-report .row > :nth-child(4n + 1) { --report-accent: var(--report-blue); }
+.simaster-report .row > :nth-child(4n + 2) { --report-accent: var(--report-mint); }
+.simaster-report .row > :nth-child(4n + 3) { --report-accent: var(--report-amber); }
+.simaster-report .row > :nth-child(4n + 4) { --report-accent: var(--report-violet); }
+.simaster-report :is(.card, .enterprise-card, .stat-card):not([class*="bg-"]) {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--report-accent, #3b82f6) var(--report-tint), var(--bs-body-bg, #fff)), var(--bs-body-bg, #fff) 85%);
+}
+.simaster-report :is(.card-header, .enterprise-card-header):not([class*="bg-"]) {
+    background: linear-gradient(110deg, color-mix(in srgb, var(--report-accent, #3b82f6) 8%, var(--bs-body-bg, #fff)), color-mix(in srgb, #0d9488 3%, var(--bs-body-bg, #fff)));
+}
+.simaster-report :is(.table, table.dataTable) {
+    --bs-table-striped-bg: color-mix(in srgb, #3b82f6 4%, var(--bs-body-bg, #fff));
+}
+.simaster-report :is(.table, table.dataTable) > thead > tr > th:not([class*="bg-"]) {
+    background: color-mix(in srgb, #3b82f6 9%, var(--bs-body-bg, #fff));
+    color: var(--bs-emphasis-color, #0f172a);
+}
+.simaster-report table.dataTable > tbody > tr:nth-child(even):not([class*="table-"]):not(.pnl-highlighted-row):not(.selected):not(.dt-row-selected) > td:not([class*="bg-"]) {
+    background-color: color-mix(in srgb, #3b82f6 3%, var(--bs-body-bg, #fff));
+}
+.fi-body { --report-panel-surface: #fff; }
+.dark .fi-body { --report-panel-surface: #111827; }
+.fi-body :is(.fi-section, .fi-ta-ctn) {
+    background: linear-gradient(135deg, color-mix(in srgb, #3b82f6 4%, var(--report-panel-surface)), var(--report-panel-surface) 85%);
+}
+.fi-body .fi-ta-header-cell {
+    background: color-mix(in srgb, #3b82f6 8%, var(--report-panel-surface));
+}
+.fi-topbar { position: relative; }
+.simaster-report-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 34rem);
+    padding: .5rem 1.15rem;
+    border-radius: .85rem;
+    background: linear-gradient(110deg, rgb(59 130 246 / .07), rgb(13 148 136 / .08), rgb(139 92 246 / .06));
+    text-align: center;
+    pointer-events: none;
+}
+.simaster-report-title span {
+    display: block;
+    color: #1e4c7c;
+    background: linear-gradient(100deg, #1d4ed8, #0f766e 60%, #6d28d9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: clamp(.8rem, 1.15vw, 1.1rem);
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: .07em;
+}
+.dark .simaster-report-title span {
+    color: #a5d6f8;
+    background-image: linear-gradient(100deg, #93c5fd, #5eead4 60%, #c4b5fd);
+}
+@media (max-width: 63.99rem) {
+    .simaster-report-title { max-width: calc(100% - 12rem); width: max-content; padding: .4rem .7rem; }
+    .simaster-report-title span { font-size: .72rem; letter-spacing: .04em; }
+}
+@media (max-width: 25rem) {
+    .simaster-report-title { max-width: calc(100% - 13rem); padding: .25rem; }
+    .simaster-report-title span { font-size: .64rem; }
+}
+@media (forced-colors: active) {
+    .simaster-report-title span { background: none; -webkit-text-fill-color: currentColor; color: CanvasText; }
+}

@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\SiteMonthlyMetric;
 use App\Models\SiteOwner;
 use App\Services\SiteStatusSummaryService;
+use App\Services\PnlAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class PnlViewController extends Controller
                 }
             }
         }
-        if (!in_array($selectedNop, $nops, true)) {
+        if (!in_array($selectedNop, $nops, true) && $selectedNop !== PnlAnalyticsService::UNMAPPED) {
             $selectedNop = '';
         }
 
@@ -45,7 +46,28 @@ class PnlViewController extends Controller
         $selectedAllMonths = ($bulanInput === 'all' || !$request->has('bulan'));
         $selectedPeriod = $this->resolveSelectedPeriod($request, $periods, $selectedAllMonths);
 
-        return view('pnl.index', compact('periods', 'selectedStatus', 'selectedPeriod', 'nops', 'selectedNop', 'selectedAllMonths'));
+        $cities = SiteOwner::query()->whereNotNull('city')->whereRaw("TRIM(city) <> ''")
+            ->selectRaw('DISTINCT UPPER(TRIM(city)) as city')->orderBy('city')->pluck('city')->all();
+        $selectedCity = trim((string) $request->query('city', ''));
+
+        return view('pnl.index', compact('periods', 'selectedStatus', 'selectedPeriod', 'nops', 'selectedNop', 'selectedAllMonths', 'cities', 'selectedCity'));
+    }
+
+    public function analytics(Request $request, PnlAnalyticsService $analytics): JsonResponse
+    {
+        $validated = $request->validate([
+            'tahun' => ['required', 'integer', 'between:2000,2100'],
+            'bulan' => ['required', 'regex:/^(all|[1-9]|1[0-2])$/'],
+            'nop' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        return response()->json($analytics->analytics(
+            (int) $validated['tahun'],
+            $validated['bulan'] === 'all' ? null : (int) $validated['bulan'],
+            trim((string) ($validated['nop'] ?? '')) ?: null,
+            trim((string) ($validated['city'] ?? '')) ?: null,
+        ));
     }
 
     public function uploadPage(): View
@@ -139,6 +161,8 @@ class PnlViewController extends Controller
         $status = $request->filled('status') ? trim((string)$request->status) : null;
         $nop = trim((string) $request->query('nop', '')) ?: null;
         $owner = trim((string) $request->query('owner', '')) ?: null;
+        $city = trim((string) $request->query('city', '')) ?: null;
+        $siteCode = trim((string) $request->query('site', '')) ?: null;
 
         $revCol = 'm.revenue';
         $costCol = 'm.cost';
@@ -154,19 +178,25 @@ class PnlViewController extends Controller
                         DB::raw('UPPER(TRIM(sites.site_id))')
                     );
                 })
-                ->when($nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]))
+                ->when($nop !== null, fn ($query) => $nop === PnlAnalyticsService::UNMAPPED
+                    ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''")
+                    : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]))
                 ->select(
                     'sites.id as id',
                     'sites.site_id',
                     'sites.site_name',
                     'so.nop as nop',
+                    'so.city as city',
                     'so.alamat as alamat'
                 )
                 ->selectRaw('NULL as revenue, NULL as cost, NULL as profit_loss');
 
+            PnlAnalyticsService::applyDrilldownFilters($query, $city, $siteCode);
+
             return DataTables::of($query)
                 ->addIndexColumn()
                 ->filterColumn('nop', fn ($q, $keyword) => $q->where('so.nop', 'like', "%{$keyword}%"))
+                ->filterColumn('city', fn ($q, $keyword) => $q->where('so.city', 'like', "%{$keyword}%"))
                 ->filterColumn('site_id', fn ($q, $keyword) => $q->whereRaw(
                     'UPPER(TRIM(sites.site_id)) = ?',
                     [strtoupper(trim((string) $keyword))]
@@ -179,6 +209,7 @@ class PnlViewController extends Controller
                 ->filterColumn('profit_loss', fn ($q, $keyword) => $q->whereRaw('1 = 0'))
                 ->filterColumn('status_badge', fn ($q, $keyword) => $q->whereRaw("'Tidak Aktif' LIKE ?", ["%{$keyword}%"]))
                 ->orderColumn('nop', fn ($q, $dir) => $q->orderBy('so.nop', $dir))
+                ->orderColumn('city', fn ($q, $dir) => $q->orderBy('so.city', $dir))
                 ->orderColumn('site_id', fn ($q, $dir) => $q->orderBy('sites.site_id', $dir))
                 ->orderColumn('site_name', fn ($q, $dir) => $q->orderBy('sites.site_name', $dir))
                 ->editColumn('revenue', fn (Site $s) => '<span class="text-muted">-</span>')
@@ -308,8 +339,12 @@ class PnlViewController extends Controller
         }
 
         if ($nop !== null) {
-            $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]);
+            $nop === PnlAnalyticsService::UNMAPPED
+                ? $query->whereRaw("COALESCE(TRIM(so.nop), '') = ''")
+                : $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]);
         }
+
+        PnlAnalyticsService::applyDrilldownFilters($query, $city, $siteCode);
 
         if ($owner !== null) {
             if (strcasecmp($owner, 'Belum teridentifikasi') === 0) {
@@ -323,11 +358,12 @@ class PnlViewController extends Controller
             }
         }
 
-        $query->addSelect('so.alamat as alamat');
+        $query->addSelect('so.alamat as alamat', 'so.city as city');
 
         return DataTables::of($query)
             ->addIndexColumn()
             ->filterColumn('nop', fn ($q, $keyword) => $q->where('so.nop', 'like', "%{$keyword}%"))
+            ->filterColumn('city', fn ($q, $keyword) => $q->where('so.city', 'like', "%{$keyword}%"))
             ->filterColumn('site_id', fn ($q, $keyword) => $q->whereRaw(
                 'UPPER(TRIM(sites.site_id)) = ?',
                 [strtoupper(trim((string) $keyword))]
@@ -345,6 +381,7 @@ class PnlViewController extends Controller
                 ["%{$keyword}%"]
             ))
             ->orderColumn('nop', fn ($q, $dir) => $q->orderBy('so.nop', $dir))
+            ->orderColumn('city', fn ($q, $dir) => $q->orderBy('so.city', $dir))
             ->orderColumn('site_id', fn ($q, $dir) => $q->orderBy('sites.site_id', $dir))
             ->orderColumn('site_name', fn ($q, $dir) => $q->orderBy('sites.site_name', $dir))
             ->orderColumn('revenue', fn ($q, $dir) => $q->orderBy($revCol, $dir))
@@ -380,6 +417,7 @@ class PnlViewController extends Controller
             'tahun' => ['required', 'integer', 'between:2000,2100'],
             'bulan' => ['required'],
             'nop' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:150'],
         ]);
 
         $bulanInput = (string) $validated['bulan'];
@@ -390,6 +428,7 @@ class PnlViewController extends Controller
         );
         $bulan = $bulanInput === 'all' ? null : (int) $bulanInput;
         $nop = trim((string) ($validated['nop'] ?? ''));
+        $city = trim((string) ($validated['city'] ?? ''));
 
         // Pada mode semua bulan, tabel PnL menjumlahkan metrik per site dan
         // mengabaikan baris anomali. Untuk bulan spesifik, semua baris dipakai.
@@ -403,13 +442,22 @@ class PnlViewController extends Controller
 
         $siteTotals = DB::table('sites as s')
             ->joinSub($metricsBySite, 'm', 'm.site_id', '=', 's.id')
-            ->when($nop !== '', function ($query) use ($nop) {
-                $query->whereExists(function ($ownerQuery) use ($nop) {
-                    $ownerQuery->selectRaw('1')
-                        ->from('site_owners as so')
-                        ->whereRaw('UPPER(TRIM(so.site_code)) = UPPER(TRIM(s.site_id))')
-                        ->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]);
-                });
+            ->when($nop !== '' || $city !== '', function ($query) use ($nop, $city) {
+                foreach (['nop' => $nop, 'city' => $city] as $field => $value) {
+                    if ($value === '') {
+                        continue;
+                    }
+                    $locationQuery = function ($ownerQuery) use ($field, $value) {
+                        $ownerQuery->selectRaw('1')
+                            ->from('site_owners as so')
+                            ->whereRaw('UPPER(TRIM(so.site_code)) = UPPER(TRIM(s.site_id))');
+                        $value === PnlAnalyticsService::UNMAPPED
+                            ? $ownerQuery->whereRaw("COALESCE(TRIM(so.{$field}), '') <> ''")
+                            : $ownerQuery->whereRaw("UPPER(TRIM(so.{$field})) = ?", [strtoupper($value)]);
+                    };
+                    $value === PnlAnalyticsService::UNMAPPED
+                        ? $query->whereNotExists($locationQuery) : $query->whereExists($locationQuery);
+                }
             })
             ->select('s.id', 's.site_id', 's.site_name', 'm.revenue', 'm.cost', 'm.net_pnl', 'm.months_count');
 
@@ -436,9 +484,9 @@ class PnlViewController extends Controller
                 return null;
             }
 
-            $siteNop = $nop !== '' ? $nop : DB::table('site_owners')
+            $siteNop = $nop === PnlAnalyticsService::UNMAPPED ? 'Belum dipetakan' : ($nop !== '' ? $nop : DB::table('site_owners')
                 ->whereRaw('UPPER(TRIM(site_code)) = ?', [strtoupper(trim((string) $site->site_id))])
-                ->value('nop');
+                ->value('nop'));
 
             return [
                 'id' => $site->id,
@@ -574,7 +622,11 @@ class PnlViewController extends Controller
         $bulanLabel = $bulan !== null ? "_{$bulan}" : '_SemuaBulan';
         $filename = "PnL_Data_{$tahun}{$bulanLabel}" . ($nop ? '_' . str_replace(' ', '_', $nop) : '') . ($status ? "_{$status}" : "") . ".xlsx";
 
-        return Excel::download(new PnlExport($bulan, $tahun, $status, $nop), $filename);
+        return Excel::download(new PnlExport(
+            $bulan, $tahun, $status, $nop,
+            trim((string) $request->query('city', '')) ?: null,
+            trim((string) $request->query('site', '')) ?: null,
+        ), $filename);
     }
 
     /**
@@ -608,7 +660,7 @@ class PnlViewController extends Controller
         return SiteOwner::query()
             ->whereNotNull('nop')
             ->whereRaw("TRIM(nop) <> ''")
-            ->selectRaw('DISTINCT TRIM(nop) as nop')
+            ->selectRaw('DISTINCT UPPER(TRIM(nop)) as nop')
             ->orderBy('nop')
             ->pluck('nop')
             ->all();
