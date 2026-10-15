@@ -22,11 +22,11 @@
     <h1 class="h4 mb-1">Infrastruktur Performance</h1>
     <p class="text-body-secondary small mb-0">Ringkasan Sewa Lahan dan Combat berdasarkan data yang tersimpan di database.</p>
 </div>
-<div class="alert alert-info py-2 small">Dashboard ini menggunakan data database: <strong id="dataset-caption">Memuat jumlah baris...</strong>. Kartu Total Site menampilkan jumlah baris data; Site ID unik ditampilkan sebagai keterangan.</div>
+<div class="alert alert-info py-2 infra-dataset-explanation">Data aktif: <strong id="dataset-caption">Memuat jumlah catatan...</strong>. Satu site dapat memiliki beberapa catatan tahun/periode. Diagram mengikuti Site ID unik sesuai cakupannya.</div>
 
 <div class="enterprise-tabs-nav infra-tabs-nav mb-3" id="infra-tabs" role="tablist" aria-label="Bagian Infrastruktur Management">
     <button type="button" class="enterprise-tab-btn active" id="infra-tab-overview" role="tab" aria-selected="true" aria-controls="infra-panel-overview" data-infra-tab="overview">Ringkasan</button>
-    <button type="button" class="enterprise-tab-btn" id="infra-tab-risk" role="tab" aria-selected="false" aria-controls="infra-panel-risk" data-infra-tab="risk" tabindex="-1">Kontrak &amp; Risiko</button>
+    <button type="button" class="enterprise-tab-btn" id="infra-tab-risk" role="tab" aria-selected="false" aria-controls="infra-panel-risk" data-infra-tab="risk" tabindex="-1">PKS &amp; Masa Sewa</button>
     <button type="button" class="enterprise-tab-btn" id="infra-tab-renewal" role="tab" aria-selected="false" aria-controls="infra-panel-renewal" data-infra-tab="renewal" tabindex="-1">Perpanjangan</button>
     <button type="button" class="enterprise-tab-btn" id="infra-tab-distribution" role="tab" aria-selected="false" aria-controls="infra-panel-distribution" data-infra-tab="distribution" tabindex="-1">Distribusi Site</button>
     <button type="button" class="enterprise-tab-btn" id="infra-tab-process" role="tab" aria-selected="false" aria-controls="infra-panel-process" data-infra-tab="process" tabindex="-1">Proses &amp; Wilayah</button>
@@ -35,21 +35,21 @@
 <div id="infra-panel-overview" class="infra-tab-panel" data-infra-panel="overview" role="tabpanel" aria-labelledby="infra-tab-overview">
 <div class="row g-3 mb-4">
     @foreach ([
-        ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
-        ['id' => 'contract', 'label' => 'Perlu Perhatian (Contract)', 'class' => 'warning', 'icon' => 'contract'],
-        ['id' => 'without_pks', 'label' => 'Tanpa PKS (Risiko Legal)', 'class' => 'danger', 'icon' => 'alert'],
+        ['id' => 'total', 'label' => 'Total Catatan Dataset', 'class' => 'primary', 'icon' => 'tower', 'description' => 'Jumlah baris Sewa Lahan dan Combat. Site yang sama dapat tercatat pada tahun atau periode berbeda.'],
+        ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert', 'description' => 'Site unik dengan nomor PKS baru dan existing yang belum tercantum pada dataset. Klik untuk memeriksa datanya.'],
     ] as $card)
-        <div class="col-lg-4 col-md-6 col-6">
+        <div class="col-md-6 col-12">
             <div class="card h-100 border-{{ $card['class'] }} infra-summary-link infra-summary-card"
                  data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'total' ? '' : $card['id'] }}"
                  role="link" tabindex="0" title="Buka data {{ $card['label'] }}">
                 <div class="card-body infra-summary-card-body">
                     <div>
-                        <div class="small text-body-secondary">{{ $card['label'] }}</div>
+                        <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                         <div class="fs-3 fw-bold" id="infra-{{ $card['id'] }}">—</div>
                         @if ($card['id'] === 'total')
-                            <div class="text-body-tertiary" id="infra-records-sub" style="font-size: 0.75rem;"></div>
+                            <div class="infra-summary-distinct text-body-secondary" id="infra-records-sub"></div>
                         @endif
+                        <p class="infra-summary-description text-body-secondary mb-0 mt-2">{{ $card['description'] }}</p>
                     </div>
                     <span class="infra-summary-icon" aria-hidden="true">
                         @switch($card['icon'])
@@ -137,7 +137,7 @@ $(function () {
     $(document).on('click keydown', '.infra-summary-link', function (event) {
         if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        window.openInfrastructureDrilldown('all', $(this).data('filter-field'), $(this).data('filter-value'), $(this).find('.small').first().text());
+        window.openInfrastructureDrilldown('all', $(this).data('filter-field'), $(this).data('filter-value'), $(this).find('.infra-summary-label').first().text());
     });
 
     $.getJSON(@json(route('infrastruktur.dashboard.data')), function (data) {
@@ -149,7 +149,7 @@ $(function () {
             $('#infra-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.unique_sites)} site unik`);
         }
         const fmt = value => new Intl.NumberFormat('id-ID').format(value || 0);
-        $('#dataset-caption').text(`${fmt(data.dataset_rows.sewa_lahan)} baris Sewa Lahan (${fmt(data.dataset_rows.sewa_sites)} site unik) + ${fmt(data.dataset_rows.combat)} baris Combat (${fmt(data.dataset_rows.combat_sites)} site unik)`);
+        $('#dataset-caption').text(`${fmt(data.dataset_rows.sewa_lahan)} catatan Sewa Lahan (${fmt(data.dataset_rows.sewa_sites)} site unik) + ${fmt(data.dataset_rows.combat)} catatan Combat (${fmt(data.dataset_rows.combat_sites)} site unik)`);
         const base = window.infrastructureChartThemeOptions();
         const themed = options => Highcharts.merge(base, options);
         const drilldown = (series) => series.map(point => ({ ...point, custom: { filterField: point.filter_field, filterValue: point.filter_value } }));

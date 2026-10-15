@@ -654,7 +654,7 @@ $(function () {
             series: [{ name: 'Profit/Loss', data: seriesData }],
             plotOptions: { bar: { borderRadius: 2, columnWidth: '60%' } },
             dataLabels: { enabled: false },
-            xaxis: { labels: { rotate: -45, style: { fontSize: '10px' } } },
+            xaxis: { labels: { rotate: -45, style: { fontSize: '15px', fontWeight: 700 } } },
             yaxis: { labels: { formatter: (v) => fmt.format(v) } },
             tooltip: {
                 y: {

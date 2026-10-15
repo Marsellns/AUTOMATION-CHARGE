@@ -9,22 +9,22 @@
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
         @foreach ([
-            ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
-            ['id' => 'contract', 'label' => 'Perlu Perhatian', 'class' => 'warning', 'icon' => 'contract'],
-            ['id' => 'without_pks', 'label' => 'Tanpa PKS', 'class' => 'danger', 'icon' => 'alert'],
+            ['id' => 'total', 'label' => 'Total Catatan Dataset', 'class' => 'primary', 'icon' => 'tower', 'description' => 'Jumlah baris untuk cakupan ini. Site yang sama dapat tercatat pada tahun atau periode berbeda.'],
+            ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert', 'description' => 'Site unik dengan nomor PKS baru dan existing yang belum tercantum pada dataset. Klik untuk memeriksa datanya.'],
         ] as $card)
-            <div class="col-md-4 col-6">
+            <div class="col-md-6 col-12">
                 <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
                      data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
                      role="link" tabindex="0">
                     <div class="card-body py-2 infra-summary-card-body">
                         <div>
-                            <div class="small text-body-secondary">{{ $card['label'] }}</div>
+                            <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                             <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
                             @if ($card['id'] === 'total')
-                                <div class="text-body-tertiary infra-card-records-sub" style="font-size: 0.72rem; line-height: 1.1;"></div>
+                                <div class="text-body-secondary infra-summary-distinct infra-card-records-sub"></div>
                             @endif
+                            <p class="infra-summary-description text-body-secondary mb-0 mt-2">{{ $card['description'] }}</p>
                         </div>
                         <span class="infra-summary-icon" aria-hidden="true">
                             @switch($card['icon'])
@@ -85,7 +85,7 @@
     @if ($scope !== 'all')
         <div class="alert alert-info infra-empty-state d-none" role="status">Belum ada transaksi {{ $scope === 'sewa' ? 'Sewa Lahan' : 'Combat' }} untuk cakupan ini pada dataset aktif.</div>
         <div class="enterprise-tabs-nav infra-module-tabs mb-3" role="tablist" aria-label="Bagian analitik {{ $scope === 'sewa' ? 'Sewa Lahan' : 'Combat' }}">
-            @foreach (['performance' => 'Site Performance', 'risk' => 'Kontrak & Risiko', 'renewal' => 'Perpanjangan', 'distribution' => 'Distribusi Site', 'process' => 'Proses & Wilayah'] as $tabId => $tabLabel)
+            @foreach (['performance' => 'Site Performance', 'risk' => 'PKS & Masa Sewa', 'renewal' => 'Perpanjangan', 'distribution' => 'Distribusi Site', 'process' => 'Proses & Wilayah'] as $tabId => $tabLabel)
                 <button type="button" class="enterprise-tab-btn {{ $loop->first ? 'active' : '' }}" id="infra-{{ $scope }}-tab-{{ $tabId }}" data-infra-section="{{ $tabId }}" role="tab" aria-controls="infra-{{ $scope }}-panel-{{ $tabId }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}" tabindex="{{ $loop->first ? '0' : '-1' }}">{{ $tabLabel }}</button>
             @endforeach
         </div>
@@ -941,7 +941,7 @@ $(function () {
                                     const dated = this.point.options.custom?.datedCount || 0;
                                     const total = this.point.options.custom?.totalCount || 0;
                                     const value = this.y === null || this.y === undefined ? 'Tanggal proses belum tersedia' : `<b>${this.y} hari</b>`;
-                                    return `${infrastructureDrilldownEscape(this.key)}<br>${value}<br><span style="font-size:11px">${dated} dari ${total} site memiliki tanggal tahap</span>`;
+                                    return `${infrastructureDrilldownEscape(this.key)}<br>${value}<br><span style="font-size:15px;font-weight:700">${dated} dari ${total} site memiliki tanggal tahap</span>`;
                                 }
                             }
                         } : {}),
@@ -968,7 +968,7 @@ $(function () {
             root.data('scope'),
             $(this).data('filter-field'),
             $(this).data('filter-value'),
-            $(this).find('.small').first().text(),
+            $(this).find('.infra-summary-label').first().text(),
             root.data('ownership-scope') || ''
         );
     });

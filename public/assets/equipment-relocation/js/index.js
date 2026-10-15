@@ -657,7 +657,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                                 }
 
                                 ctx.font =
-                                    "600 11px Inter, Arial, sans-serif";
+                                    "700 15px Inter, Arial, sans-serif";
 
                                 ctx.fillStyle = chartTextColor();
 
@@ -1324,7 +1324,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                          */
 
                         ctx.font =
-                            "700 13px Inter, Arial, sans-serif";
+                            "700 15px Inter, Arial, sans-serif";
 
                         ctx.fillStyle =
                             "#ffffff";
@@ -1341,7 +1341,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                          */
 
                         ctx.font =
-                            "600 10px Inter, Arial, sans-serif";
+                            "700 14px Inter, Arial, sans-serif";
 
                         ctx.fillText(
                             pct(percentage),
@@ -1405,7 +1405,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                  */
 
                 ctx.font =
-                    "700 18px Inter, Arial, sans-serif";
+                    "700 22px Inter, Arial, sans-serif";
 
                 ctx.fillStyle = chartTextColor();
 
@@ -1421,14 +1421,14 @@ document.addEventListener("DOMContentLoaded", async function () {
                  */
 
                 ctx.font =
-                    "500 10px Inter, Arial, sans-serif";
+                    "700 15px Inter, Arial, sans-serif";
 
                 ctx.fillStyle = chartTextColor();
 
                 ctx.fillText(
                     "Equipment",
                     centerX,
-                    centerY + 13
+                    centerY + 16
                 );
 
 
