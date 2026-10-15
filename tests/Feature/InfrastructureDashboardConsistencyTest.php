@@ -129,7 +129,7 @@ class InfrastructureDashboardConsistencyTest extends TestCase
         $this->assertSame(1, $overview['cards']['unique_sites']);
         $this->assertSame([['name' => '2025', 'y' => 1, 'filter_field' => 'tahun', 'filter_value' => '2025']], $overview['renewal_years']);
 
-        // The Total Site card opens the same canonical selection as its charts.
+        // Chart drill-downs retain the same canonical selection as their chart.
         foreach (['all', 'sewa'] as $scope) {
             $cards = app(InfrastructureDashboardController::class)
                 ->data(Request::create('/infrastruktur/dashboard-data', 'GET', ['scope' => $scope]))
@@ -139,6 +139,30 @@ class InfrastructureDashboardConsistencyTest extends TestCase
                 ->getData(true);
             $this->assertSame($cards['unique_sites'], $details['count']);
             $this->assertSame(['CROSS-YEAR'], array_column($details['data'], 'site_code'));
+        }
+    }
+
+    public function test_total_site_cards_and_details_include_repeated_rows_in_every_scope(): void
+    {
+        foreach ([2025, 2026] as $year) {
+            SewaLahanRenewal::query()->create(['site_code' => 'SHARED', 'tahun_renewal' => $year]);
+            CombatSite::query()->create(['site_code' => 'SHARED', 'tahun_justi_dirnet' => $year]);
+        }
+        $controller = app(InfrastructureDashboardController::class);
+
+        foreach (['all' => 4, 'sewa' => 2, 'combat' => 2] as $scope => $expected) {
+            $cards = $controller->data(Request::create('/infrastruktur/dashboard-data', 'GET', [
+                'scope' => $scope,
+            ]))->getData(true)['cards'];
+            $details = $controller->details(Request::create('/infrastruktur/dashboard-details', 'GET', [
+                'scope' => $scope,
+                'filter_field' => 'all_records',
+            ]))->getData(true);
+
+            $this->assertSame($expected, $cards['total']);
+            $this->assertSame($expected, $details['count']);
+            $this->assertCount($expected, $details['data']);
+            $this->assertSame(1, $cards['unique_sites']);
         }
     }
 

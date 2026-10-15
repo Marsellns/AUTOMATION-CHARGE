@@ -219,6 +219,12 @@ $(function () {
         currentFilter.field = (data && data.filterField) || '';
         currentFilter.value = (data && data.filterValue) || '';
 
+        if (currentFilter.field === 'all_records') {
+            $('#filter-tahun').val('all');
+            $('#btn-export').attr('href', exportBaseUrl + '?tahun=all');
+            table.search('').columns().search('');
+        }
+
         if (currentFilter.field === 'tahun') {
             $('#filter-tahun').val(currentFilter.value || 'all');
             $('#btn-export').attr('href', exportBaseUrl + '?tahun=' + $('#filter-tahun').val());

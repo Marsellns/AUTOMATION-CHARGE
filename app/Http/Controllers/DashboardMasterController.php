@@ -20,7 +20,6 @@ use App\Models\SiteMonthlyMetric;
 use App\Models\StatusPembayaran;
 use App\Models\UploadFile;
 use App\Services\SiteStatusSummaryService;
-use App\Support\InfrastructureCanonicalSites;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,10 +43,8 @@ class DashboardMasterController extends Controller
         $listrikCount = ListrikPln::count();
         $totalDayaVa = (int) ListrikPln::sum('daya_va');
 
-        // Match the Infrastructure overview's unique Site ID selection.
-        $infraTotal = InfrastructureCanonicalSites::fromRows(
-            SewaLahanRenewal::query()->get()->concat(CombatSite::query()->get())
-        )->count();
+        // Match Total Site in the workbook: include every active source row.
+        $infraTotal = SewaLahanRenewal::count() + CombatSite::count();
 
         // 2. Electricity Tagihan Total
         $totalTagihanPln = (float) PaymentPln::sum('harga');

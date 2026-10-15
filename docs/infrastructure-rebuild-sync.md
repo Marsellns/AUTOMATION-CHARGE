@@ -7,7 +7,7 @@ Sumber aktif adalah `DATASET/02 Infrastruktur management/Sewa Lahan & Combat/Reb
 - Sheet `DATABASE RENEWAL`, backup, NOTE, Pivot, dan dashboard Excel tidak ditambahkan sebagai transaksi.
 - Semua kolom asli, nomor baris, nama sheet, serta SHA-256 workbook disimpan pada `source_details._source`. Header ganda menggunakan nilai nonkosong pertama.
 - Kolom tahun, status, kontrak, tanggal, dan nominal dipetakan ke tabel aplikasi yang sudah ada. Nilai waktu tanpa tanggal seperti `00:00:00` tidak diubah menjadi tanggal hari ini.
-- Diagram, kartu Total Site, dan tabel drill-down memakai pemilihan Site ID kanonis yang sama. Kartu Site Sewa Lahan & Combat pada Dashboard menghitung gabungan Site ID unik kedua sumber.
+- Kartu Total Site menghitung seluruh baris sumber: 45 Sewa Lahan dan 134 Combat, sehingga ringkasan Infrastruktur dan kartu Site Sewa Lahan & Combat pada Dashboard menampilkan 179. Klik kartu membuka seluruh baris dalam cakupannya, termasuk Site ID yang berulang pada periode/kontrak lain. Diagram operasional dan detail diagram tetap memakai pemilihan Site ID kanonis sesuai analisisnya.
 - Label pemilik dari workbook tetap menjadi sumber utama; master Site Owner menjadi fallback bila label kosong. Site yang belum dapat dipetakan ditampilkan pada kategori tersendiri, bukan dipaksa menjadi TP/Telkomsel.
 
 ## Menjalankan sinkronisasi

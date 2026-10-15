@@ -9,12 +9,12 @@
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
         @foreach ([
-            ['id' => 'unique_sites', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+            ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
             ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
         ] as $card)
             <div class="col-md-6 col-12">
                 <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
-                     data-filter-field="{{ $card['id'] === 'unique_sites' ? '' : 'summary_status' }}"
+                     data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
                      role="link" tabindex="0">
                     <div class="card-body py-2 infra-summary-card-body">
@@ -735,10 +735,9 @@ function dashboardTarget(scope, filterField, filterValue, ownershipScope = '') {
     const combatUrl = @json(route('infrastruktur.combat.index'));
     let target = scope === 'combat' ? combatUrl : sewaUrl;
 
-    // Explicit raw-record requests retain historical rows; site cards use
-    // the canonical site selection below, as do their charts and tables.
+    // Total Site opens every source row and stays visible after a reload.
     if (filterField === 'all_records') {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams({ filter_field: 'all_records' });
         if (scope === 'sewa' && (ownershipScope === 'Telkomsel' || ownershipScope === 'TP')) {
             params.set('ownership_scope', ownershipScope);
         }
@@ -772,7 +771,7 @@ function dashboardTarget(scope, filterField, filterValue, ownershipScope = '') {
         params.set('ownership_scope', ownershipScope);
     }
     // Diagram counts are based on unique Site ID.  Preserve that same
-    // definition when opening a table from any chart/card.
+    // definition when opening a table from an operational chart/status card.
     params.set('unique_sites', '1');
     return target + (params.toString() ? '?' + params.toString() : '');
 }

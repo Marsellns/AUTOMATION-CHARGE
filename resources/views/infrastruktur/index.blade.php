@@ -34,12 +34,12 @@
 <div id="infra-panel-overview" class="infra-tab-panel" data-infra-panel="overview" role="tabpanel" aria-labelledby="infra-tab-overview">
 <div class="row g-3 mb-4">
     @foreach ([
-        ['id' => 'unique_sites', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+        ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
         ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
     ] as $card)
         <div class="col-md-6 col-12">
             <div class="card h-100 border-{{ $card['class'] }} infra-summary-link infra-summary-card"
-                 data-filter-field="{{ $card['id'] === 'unique_sites' ? '' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'unique_sites' ? '' : $card['id'] }}"
+                 data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'total' ? '' : $card['id'] }}"
                  role="link" tabindex="0" title="Buka data {{ $card['label'] }}">
                 <div class="card-body infra-summary-card-body">
                     <div>

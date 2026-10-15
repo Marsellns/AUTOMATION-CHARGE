@@ -86,7 +86,7 @@ test('infrastructure only retains distinct, balanced chart pairs', () => {
     assert.match(css, /\.infra-overview-chart\s*\{\s*height: 320px/);
 });
 
-test('infrastructure site cards use canonical totals and retain performance in site details', () => {
+test('infrastructure site cards use all source rows and retain performance in site details', () => {
     const dashboard = read('resources/views/infrastruktur/index.blade.php');
     const analytics = read('resources/views/infrastruktur/partials/analytics.blade.php');
     const controller = read('app/Http/Controllers/InfrastructureDashboardController.php');
@@ -96,8 +96,8 @@ test('infrastructure site cards use canonical totals and retain performance in s
     assert.match(controller, /'total' => \$all->count\(\)/);
     assert.match(controller, /'unique_sites' => \$allSites->count\(\)/);
     for (const view of [dashboard, analytics]) {
-        assert.match(view, /'id' => 'unique_sites', 'label' => 'Total Site'/);
-        assert.match(view, /data-filter-field="\{\{ \$card\['id'\] === 'unique_sites' \? '' : 'summary_status'/);
+        assert.match(view, /'id' => 'total', 'label' => 'Total Site'/);
+        assert.match(view, /data-filter-field="\{\{ \$card\['id'\] === 'total' \? 'all_records' : 'summary_status'/);
         assert.doesNotMatch(view, /Total Catatan Dataset|infra-summary-description|infra-summary-distinct|infra-card-records-sub/);
     }
     assert.match(analytics, /data-infra-performance-year/);

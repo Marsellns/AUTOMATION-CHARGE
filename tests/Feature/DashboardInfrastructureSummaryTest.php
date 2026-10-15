@@ -16,7 +16,7 @@ class DashboardInfrastructureSummaryTest extends TestCase
 {
     use CreatesUsersWithRoles, RefreshDatabase;
 
-    public function test_dashboard_counts_unique_sites_from_sewa_lahan_and_combat_only(): void
+    public function test_dashboard_counts_every_active_row_from_sewa_lahan_and_combat_only(): void
     {
         SewaLahanRenewal::query()->create(['site_code' => 'SHARED-001', 'tahun_renewal' => 2025]);
         SewaLahanRenewal::query()->create(['site_code' => 'SHARED-001', 'tahun_renewal' => 2026]);
@@ -32,13 +32,20 @@ class DashboardInfrastructureSummaryTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Site Sewa Lahan &amp; Combat', false)
-            ->assertViewHas('infraTotal', 3);
+            ->assertViewHas('infraTotal', 5);
 
-        $this->assertSame(3, $response->viewData('moduleDataComposition')['infrastructure']['count']);
+        $this->assertSame(5, $response->viewData('moduleDataComposition')['infrastructure']['count']);
         $overview = app(InfrastructureDashboardController::class)
             ->data(Request::create('/infrastruktur/dashboard-data'))
             ->getData(true);
-        $this->assertSame($overview['cards']['unique_sites'], $response->viewData('infraTotal'));
+        $this->assertSame($overview['cards']['total'], $response->viewData('infraTotal'));
+
+        foreach (['sewa-lahan' => 3, 'combat' => 2] as $module => $total) {
+            $this->getJson(route("infrastruktur.{$module}.data", ['filter_field' => 'all_records']))
+                ->assertOk()
+                ->assertJsonPath('recordsFiltered', $total)
+                ->assertJsonCount($total, 'data');
+        }
     }
 
     public function test_dashboard_shows_zero_infrastructure_sites_when_only_other_data_exists(): void

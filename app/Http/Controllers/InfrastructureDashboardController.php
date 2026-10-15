@@ -259,8 +259,8 @@ class InfrastructureDashboardController extends Controller
 
         return response()->json([
             'cards' => [
-                // Keep snapshot totals available alongside the canonical site
-                // count used by the Total Site card and operational charts.
+                // Total Site follows all workbook rows; operational charts
+                // retain their canonical Site ID aggregation.
                 'total' => $all->count(),
                 'unique_sites' => $allSites->count(),
                 'active' => $allSites->filter($isOperational)->count(),
@@ -340,8 +340,8 @@ class InfrastructureDashboardController extends Controller
             )->values();
         }
 
-        // Site cards and operational charts share canonical Site ID selection.
-        // Explicit all_records requests still retain every historical row.
+        // Total Site requests every source row, including repeated Site IDs.
+        // Operational chart selections retain their canonical Site IDs.
         if ($filterField !== 'all_records') {
             $records = $this->uniqueDetailRecords($records, $filterField !== 'source');
         }

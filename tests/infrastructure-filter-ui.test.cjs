@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('Total Site selections preserve unique-site and ownership scopes in the existing table', () => {
+test('Total Site selections include every row and preserve ownership in the existing table', () => {
     const source = read('resources/views/infrastruktur/partials/analytics.blade.php');
     const start = source.indexOf('function dashboardTarget(');
     const end = source.indexOf('window.applyInfrastructureFilter =', start);
@@ -16,10 +16,46 @@ test('Total Site selections preserve unique-site and ownership scopes in the exi
     vm.runInContext(source.slice(start, end).replace(/@json\(route\('([^']+)'\)\)/g, '"/$1"'), context);
 
     for (const scope of ['sewa', 'combat']) {
-        const target = new URL(context.dashboardTarget(scope, '', '', scope === 'sewa' ? 'TP' : ''), 'https://example.test');
-        assert.equal(target.searchParams.get('unique_sites'), '1');
-        assert.equal(target.searchParams.has('filter_field'), false);
+        const target = new URL(context.dashboardTarget(scope, 'all_records', '', scope === 'sewa' ? 'TP' : ''), 'https://example.test');
+        assert.equal(target.searchParams.has('unique_sites'), false);
+        assert.equal(target.searchParams.get('filter_field'), 'all_records');
         assert.equal(target.searchParams.get('ownership_scope'), scope === 'sewa' ? 'TP' : null);
+    }
+});
+
+test('Total Site clears previous year and search filters before reloading the table', () => {
+    for (const module of ['sewa-lahan', 'combat']) {
+        const source = read(`resources/views/infrastruktur/${module}/index.blade.php`);
+        const start = source.indexOf("$(document).on('infrastructure-filter',");
+        const end = source.indexOf("$('#filter-tahun').on('change'", start);
+        const state = { year: '2025', search: 'SHARED', columnSearch: 'SHARED', reloads: 0 };
+        const table = {
+            search(value) { state.search = value; return table; },
+            columns: Object.assign(() => ({ search(value) { state.columnSearch = value; } }), { adjust() {} }),
+            ajax: { reload() { state.reloads++; assert.equal(state.year, 'all'); } },
+        };
+        const context = {
+            document: {}, window: {}, currentFilter: { field: 'tahun', value: '2025' },
+            exportBaseUrl: '/export', table, updateFilterBadge() {},
+            $(target) {
+                if (target === context.document) return { on(name, handler) { state.handler = handler; } };
+                return {
+                    removeClass() { state.visible = true; },
+                    val(value) { if (value !== undefined) state.year = value; return state.year; },
+                    attr(name, value) { state.exportUrl = value; },
+                };
+            },
+        };
+        vm.createContext(context);
+        vm.runInContext(source.slice(start, end), context);
+        state.handler({}, { filterField: 'all_records', filterValue: '' });
+        assert.equal(state.visible, true);
+        assert.equal(state.year, 'all');
+        assert.equal(state.search, '');
+        assert.equal(state.columnSearch, '');
+        assert.equal(state.exportUrl, '/export?tahun=all');
+        assert.equal(state.reloads, 1);
+        assert.equal(context.currentFilter.field, 'all_records');
     }
 });
 
