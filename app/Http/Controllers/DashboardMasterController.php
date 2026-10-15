@@ -6,7 +6,6 @@ use App\Models\AnomaliTagihanInbuilding;
 use App\Models\AnomaliTagihanPln;
 use App\Models\Bapss;
 use App\Models\CombatSite;
-use App\Models\DataSiteUnlock;
 use App\Models\JaknetContract;
 use App\Models\ListrikAll;
 use App\Models\ListrikInbuilding;
@@ -15,13 +14,13 @@ use App\Models\PoHq;
 use App\Models\PaymentPlnMasterMonthly;
 use App\Models\PaymentPln;
 use App\Models\RecurringIpas;
-use App\Models\RecurringTagihanIpas;
 use App\Models\SewaLahanRenewal;
 use App\Models\Site;
 use App\Models\SiteMonthlyMetric;
 use App\Models\StatusPembayaran;
 use App\Models\UploadFile;
 use App\Services\SiteStatusSummaryService;
+use App\Support\InfrastructureCanonicalSites;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,20 +44,10 @@ class DashboardMasterController extends Controller
         $listrikCount = ListrikPln::count();
         $totalDayaVa = (int) ListrikPln::sum('daya_va');
 
-        $sewaLahanCount = SewaLahanRenewal::count();
-        $combatCount = CombatSite::count();
-        $infraDataSources = [
-            $sewaLahanCount,
-            $combatCount,
-            JaknetContract::count(),
-            RecurringIpas::count(),
-            RecurringTagihanIpas::count(),
-            DataSiteUnlock::count(),
-            Bapss::count(),
-            UploadFile::count(),
-        ];
-        $infraTotal = array_sum($infraDataSources);
-        $infraDataSourceCount = count(array_filter($infraDataSources, static fn (int $count): bool => $count > 0));
+        // Match the Infrastructure overview's unique Site ID selection.
+        $infraTotal = InfrastructureCanonicalSites::fromRows(
+            SewaLahanRenewal::query()->get()->concat(CombatSite::query()->get())
+        )->count();
 
         // 2. Electricity Tagihan Total
         $totalTagihanPln = (float) PaymentPln::sum('harga');
@@ -89,9 +78,6 @@ class DashboardMasterController extends Controller
             'listrikCount',
             'totalDayaVa',
             'infraTotal',
-            'infraDataSourceCount',
-            'sewaLahanCount',
-            'combatCount',
             'totalTagihanPln',
             'totalAnomalies',
             'moduleDataComposition'

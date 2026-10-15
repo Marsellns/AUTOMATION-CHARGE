@@ -159,10 +159,10 @@
                 </div>
             </div>
 
-            {{-- Card 3: Infrastructure records --}}
+            {{-- Card 3: Sewa Lahan and Combat sites --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-infra" role="button" tabindex="0">
-                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Data Infrastruktur</span></div>
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Site Sewa Lahan &amp; Combat</span></div>
                     <div class="stat-number fs-3 mb-1">{{ number_format($infraTotal) }}</div>
                 </div>
             </div>
