@@ -4,7 +4,19 @@ Checkout cPanel berada di `/home3/simawarw/beta.simawar.web.id`. Document Root s
 
 ## Mengapa tombol Deploy belum bisa dipakai
 
-cPanel mensyaratkan `.cpanel.yml` yang sudah **committed** di branch yang sedang di-checkout, serta checkout yang bersih. `Update from Remote` hanya mengambil commit baru dari GitHub; tombol **Deploy HEAD Commit** menggunakan `.cpanel.yml`. Saat pemeriksaan awal, GitHub `main` masih pada `43affc020ee25d378c483d37f8dfedd0c8daa849` dan belum memiliki `.cpanel.yml`. File yang disiapkan di komputer pengembangan belum ada di hosting sampai commit dan push ke GitHub, kemudian **Update from Remote** dijalankan.
+cPanel mensyaratkan `.cpanel.yml` yang sudah **committed** di branch yang sedang di-checkout, serta checkout yang bersih. HEAD GitHub `main` saat ini sudah memuat `.cpanel.yml`; output Terminal cPanel menunjukkan checkout masih kotor karena `public/error_log` dan `public/php-check-1791865087-3846297.php` berstatus untracked. `Update from Remote` mengambil commit baru dari GitHub, sedangkan tombol **Deploy HEAD Commit** menjalankan `.cpanel.yml`.
+
+Jika HEAD cPanel sudah memuat `.cpanel.yml` tetapi tetap menampilkan **The system cannot deploy**, periksa checkout **di server**, bukan `git status` pada komputer pengembangan:
+
+```bash
+cd /home3/simawarw/beta.simawar.web.id
+git status --short --untracked-files=all
+git ls-files --error-unmatch .cpanel.yml
+```
+
+File `public/error_log` yang dibuat hosting dapat membuat checkout kotor; `.gitignore` mengabaikannya setelah perubahan aturan ignore di-commit dan ditarik ke server. Baca isi log itu untuk mencari penyebab HTTP 500. File sementara seperti `public/php-check-*.php` juga dapat muncul sebagai untracked; periksa lalu hapus file uji yang sudah tidak dipakai. Jangan memakai `git clean -fd` di checkout ini karena `.env`, storage, dan data server harus tetap terjaga. Bila `git status` menampilkan file tracked yang berubah, periksa perbedaannya sebelum memulihkan file tersebut. Refresh halaman cPanel setelah checkout bersih.
+
+HTTP 500 adalah masalah runtime yang terpisah dari tombol Deploy. Selama paket runtime belum aktif, `public/index.php` dapat gagal saat memuat `vendor/autoload.php`. Setelah deploy berhasil, jika 500 masih muncul, baca `public/error_log` dan `storage/logs/laravel.log` di server; periksa juga versi PHP web, `.env` server, koneksi database, dan izin tulis `storage`.
 
 Hosting ini mempunyai PHP CLI 8.2 di `/opt/cpanel/ea-php82/root/usr/bin/php`, tetapi `php` default adalah 8.0 dan Composer, Node, serta npm tidak tersedia. Karena itu GitHub Actions membangun dependency dan aset terlebih dahulu, lalu menerbitkan paket ZIP untuk SHA commit yang tepat sebagai GitHub prerelease `beta-<SHA>`. Paket ini tidak memuat `.env`, database, atau dokumen operasional. cPanel mengunduh paket untuk HEAD yang sama dan memasang hanya runtime hasil build ke checkout Git. `curl` dan `unzip` sudah tersedia di hosting. Workflow produksi `simawars.web.id` tetap terpisah.
 
