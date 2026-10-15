@@ -305,7 +305,7 @@ $(function () {
         const details = d.source_details || {};
         const rows = Object.entries(details)
             .filter(([key, value]) => {
-                if (value === null || value === '') return false;
+                if (key.startsWith('_') || value === null || value === '') return false;
                 // Formula Excel adalah artefak sumber data, bukan informasi
                 // yang dapat dibaca pengguna di modal detail.
                 if (typeof value === 'string' && value.trim().startsWith('=')) return false;

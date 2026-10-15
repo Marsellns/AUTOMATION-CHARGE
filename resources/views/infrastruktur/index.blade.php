@@ -171,7 +171,7 @@ $(function () {
             plotOptions: { pie: { innerSize: '55%', borderWidth: 0 }, series: clickOptions },
             series: [{ name: 'Site', data: drilldown(data.owners) }]
         }, window.infrastructurePieLabelOptions(data.owners.length))));
-        Highcharts.chart('infra-renewal-chart', themed(Highcharts.merge({
+        const renewalChartOptions = () => themed(Highcharts.merge({
             chart: { type: 'column', className: 'infra-analytics-chart infra-site-count-chart' },
             xAxis: { type: 'category' },
             yAxis: { title: { text: 'Site unik' } },
@@ -180,7 +180,9 @@ $(function () {
                 column: { borderWidth: 0, colorByPoint: true }
             },
             series: [{ name: 'Site', data: drilldown(data.renewal_years) }]
-        }, window.infrastructureSiteCountLabelOptions('column'))));
+        }, window.infrastructureSiteCountLabelOptions('column')));
+        Highcharts.chart('infra-renewal-chart', renewalChartOptions());
+        Highcharts.chart('infra-renewal-tab-chart', renewalChartOptions());
     }).fail(function (xhr) {
         const message = xhr.responseJSON?.message || 'Data Infrastruktur belum dapat dimuat.';
         $('#dataset-caption').closest('.alert').after(`<div class="alert alert-danger mb-3" role="alert">${$('<div>').text(message).html()}</div>`);

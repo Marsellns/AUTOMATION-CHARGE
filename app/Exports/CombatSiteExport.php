@@ -48,6 +48,8 @@ class CombatSiteExport implements FromQuery, WithHeadings, WithMapping
             'Revenue Apr 2026', 'Cost Apr 2026', 'PnL Apr 2026',
             'Revenue Mei 2026', 'Cost Mei 2026', 'PnL Mei 2026',
             'Revenue Jun 2026', 'Cost Jun 2026', 'PnL Jun 2026',
+            'Revenue Jul 2026', 'Cost Jul 2026', 'PnL Jul 2026',
+            'Revenue Aug 2026', 'Cost Aug 2026', 'PnL Aug 2026',
             // Profitability & Operasional
             'Revenue Month', 'Margin Direct', 'Profitability', 'Status Revenue', 'Status Payload', 'Status Sewa',
             // Detail Teknis & Lokasi
@@ -116,6 +118,13 @@ class CombatSiteExport implements FromQuery, WithHeadings, WithMapping
             $row->revenue_jun_2026 ?? $d['rev_jun_26'] ?? $d['revenue_jun_2026'] ?? null,
             $row->cost_jun_2026 ?? $d['cost_jun_26'] ?? $d['cost_jun_2026'] ?? null,
             $row->pnl_jun_2026 ?? $d['pnl_jun_26'] ?? $d['pnl_jun_2026'] ?? null,
+
+            $d['rev_jul_26'] ?? null,
+            $d['cost_jul_26'] ?? null,
+            $d['pnl_jul_26'] ?? null,
+            $d['rev_aug_26'] ?? null,
+            $d['cost_aug_26'] ?? null,
+            $d['pnl_aug_26'] ?? null,
 
             // Profitability & Operasional
             $d['revenue_month'] ?? null,

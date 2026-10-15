@@ -6,7 +6,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Infrastruktur management — 02 Combat.
- * File: DATASET/02 Infrastruktur management/02 Combat/NEW DATABASE COMBAT SIMAWAR.xlsx
+ * Memetakan ekspor legacy dan transaksi DATABASE COMBAT dari workbook Rebuild.
  * Mapping kolom untuk sheet DATABASE dan DATABASE_REVENUE. Penggabungan
  * kedua sheet per Site ID ditangani CombatWorkbookImport agar satu site tidak
  * tersimpan berulang hanya karena punya beberapa baris tahun revenue.

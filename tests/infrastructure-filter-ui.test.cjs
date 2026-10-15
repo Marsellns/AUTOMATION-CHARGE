@@ -101,8 +101,9 @@ test('main-module filters opt into the shared compact drawer', () => {
 });
 
 test('Site Telkomsel and Site TP retain ownership filters under the Sewa Lahan parent', () => {
-    const navigation = read('app/Support/ReportModules.php');
-    const provider = read('app/Providers/Filament/ReportPanelProvider.php');
+    const navigation = read('app/Filament/Modules/Infrastructure/Pages/SiteTelkomselPage.php')
+        + read('app/Filament/Modules/Infrastructure/Pages/SiteTpPage.php');
+    const provider = read('app/Filament/Modules/ModuleNavigation.php');
 
     assert.match(navigation, /'Site Telkomsel', 'infrastruktur\.sewa-lahan\.index'[^\n]+\['ownership_scope' => 'Telkomsel'\], 'Sewa Lahan'/);
     assert.match(navigation, /'Site TP', 'infrastruktur\.sewa-lahan\.index'[^\n]+\['ownership_scope' => 'TP'\], 'Sewa Lahan'/);

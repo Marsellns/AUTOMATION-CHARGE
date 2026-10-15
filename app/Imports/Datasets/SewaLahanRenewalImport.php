@@ -6,7 +6,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Infrastruktur management — 01 Sewa Lahan (Renewal Eastern Jabotabek).
- * File: DATASET/02 Infrastruktur management/01 Sewa Lahan/DATABASE SIMAWAR RENEWAL.xlsx
+ * Memetakan ekspor legacy dan baris aktif DATA SEWA LAHAN dari workbook Rebuild.
  * Kolom "No" dan "Aksi" (artefak UI) tidak diimpor.
  */
 class SewaLahanRenewalImport extends BaseDatasetImport
@@ -28,6 +28,12 @@ class SewaLahanRenewalImport extends BaseDatasetImport
 
     protected function mapRow(Collection $row): ?array
     {
+        return $this->mapSourceRow($row->toArray());
+    }
+
+    public function mapSourceRow(array $source): ?array
+    {
+        $row = new Collection($source);
         $siteCode = $this->cleanText($row['site_id'] ?? null);
 
         if ($siteCode === null) {

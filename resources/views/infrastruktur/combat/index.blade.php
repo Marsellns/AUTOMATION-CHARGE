@@ -62,6 +62,7 @@
                             <th>Tahun Justi Dirnet</th>
                             <th>Renewal Pattern</th>
                             <th>Match NBAE</th>
+                            <th>Available on Jarvis</th>
                             <th>Type</th>
                             <th>Combat Type</th>
                             <th>Status Site</th>
@@ -179,6 +180,7 @@ $(function () {
         { data: 'tahun_justi_dirnet', name: 'tahun_justi_dirnet' },
         detailTextColumn('renewal_pattern'),
         detailTextColumn('match_nbae'),
+        detailTextColumn('available_on_jarvis'),
         detailTextColumn('type'),
         detailTextColumn('combat_type'),
         detailTextColumn('status'),
@@ -330,7 +332,7 @@ $(function () {
         const details = sourceDetails(d);
         const rows = Object.entries(details)
             .filter(([key, value]) => {
-                if (value === null || value === '') return false;
+                if (key.startsWith('_') || value === null || value === '') return false;
                 // Formula Excel adalah artefak sumber data, bukan informasi
                 // yang dapat dibaca pengguna di modal detail.
                 if (typeof value === 'string' && value.trim().startsWith('=')) return false;

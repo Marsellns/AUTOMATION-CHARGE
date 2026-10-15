@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Imports\Datasets\BapssImport;
 use App\Imports\Datasets\CombatSiteImport;
-use App\Imports\Datasets\CombatWorkbookImport;
 use App\Imports\Datasets\DataAssetTowerImport;
 use App\Imports\Datasets\DataSiteUnlockImport;
 use App\Imports\Datasets\JaknetContractImport;
+use App\Imports\Datasets\InfrastructureRebuildImport;
 use App\Imports\Datasets\ListrikPlnImport;
 use App\Imports\Datasets\RecurringIpasImport;
 use App\Imports\Datasets\SewaLahanRenewalImport;
@@ -50,15 +50,13 @@ class ImportAllDatasets extends Command
             ],
             'sewa-lahan' => [
                 'label'  => 'Infra 01 — Sewa Lahan (Renewal Eastern Jabotabek)',
-                'file'   => 'DATASET/02 Infrastruktur management/01 Sewa Lahan/DATABASE SIMAWAR RENEWAL.xlsx',
+                'file'   => InfrastructureRebuildImport::DEFAULT_FILE,
                 'table'  => 'sewa_lahan_renewals',
                 'import' => SewaLahanRenewalImport::class,
             ],
             'combat' => [
                 'label'  => 'Infra 02 — Combat',
-                // Workbook aktif berisi DATABASE dan DATABASE_REVENUE; file
-                // lama yang sudah dibuang tidak lagi menjadi dependensi.
-                'file'   => 'DATASET/02 Infrastruktur management/02 Combat/NEW DATABASE COMBAT SIMAWAR.xlsx',
+                'file'   => InfrastructureRebuildImport::DEFAULT_FILE,
                 'table'  => 'combat_sites',
                 'import' => CombatSiteImport::class,
             ],
@@ -156,7 +154,13 @@ class ImportAllDatasets extends Command
             $start = microtime(true);
 
             try {
-                if ($key === 'recurring-tagihan-ipas') {
+                if (in_array($key, ['sewa-lahan', 'combat'], true)) {
+                    if ($this->call('dataset:import-infrastructure-rebuild', ['--only' => $key]) !== self::SUCCESS) {
+                        throw new \RuntimeException('Sinkronisasi workbook Rebuild gagal.');
+                    }
+                    $inserted = DB::table($def['table'])->count();
+                    $skipped = 0;
+                } elseif ($key === 'recurring-tagihan-ipas') {
                     $exitCode = $this->call('dataset:import-recurring-tagihan-ipas');
                     if ($exitCode !== self::SUCCESS) {
                         throw new \RuntimeException('Importer streaming mengembalikan status gagal.');
@@ -179,15 +183,8 @@ class ImportAllDatasets extends Command
                         $inserted = 0;
                         $skipped = 0;
                         foreach ($files as $file) {
-                            $import = $key === 'combat'
-                                ? new CombatWorkbookImport()
-                                : new $file['import']();
-
-                            if ($import instanceof CombatWorkbookImport) {
-                                $import->import(base_path($file['file']));
-                            } else {
-                                Excel::import($import, base_path($file['file']));
-                            }
+                            $import = new $file['import']();
+                            Excel::import($import, base_path($file['file']));
                             $stats = $import->getStats();
                             if ($stats['inserted'] === 0) {
                                 throw new \RuntimeException("File {$file['file']} tidak menghasilkan baris; snapshot lama dipertahankan.");

@@ -75,12 +75,28 @@
         'renewal' => ['pipeline'],
         'distribution' => ['nop', 'vendor'],
         'process' => ['aging', 'geography'],
-    ] : ['all' => []])
+    ] : [
+        'performance' => ['status', 'owners'],
+        'risk' => ['pks_status', 'health'],
+        'renewal' => ['renewal_years', 'pipeline'],
+        'distribution' => ['nop', 'vendor'],
+        'process' => ['aging', 'geography'],
+    ])
+    @if ($scope !== 'all')
+        <div class="alert alert-info infra-empty-state d-none" role="status">Belum ada transaksi {{ $scope === 'sewa' ? 'Sewa Lahan' : 'Combat' }} untuk cakupan ini pada dataset aktif.</div>
+        <div class="enterprise-tabs-nav infra-module-tabs mb-3" role="tablist" aria-label="Bagian analitik {{ $scope === 'sewa' ? 'Sewa Lahan' : 'Combat' }}">
+            @foreach (['performance' => 'Site Performance', 'risk' => 'Kontrak & Risiko', 'renewal' => 'Perpanjangan', 'distribution' => 'Distribusi Site', 'process' => 'Proses & Wilayah'] as $tabId => $tabLabel)
+                <button type="button" class="enterprise-tab-btn {{ $loop->first ? 'active' : '' }}" id="infra-{{ $scope }}-tab-{{ $tabId }}" data-infra-section="{{ $tabId }}" role="tab" aria-controls="infra-{{ $scope }}-panel-{{ $tabId }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}" tabindex="{{ $loop->first ? '0' : '-1' }}">{{ $tabLabel }}</button>
+            @endforeach
+        </div>
+    @endif
     @foreach ($chartTabs as $chartTab => $chartKeys)
     @if ($scope === 'all')
         <div id="infra-panel-{{ $chartTab }}" class="infra-tab-panel d-none" data-infra-panel="{{ $chartTab }}" role="tabpanel" aria-labelledby="infra-tab-{{ $chartTab }}" hidden>
+    @else
+        <div id="infra-{{ $scope }}-panel-{{ $chartTab }}" class="infra-module-panel {{ $loop->first ? '' : 'd-none' }}" data-infra-section-panel="{{ $chartTab }}" role="tabpanel" aria-labelledby="infra-{{ $scope }}-tab-{{ $chartTab }}" @if (! $loop->first) hidden @endif>
     @endif
-    @if ($scope !== 'all' || $chartTab === 'risk')
+    @if ($chartTab === 'risk')
     <div class="infra-alert-panel mb-3" role="status" aria-live="polite">
         <div class="small fw-semibold text-uppercase text-body-secondary mb-2">Peringatan {{ $scope === 'sewa' ? 'Sewa Lahan' : ($scope === 'combat' ? 'Combat' : 'Infrastruktur') }}</div>
         <div class="row g-2 infra-alert-grid">
@@ -110,12 +126,12 @@
     @endif
     @if ($scope === 'all' && $chartTab === 'renewal')
         <div class="row g-3 mb-3">
-            <div class="col-12 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Distribusi Tahun Renewal Sewa Lahan</div><div class="card-body"><div id="infra-renewal-chart" class="infra-overview-chart"></div></div></div></div>
+            <div class="col-12 d-flex"><div class="card h-100 w-100 infra-overview-chart-card"><div class="card-header fw-semibold">Distribusi Tahun Renewal Sewa Lahan</div><div class="card-body"><div id="infra-renewal-tab-chart" class="infra-overview-chart"></div></div></div></div>
         </div>
     @endif
     <div class="row g-3 infra-detail-chart-grid">
         @foreach ($charts as $chart)
-            @continue($scope === 'all' && !in_array($chart['key'], $chartKeys, true))
+            @continue(!in_array($chart['key'], $chartKeys, true))
             <div class="{{ !empty($chart['wide_on_overview']) && $scope === 'all' ? 'col-12' : 'col-xl-6' }} d-flex">
                 <div class="card h-100 w-100 infra-detail-chart-card">
                     <div class="card-header fw-semibold">{{ $chart['title'] }}</div>
@@ -124,7 +140,7 @@
             </div>
         @endforeach
     </div>
-    @if ($scope !== 'all' || $chartTab === 'risk')
+    @if ($chartTab === 'risk')
     <button type="button" class="card mt-3 w-100 text-start infra-priority-trigger" aria-label="Tampilkan site Prioritas Tindakan">
         <span class="card-body d-flex align-items-center justify-content-between gap-3 py-3">
             <span><strong>Prioritas Tindakan</strong><small class="d-block text-body-secondary">Klik untuk menampilkan site yang memerlukan tindak lanjut.</small></span>
@@ -132,9 +148,7 @@
         </span>
     </button>
     @endif
-    @if ($scope === 'all')
         </div>
-    @endif
     @endforeach
 </section>
 
@@ -176,6 +190,12 @@
 </div>
 @push('styles')
 <style>
+    .infra-module-tabs { display: flex; flex-wrap: wrap; max-width: 100%; }
+    .infra-module-tabs .enterprise-tab-btn { white-space: nowrap; }
+    @media (max-width: 575px) {
+        .infra-module-tabs { width: 100%; }
+        .infra-module-tabs .enterprise-tab-btn { flex: 1 1 auto; padding: .5rem .65rem; }
+    }
     .infra-alert-toggle { cursor: pointer; border: 1px solid transparent; transition: transform .15s ease, box-shadow .15s ease; }
     .infra-alert-toggle:hover, .infra-alert-toggle[aria-expanded="true"] { transform: translateY(-1px); box-shadow: 0 .2rem .5rem rgba(0,0,0,.08); }
     .infra-alert-details table { font-size: .82rem; }
@@ -564,7 +584,7 @@ window.showInfrastructureRowDetail = function (row, scope, title) {
         ['Sisa Hari', row.days_remaining === null || row.days_remaining === undefined ? '—' : row.days_remaining],
         ['Mulai Tahap Proses', row.process_started_at], ['Aging Proses (hari)', row.process_aging_days],
         ['No PKS Baru', row.no_pks_baru], ['Total Harga Baru', row.total_harga_baru]
-    ].concat(Object.entries(row.source_details || {}).map(([key, value]) => [key.replaceAll('_', ' '), value]));
+    ].concat(Object.entries(row.source_details || {}).filter(([key]) => !key.startsWith('_')).map(([key, value]) => [key.replaceAll('_', ' '), value]));
     const cells = entries
         .filter(([, value]) => value !== null && value !== undefined && value !== '')
         .map(([key, value]) => `<tr><th class="w-25">${infrastructureDrilldownEscape(key)}</th><td>${infrastructureDrilldownEscape(value)}</td></tr>`)
@@ -656,7 +676,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
                     ['Mulai Tahap Proses', row.process_started_at],
                     ['Aging Proses (hari)', row.process_aging_days]
                 ].concat(Object.entries(row.source_details || {}))
-                    .filter(([key, value]) => value !== null && value !== '' && !/^(rev|cost|pnl|revenue|margin|profit|tracy|payload|jan|feb|mar|apr|mei|may|jun|jul|aug|agu|sep|okt|oct|nov|des|dec)|_202[0-9]|-(25|26)/i.test(key));
+                    .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && !/^(rev|cost|pnl|revenue|margin|profit|tracy|payload|jan|feb|mar|apr|mei|may|jun|jul|aug|agu|sep|okt|oct|nov|des|dec)|_202[0-9]|-(25|26)/i.test(key));
                 if (!entries.length) return '';
                 const cells = entries.map(([key, value]) => `<div><span class="text-body-secondary">${infrastructureDrilldownEscape(key.replaceAll('_', ' '))}:</span> ${infrastructureDrilldownEscape(value)}</div>`).join('');
                 return `<details class="infra-drilldown-extra mt-1"><summary class="text-primary">Detail kolom dataset</summary><div class="border rounded p-2 mt-1 bg-body-tertiary">${cells}</div></details>`;
@@ -792,6 +812,36 @@ window.applyInfrastructureFilter = function (scope, filterField, filterValue, ow
 $(function () {
     $('.infra-analytics').each(function () {
         const root = $(this), scope = root.data('scope');
+        const moduleTabs = Array.from(root[0].querySelectorAll('[data-infra-section]'));
+        function activateSection(name) {
+            moduleTabs.forEach(tab => {
+                const active = tab.dataset.infraSection === name;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', String(active));
+                tab.tabIndex = active ? 0 : -1;
+            });
+            root[0].querySelectorAll('[data-infra-section-panel]').forEach(panel => {
+                const active = panel.dataset.infraSectionPanel === name;
+                panel.hidden = !active;
+                panel.classList.toggle('d-none', !active);
+            });
+            requestAnimationFrame(() => {
+                window.Highcharts?.charts.filter(Boolean).forEach(chart => {
+                    if (root[0].contains(chart.renderTo) && chart.renderTo.closest('[data-infra-section-panel]')?.dataset.infraSectionPanel === name) chart.reflow();
+                });
+            });
+        }
+        moduleTabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => activateSection(tab.dataset.infraSection));
+            tab.addEventListener('keydown', event => {
+                const next = event.key === 'ArrowRight' ? index + 1 : event.key === 'ArrowLeft' ? index - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? moduleTabs.length - 1 : null;
+                if (next === null) return;
+                event.preventDefault();
+                const target = moduleTabs[(next + moduleTabs.length) % moduleTabs.length];
+                activateSection(target.dataset.infraSection);
+                target.focus();
+            });
+        });
         const ownershipScope = root.data('ownership-scope') || '';
         const dataParams = { scope };
         if (ownershipScope === 'Telkomsel' || ownershipScope === 'TP') {
@@ -804,6 +854,15 @@ $(function () {
             });
             if (data.cards.unique_sites !== undefined) {
                 root.find('.infra-card-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.unique_sites)} site unik`);
+            }
+            if (scope !== 'all') {
+                const empty = !data.cards.total;
+                root.find('.infra-empty-state').toggleClass('d-none', !empty);
+                root.find('.infra-module-tabs').toggleClass('d-none', empty);
+                if (empty) {
+                    root.find('.infra-module-panel').addClass('d-none').prop('hidden', true);
+                    return;
+                }
             }
             const alerts = data.alerts || { expired: [], within_90: [], within_180: [], unknown: [] };
             root[0].__infraAlerts = alerts;

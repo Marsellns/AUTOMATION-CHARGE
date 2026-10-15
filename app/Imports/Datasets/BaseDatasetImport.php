@@ -206,7 +206,7 @@ abstract class BaseDatasetImport implements ToCollection, WithHeadingRow, WithCh
 
         $s = trim((string) $value);
 
-        if ($s === '' || str_starts_with($s, '0000')) {
+        if ($s === '' || str_starts_with($s, '0000') || str_starts_with($s, '#') || preg_match('/^\d{1,2}:\d{2}(?::\d{2})?$/', $s)) {
             return null;
         }
 
