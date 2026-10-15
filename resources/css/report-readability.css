@@ -1,61 +1,80 @@
-/* Typography for report content; chart libraries also measure these sizes in JS. */
+/* Keep readable sizes while reserving emphasis for headings and key figures. */
 .simaster-report {
     --report-label-size: 1rem;
     --report-note-size: .9375rem;
     --report-heading-size: 1.125rem;
+    font-weight: 400;
+}
+.simaster-report :is(strong, b) {
+    font-weight: 600;
 }
 .simaster-report :is(.card-header, .enterprise-card-header, .feasibility-panel-header) {
     font-size: var(--report-heading-size) !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     line-height: 1.5;
 }
 .simaster-report :is(.card-header, .enterprise-card-header, .feasibility-panel-header) :is(h2, h3, h4, h5, h6, .h5, .h6, strong) {
     font-size: inherit !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
+}
+.simaster-report :is(.card-header, .enterprise-card-header, .feasibility-panel-header) :is(p, small, .small, .text-body-secondary, .text-secondary) {
+    font-weight: 400 !important;
 }
 .simaster-report :is(.enterprise-kpi, .stat-card, .kpi-card, .electricity-kpi, .infra-summary-card, .feasibility-kpi, #pnl-financial-summary .card) {
-    font-weight: 700;
+    font-weight: 400;
     line-height: 1.5;
 }
-.simaster-report :is(.stat-label, .kpi-label, .kpi-content > span, .kpi-content p, .enterprise-kpi .small, .electricity-kpi .small, .feasibility-kpi-label, .infra-summary-label, .card-body > .small.text-body-secondary) {
+.simaster-report :is(.stat-label, .kpi-label, .kpi-content > span, .kpi-content p, .enterprise-kpi .text-uppercase, .electricity-kpi .small, .feasibility-kpi-label, .infra-summary-label, .card-body > .small.text-body-secondary) {
     font-size: var(--report-label-size) !important;
-    font-weight: 700 !important;
+    font-weight: 500 !important;
     line-height: 1.5;
 }
-.simaster-report :is(.module-kpi-title, .enterprise-kpi-header, .enterprise-tab-btn, .pnl-tab) {
+.simaster-report :is(.module-kpi-title, .enterprise-kpi-header) {
     font-size: var(--report-label-size) !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
+}
+.simaster-report :is(.enterprise-tab-btn, .pnl-tab) {
+    font-size: var(--report-label-size) !important;
+    font-weight: 500 !important;
+}
+.simaster-report :is(.enterprise-tab-btn, .pnl-tab):is(.active, [aria-selected="true"]) {
+    font-weight: 600 !important;
 }
 .simaster-report :is(.stat-number, .stat-value, .kpi-value, .kpi-content h2, .kpi-content h3, .feasibility-kpi-value, .infra-summary-card .fs-3, .infra-summary-card .fs-4, .card-body > .fs-3.fw-bold) {
     font-size: clamp(1.9rem, 2.25vw, 2.4rem) !important;
-    font-weight: 800 !important;
+    font-weight: 700 !important;
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
 .simaster-report .pnl-summary-value {
     font-size: clamp(1.4rem, 1.7vw, 1.85rem) !important;
-    font-weight: 800;
+    font-weight: 700;
 }
-.simaster-report :is(.infra-summary-description, .infra-summary-distinct, .infra-dataset-explanation, .kpi-content small, .feasibility-kpi-hint, .feasibility-category-card, .feasibility-category-name, .feasibility-category-meta, .feasibility-category-status, .feasibility-category-count small, .pnl-rank-row, .pnl-rank-row small, .pnl-rank-metrics) {
+.simaster-report :is(.infra-summary-description, .infra-summary-distinct, .infra-dataset-explanation, .enterprise-kpi .small, .kpi-content small, .feasibility-kpi-hint, .feasibility-category-card, .feasibility-category-name, .feasibility-category-meta, .feasibility-category-status, .feasibility-category-count small, .pnl-rank-row, .pnl-rank-row small, .pnl-rank-metrics) {
     font-size: var(--report-note-size) !important;
-    font-weight: 700 !important;
+    font-weight: 400 !important;
     line-height: 1.55;
 }
+.simaster-report :is(.feasibility-category-name, .feasibility-category-status) { font-weight: 500 !important; }
+.simaster-report .enterprise-kpi .small.text-uppercase { font-weight: 500 !important; }
+.simaster-report .pnl-rank-amount { font-weight: 600; }
 .simaster-report .infra-summary-card-body > div { min-width: 0; }
 .simaster-report .infra-summary-description { max-width: 65ch; }
 .simaster-report .infra-summary-distinct { margin-top: .25rem; }
-.simaster-report .feasibility-category-count { font-size: 1.85rem !important; font-weight: 800; }
+.simaster-report .feasibility-category-count { font-size: 1.85rem !important; font-weight: 700; }
 .simaster-report :is(.table, table.dataTable, .data-table) :is(th, td) {
     font-size: var(--report-note-size) !important;
-    font-weight: 700;
 }
-.simaster-report :is(.table, table.dataTable, .data-table) th { font-size: var(--report-label-size) !important; }
+.simaster-report :is(.table, table.dataTable, .data-table) td { font-weight: 400; }
+.simaster-report :is(.table, table.dataTable, .data-table) th { font-size: var(--report-label-size) !important; font-weight: 600; }
+.simaster-report :is(.table, table.dataTable, .data-table) tfoot td { font-weight: 600; }
 .simaster-report :is(.chart-card, .electricity-chart-card, .infra-detail-chart-card, .infra-overview-chart-card) :is(.text-body-secondary, .text-secondary) {
     font-size: var(--report-note-size);
-    font-weight: 700;
+    font-weight: 400;
 }
-.fi-wi-stats-overview-stat-label, .fi-section-header-heading { font-size: 1rem; font-weight: 700; }
-.fi-wi-stats-overview-stat-value { font-size: 2.25rem; font-weight: 800; }
+.fi-wi-stats-overview-stat-label { font-size: 1rem; font-weight: 500; }
+.fi-section-header-heading { font-size: 1rem; font-weight: 600; }
+.fi-wi-stats-overview-stat-value { font-size: 2.25rem; font-weight: 700; }
 @media (max-width: 40rem) {
     .simaster-report { --report-heading-size: 1.0625rem; }
     .simaster-report .infra-summary-icon { display: none; }

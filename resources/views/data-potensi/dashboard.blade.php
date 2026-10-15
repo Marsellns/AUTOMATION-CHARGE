@@ -7,7 +7,7 @@
     .feasibility-dashboard, #feasibility-detail-modal { --feasibility-border: var(--bs-border-color, #e2e8f0); color: var(--bs-body-color, #0f172a); }
     .feasibility-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
     .feasibility-header img { width: 60px; height: 60px; }
-    .feasibility-header h1 { font-size: 1.65rem; font-weight: 750; margin: 0 0 .3rem; }
+    .feasibility-header h1 { font-size: 1.65rem; font-weight: 700; margin: 0 0 .3rem; }
     .feasibility-header p, .feasibility-panel p { color: var(--bs-secondary-color, #64748b); margin: 0; font-size: .9rem; }
     .feasibility-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .feasibility-tone-blue { --tone: #0284c7; --tint: #f0f9ff; --wash: #e0f2fe; }
@@ -26,20 +26,20 @@
     .feasibility-kpi-icon svg { width: 1.55rem; height: 1.55rem; }
     .feasibility-panel { height: 100%; border: 1px solid var(--feasibility-border); background: var(--bs-body-bg, #fff); border-radius: 1rem; overflow: hidden; }
     .feasibility-panel-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .75rem; padding: 1.2rem 1.25rem; border-bottom: 1px solid var(--feasibility-border); }
-    .feasibility-panel h2 { font-size: 1.05rem; font-weight: 750; margin: 0 0 .35rem; }
+    .feasibility-panel h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .35rem; }
     .feasibility-panel-body { padding: 1rem 1.25rem 1.25rem; }
     .feasibility-chart { min-height: 340px; }
     .feasibility-chart-scroll { max-height: 460px; overflow: auto; overscroll-behavior: contain; }
     .feasibility-mla-chart { position: relative; height: 220px; }
     .feasibility-mla-chart > div:first-child { height: 220px; }
     .feasibility-donut-total { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; }
-    .feasibility-donut-total strong { font-size: 1.8rem; font-weight: 800; }
+    .feasibility-donut-total strong { font-size: 1.8rem; font-weight: 700; }
     .feasibility-donut-total span { color: var(--bs-secondary-color); font-size: .8rem; }
     .feasibility-mla-values { display: grid; gap: .65rem; margin: .5rem 0 0; padding: 0; list-style: none; }
     .feasibility-mla-values li { display: flex; align-items: center; gap: .65rem; font-size: .9rem; }
     .feasibility-mla-values button { display: flex; align-items: center; gap: .65rem; border: 0; padding: .3rem 0; width: 100%; background: transparent; color: inherit; text-align: left; cursor: pointer; }
     .feasibility-mla-values button:hover { color: var(--bs-primary); }
-    .feasibility-mla-values .value { margin-left: auto; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .feasibility-mla-values .value { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
     .feasibility-mla-values .percentage { width: 3.5rem; text-align: right; color: var(--bs-secondary-color); font-size: .8rem; }
     .feasibility-dot { width: .65rem; height: .65rem; border-radius: 50%; flex-shrink: 0; }
     .feasibility-note { font-size: .8rem !important; color: var(--bs-secondary-color); line-height: 1.55; }

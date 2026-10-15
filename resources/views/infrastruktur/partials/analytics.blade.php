@@ -941,7 +941,7 @@ $(function () {
                                     const dated = this.point.options.custom?.datedCount || 0;
                                     const total = this.point.options.custom?.totalCount || 0;
                                     const value = this.y === null || this.y === undefined ? 'Tanggal proses belum tersedia' : `<b>${this.y} hari</b>`;
-                                    return `${infrastructureDrilldownEscape(this.key)}<br>${value}<br><span style="font-size:15px;font-weight:700">${dated} dari ${total} site memiliki tanggal tahap</span>`;
+                                    return `${infrastructureDrilldownEscape(this.key)}<br>${value}<br><span style="font-size:15px;font-weight:400">${dated} dari ${total} site memiliki tanggal tahap</span>`;
                                 }
                             }
                         } : {}),

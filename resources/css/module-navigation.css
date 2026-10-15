@@ -1,12 +1,13 @@
 .simaster-module-heading { padding: 0 .25rem; }
-.simaster-module-heading > span { color: var(--gray-950); font-size: 1.1rem; font-weight: 800; letter-spacing: .12em; }
+.simaster-module-heading > span { color: var(--gray-950); font-size: 1.1rem; font-weight: 700; letter-spacing: .12em; }
 .simaster-module-heading p { color: var(--gray-500); font-size: .78rem; margin-top: .15rem; }
 /* Each module and its submenu stay together in the sidebar's scroll flow. */
 .fi-main-sidebar .fi-sidebar-nav { min-height: 0; padding: 1rem .75rem; gap: .9rem; overflow-y: auto; overscroll-behavior: contain; }
 .fi-main-sidebar .fi-sidebar-nav-groups { display: flex; flex-direction: column; flex: none; gap: .55rem; margin: 0; width: 100%; }
 .fi-main-sidebar .simaster-module-group { display: flex; flex-direction: column; flex: none; gap: .35rem; min-width: 0; }
 .simaster-module-tile { position: relative; flex: none; min-width: 0; border: 1px solid var(--gray-200); border-radius: 1rem; background: #fff; box-shadow: 0 2px 5px rgb(15 23 42 / .025); transition: border-color .2s, box-shadow .2s, background .2s; }
-.simaster-module-tile > .simaster-sidebar-group-link { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; min-height: 94px; gap: .15rem; padding: .4rem .55rem .5rem; border: 0; border-radius: inherit; background: transparent; text-align: center; color: var(--gray-700); text-decoration: none; font-family: inherit; font-size: .8rem; line-height: 1.25; font-weight: 650; cursor: pointer; }
+.simaster-module-tile > .simaster-sidebar-group-link { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; min-height: 94px; gap: .15rem; padding: .4rem .55rem .5rem; border: 0; border-radius: inherit; background: transparent; text-align: center; color: var(--gray-700); text-decoration: none; font-family: inherit; font-size: .8rem; line-height: 1.25; font-weight: 500; cursor: pointer; }
+.simaster-module-selected > .simaster-sidebar-group-link { font-weight: 600; }
 .simaster-module-tile > .simaster-sidebar-group-link > .simaster-module-caption { min-height: 1.25rem; max-width: 100%; display: flex; align-items: center; justify-content: center; text-wrap: balance; }
 .simaster-module-image { display: block; flex-shrink: 0; width: 48px; height: 48px; filter: drop-shadow(0 3px 3px rgb(15 23 42 / .08)); transition: transform .25s cubic-bezier(.2,.8,.2,1), filter .25s; }
 .simaster-module-tile:hover { border-color: var(--primary-300); box-shadow: 0 6px 16px rgb(15 23 42 / .07); }
@@ -18,7 +19,7 @@
 .simaster-module-toggle .fi-icon { width: .9rem; height: .9rem; transition: transform .2s; }
 .simaster-module-toggle[aria-expanded="true"] .fi-icon { transform: rotate(180deg); }
 .fi-main-sidebar .simaster-module-submenu { border-left: 2px solid var(--gray-200); padding: .35rem 0 .35rem .4rem; margin: .1rem .25rem .2rem; }
-.simaster-module-submenu-heading { padding: .25rem .65rem .5rem; color: var(--gray-500); font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.simaster-module-submenu-heading { padding: .25rem .65rem .5rem; color: var(--gray-500); font-size: .72rem; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; }
 .simaster-module-submenu .fi-sidebar-item-label { font-size: .84rem; }
 .fi-main-sidebar:not(.fi-sidebar-open) .fi-sidebar-nav { padding: 1rem .5rem; }
 .fi-main-sidebar:not(.fi-sidebar-open) .simaster-module-heading { text-align: center; }

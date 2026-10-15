@@ -10,25 +10,25 @@
         return Math.max(minimum, pixels) + 'px';
     }
 
-    function textStyle(style = {}, minimum = labelSize) {
-        return { ...style, fontSize: minimumSize(style.fontSize, minimum), fontWeight: '700' };
+    function textStyle(style = {}, minimum = labelSize, weight = '400') {
+        return { ...style, fontSize: minimumSize(style.fontSize, minimum), fontWeight: weight };
     }
 
     function highchartsOptions(H, options = {}, defaults = true) {
         const result = H.merge({}, options);
-        const label = value => {
-            if (Array.isArray(value)) return value.map(label);
+        const label = (value, weight = '400') => {
+            if (Array.isArray(value)) return value.map(item => label(item, weight));
             if (value === false) return value;
-            return { ...value, style: textStyle(value?.style) };
+            return { ...value, style: textStyle(value?.style, labelSize, weight) };
         };
         if (defaults || result.chart) result.chart = H.merge(result.chart || {}, { style: textStyle(result.chart?.style) });
-        for (const [key, size] of [['title', 18], ['subtitle', 15], ['caption', 15]]) {
-            if (defaults || result[key]) result[key] = label(result[key]);
-            if (result[key]) result[key].style = textStyle(result[key].style, size);
+        for (const [key, size, weight] of [['title', 18, '600'], ['subtitle', 15, '400'], ['caption', 15, '400']]) {
+            if (defaults || result[key]) result[key] = label(result[key], weight);
+            if (result[key]) result[key].style = textStyle(result[key].style, size, weight);
         }
         if (defaults || result.legend) {
-            result.legend = H.merge(result.legend || {}, { itemStyle: textStyle(result.legend?.itemStyle) });
-            if (result.legend.title) result.legend.title = label(result.legend.title);
+            result.legend = H.merge(result.legend || {}, { itemStyle: textStyle(result.legend?.itemStyle, labelSize, '500') });
+            if (result.legend.title) result.legend.title = label(result.legend.title, '600');
         }
         if (defaults || result.tooltip) result.tooltip = label(result.tooltip);
         for (const key of ['xAxis', 'yAxis', 'colorAxis']) {
@@ -37,8 +37,8 @@
             const axis = value => {
                 const axisOptions = H.merge({}, value || {});
                 axisOptions.labels = label(axisOptions.labels);
-                axisOptions.title = label(axisOptions.title);
-                if (axisOptions.stackLabels) axisOptions.stackLabels = label(axisOptions.stackLabels);
+                axisOptions.title = label(axisOptions.title, '500');
+                if (axisOptions.stackLabels) axisOptions.stackLabels = label(axisOptions.stackLabels, '500');
                 for (const lines of ['plotLines', 'plotBands']) {
                     if (axisOptions[lines]) axisOptions[lines] = axisOptions[lines].map(line => ({ ...line, ...(line.label ? { label: label(line.label) } : {}) }));
                 }
@@ -51,24 +51,27 @@
             const types = defaults ? new Set(['series', 'pie', 'column', 'bar', 'line', ...Object.keys(result.plotOptions)]) : Object.keys(result.plotOptions);
             for (const type of types) {
                 result.plotOptions[type] ??= {};
-                result.plotOptions[type].dataLabels = label(result.plotOptions[type].dataLabels);
+                result.plotOptions[type].dataLabels = label(result.plotOptions[type].dataLabels, '500');
             }
         }
-        if (result.series) result.series = result.series.map(series => series.dataLabels === undefined ? series : { ...series, dataLabels: label(series.dataLabels) });
+        if (result.series) result.series = result.series.map(series => series.dataLabels === undefined ? series : { ...series, dataLabels: label(series.dataLabels, '500') });
         if (result.responsive?.rules) result.responsive.rules = result.responsive.rules.map(rule => ({ ...rule, chartOptions: highchartsOptions(H, rule.chartOptions, false) }));
         return result;
     }
 
-    function chartFont(value, minimum = labelSize) {
+    function chartFont(value, minimum = labelSize, weight = '400') {
         if (typeof value === 'function') {
-            if (!wrappedFonts.has(value)) {
-                const wrapped = (...args) => chartFont(value(...args), minimum);
-                wrappedFonts.set(value, wrapped);
-                wrappedFonts.set(wrapped, wrapped);
+            if (!wrappedFonts.has(value)) wrappedFonts.set(value, new Map());
+            const fonts = wrappedFonts.get(value);
+            const role = `${minimum}:${weight}`;
+            if (!fonts.has(role)) {
+                const wrapped = (...args) => chartFont(value(...args), minimum, weight);
+                fonts.set(role, wrapped);
+                wrappedFonts.set(wrapped, new Map([[role, wrapped]]));
             }
-            return wrappedFonts.get(value);
+            return fonts.get(role);
         }
-        return { ...value, size: Math.max(minimum, Number(value?.size) || 0), weight: 'bold' };
+        return { ...value, size: Math.max(minimum, Number(value?.size) || 0), weight };
     }
 
     function chartJsOptions(options) {
@@ -77,7 +80,7 @@
             for (const key of ['ticks', 'title', 'pointLabels']) {
                 if (scale[key] === false) continue;
                 scale[key] ??= {};
-                scale[key].font = chartFont(scale[key].font);
+                scale[key].font = chartFont(scale[key].font, labelSize, key === 'title' ? '500' : '400');
             }
         }
         if (options.plugins !== false) {
@@ -89,10 +92,10 @@
                 const plugin = options.plugins[key];
                 if (key === 'legend') {
                     plugin.labels ??= {};
-                    plugin.labels.font = chartFont(plugin.labels.font);
+                    plugin.labels.font = chartFont(plugin.labels.font, labelSize, '500');
                 } else if (key === 'tooltip') {
-                    for (const font of ['titleFont', 'bodyFont', 'footerFont']) plugin[font] = chartFont(plugin[font]);
-                } else plugin.font = chartFont(plugin.font, key === 'title' ? 18 : labelSize);
+                    for (const font of ['titleFont', 'bodyFont', 'footerFont']) plugin[font] = chartFont(plugin[font], labelSize, font === 'bodyFont' ? '400' : '600');
+                } else plugin.font = chartFont(plugin.font, key === 'title' ? 18 : labelSize, key === 'title' ? '600' : key === 'datalabels' ? '500' : '400');
             }
         }
     }
@@ -113,7 +116,7 @@
         if (Chart?.register && Chart.defaults?.font && !configured.has(Chart)) {
             configured.add(Chart);
             Chart.defaults.font.size = labelSize;
-            Chart.defaults.font.weight = 'bold';
+            Chart.defaults.font.weight = '400';
             Chart.register({
                 id: 'simaster-readability',
                 beforeInit(chart) { chartJsOptions(chart.config.options); },
@@ -125,10 +128,10 @@
     const apex = window.Apex || {};
     window.Apex = {
         ...apex,
-        title: { ...apex.title, style: textStyle(apex.title?.style, 18) },
+        title: { ...apex.title, style: textStyle(apex.title?.style, 18, '600') },
         subtitle: { ...apex.subtitle, style: textStyle(apex.subtitle?.style) },
-        dataLabels: { ...apex.dataLabels, style: textStyle(apex.dataLabels?.style) },
-        legend: { ...apex.legend, fontSize: minimumSize(apex.legend?.fontSize), fontWeight: 700 },
+        dataLabels: { ...apex.dataLabels, style: textStyle(apex.dataLabels?.style, labelSize, '500') },
+        legend: { ...apex.legend, fontSize: minimumSize(apex.legend?.fontSize), fontWeight: 500 },
         xaxis: { ...apex.xaxis, labels: { ...apex.xaxis?.labels, style: textStyle(apex.xaxis?.labels?.style) } },
         yaxis: { ...apex.yaxis, labels: { ...apex.yaxis?.labels, style: textStyle(apex.yaxis?.labels?.style) } },
         tooltip: { ...apex.tooltip, style: textStyle(apex.tooltip?.style) },

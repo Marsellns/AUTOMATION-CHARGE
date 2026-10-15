@@ -261,7 +261,7 @@
     .pnl-rank-row { position: relative; padding: 1rem; border-top: 1px solid var(--bs-border-color); }
     .pnl-rank-row:first-child { border-top: 0; }
     .pnl-rank-row > .pnl-highlight { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: start; gap: .65rem; padding: 0; width: 100%; border: 0; background: transparent; color: inherit; text-align: left; }
-    .pnl-rank-number { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 9px; background: var(--bs-tertiary-bg); font-weight: 800; color: var(--bs-secondary-color); }
+    .pnl-rank-number { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 9px; background: var(--bs-tertiary-bg); font-weight: 600; color: var(--bs-secondary-color); }
     .pnl-rank-amount { text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
     .pnl-rank-metrics { display: flex; flex-wrap: wrap; align-items: end; gap: .55rem 1.25rem; margin-top: .7rem; padding-left: 2.4rem; font-size: .78rem; }
     .pnl-rank-metrics span { display: block; color: var(--bs-secondary-color); margin-bottom: .15rem; }
