@@ -22,7 +22,6 @@
     <h1 class="h4 mb-1">Infrastruktur Performance</h1>
     <p class="text-body-secondary small mb-0">Ringkasan Sewa Lahan dan Combat berdasarkan data yang tersimpan di database.</p>
 </div>
-<div class="alert alert-info py-2 infra-dataset-explanation">Data aktif: <strong id="dataset-caption">Memuat jumlah catatan...</strong>. Satu site dapat memiliki beberapa catatan tahun/periode. Diagram mengikuti Site ID unik sesuai cakupannya.</div>
 
 <div class="enterprise-tabs-nav infra-tabs-nav mb-3" id="infra-tabs" role="tablist" aria-label="Bagian Infrastruktur Management">
     <button type="button" class="enterprise-tab-btn active" id="infra-tab-overview" role="tab" aria-selected="true" aria-controls="infra-panel-overview" data-infra-tab="overview">Ringkasan</button>
@@ -35,21 +34,17 @@
 <div id="infra-panel-overview" class="infra-tab-panel" data-infra-panel="overview" role="tabpanel" aria-labelledby="infra-tab-overview">
 <div class="row g-3 mb-4">
     @foreach ([
-        ['id' => 'total', 'label' => 'Total Catatan Dataset', 'class' => 'primary', 'icon' => 'tower', 'description' => 'Jumlah baris Sewa Lahan dan Combat. Site yang sama dapat tercatat pada tahun atau periode berbeda.'],
-        ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert', 'description' => 'Site unik dengan nomor PKS baru dan existing yang belum tercantum pada dataset. Klik untuk memeriksa datanya.'],
+        ['id' => 'unique_sites', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+        ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
     ] as $card)
         <div class="col-md-6 col-12">
             <div class="card h-100 border-{{ $card['class'] }} infra-summary-link infra-summary-card"
-                 data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'total' ? '' : $card['id'] }}"
+                 data-filter-field="{{ $card['id'] === 'unique_sites' ? '' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'unique_sites' ? '' : $card['id'] }}"
                  role="link" tabindex="0" title="Buka data {{ $card['label'] }}">
                 <div class="card-body infra-summary-card-body">
                     <div>
                         <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                         <div class="fs-3 fw-bold" id="infra-{{ $card['id'] }}">—</div>
-                        @if ($card['id'] === 'total')
-                            <div class="infra-summary-distinct text-body-secondary" id="infra-records-sub"></div>
-                        @endif
-                        <p class="infra-summary-description text-body-secondary mb-0 mt-2">{{ $card['description'] }}</p>
                     </div>
                     <span class="infra-summary-icon" aria-hidden="true">
                         @switch($card['icon'])
@@ -145,11 +140,6 @@ $(function () {
             const el = $('#infra-' + key);
             if (el.length) el.text(key === 'risk_value' ? 'Rp ' + new Intl.NumberFormat('id-ID').format(value) : new Intl.NumberFormat('id-ID').format(value));
         });
-        if (data.cards.unique_sites !== undefined) {
-            $('#infra-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.unique_sites)} site unik`);
-        }
-        const fmt = value => new Intl.NumberFormat('id-ID').format(value || 0);
-        $('#dataset-caption').text(`${fmt(data.dataset_rows.sewa_lahan)} catatan Sewa Lahan (${fmt(data.dataset_rows.sewa_sites)} site unik) + ${fmt(data.dataset_rows.combat)} catatan Combat (${fmt(data.dataset_rows.combat_sites)} site unik)`);
         const base = window.infrastructureChartThemeOptions();
         const themed = options => Highcharts.merge(base, options);
         const drilldown = (series) => series.map(point => ({ ...point, custom: { filterField: point.filter_field, filterValue: point.filter_value } }));
@@ -185,7 +175,7 @@ $(function () {
         Highcharts.chart('infra-renewal-tab-chart', renewalChartOptions());
     }).fail(function (xhr) {
         const message = xhr.responseJSON?.message || 'Data Infrastruktur belum dapat dimuat.';
-        $('#dataset-caption').closest('.alert').after(`<div class="alert alert-danger mb-3" role="alert">${$('<div>').text(message).html()}</div>`);
+        $('#infra-tabs').before($('<div>', { class: 'alert alert-danger mb-3', role: 'alert', text: message }));
     });
 });
 </script>

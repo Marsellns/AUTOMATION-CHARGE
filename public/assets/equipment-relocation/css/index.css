@@ -89,7 +89,6 @@
 #equipmentRelocationPage .kpi-content { min-width: 0; }
 #equipmentRelocationPage .kpi-content span { display: block; font-size: 12px; color: var(--text-muted); }
 #equipmentRelocationPage .kpi-content h2 { margin: 4px 0 3px; font-size: 1.65rem; line-height: 1.1; font-weight: 750; }
-#equipmentRelocationPage .kpi-content small { display: block; font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 
 #equipmentRelocationPage .dashboard-card { min-width: 0; background: var(--white); border: 1px solid var(--border); border-radius: 13px; box-shadow: 0 2px 9px rgba(15, 23, 42, .04); }
 #equipmentRelocationPage .dashboard-card .card-header { flex: none; display: block; padding: 0 0 12px; background: transparent; border: 0; }

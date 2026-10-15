@@ -259,9 +259,8 @@ class InfrastructureDashboardController extends Controller
 
         return response()->json([
             'cards' => [
-                // Kartu utama menyatakan jumlah baris snapshot yang benar-
-                // benar tersimpan. Jumlah Site ID unik tetap disediakan
-                // sebagai keterangan agar kedua angka tidak tertukar.
+                // Keep snapshot totals available alongside the canonical site
+                // count used by the Total Site card and operational charts.
                 'total' => $all->count(),
                 'unique_sites' => $allSites->count(),
                 'active' => $allSites->filter($isOperational)->count(),
@@ -341,10 +340,8 @@ class InfrastructureDashboardController extends Controller
             )->values();
         }
 
-        // Semua diagram operasional dihitung dari Site ID unik. Kartu Total
-        // Site adalah pengecualian yang sengaja menampilkan jumlah baris
-        // snapshot, sehingga drill-down `all_records` juga mempertahankan
-        // setiap baris tanpa menghapus duplikasi historis.
+        // Site cards and operational charts share canonical Site ID selection.
+        // Explicit all_records requests still retain every historical row.
         if ($filterField !== 'all_records') {
             $records = $this->uniqueDetailRecords($records, $filterField !== 'source');
         }

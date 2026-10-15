@@ -128,6 +128,18 @@ class InfrastructureDashboardConsistencyTest extends TestCase
         $this->assertSame(2, $overview['cards']['total']);
         $this->assertSame(1, $overview['cards']['unique_sites']);
         $this->assertSame([['name' => '2025', 'y' => 1, 'filter_field' => 'tahun', 'filter_value' => '2025']], $overview['renewal_years']);
+
+        // The Total Site card opens the same canonical selection as its charts.
+        foreach (['all', 'sewa'] as $scope) {
+            $cards = app(InfrastructureDashboardController::class)
+                ->data(Request::create('/infrastruktur/dashboard-data', 'GET', ['scope' => $scope]))
+                ->getData(true)['cards'];
+            $details = app(InfrastructureDashboardController::class)
+                ->details(Request::create('/infrastruktur/dashboard-details', 'GET', ['scope' => $scope]))
+                ->getData(true);
+            $this->assertSame($cards['unique_sites'], $details['count']);
+            $this->assertSame(['CROSS-YEAR'], array_column($details['data'], 'site_code'));
+        }
     }
 
     public function test_overview_alerts_count_an_overlapping_site_once(): void

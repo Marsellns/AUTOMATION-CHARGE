@@ -18,7 +18,6 @@
     button.feasibility-kpi { border: 0; text-align: left; color: inherit; font-family: inherit; cursor: pointer; transition: transform .2s, box-shadow .2s; }
     button.feasibility-kpi:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgb(15 23 42 / .1); }
     button.feasibility-kpi:focus-visible, button.feasibility-category-card:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
-    .feasibility-kpi-hint { display: block; font-size: .75rem; color: var(--tone); font-weight: 650; margin-top: .5rem; }
     .feasibility-kpi::after { content: ''; position: absolute; right: -1.5rem; bottom: -2.5rem; width: 8rem; height: 8rem; border-radius: 50%; background: var(--wash); z-index: -1; opacity: .65; }
     .feasibility-kpi-label { display: block; color: #5e7491; font-size: .86rem; font-weight: 750; text-transform: uppercase; letter-spacing: .025em; padding-right: 2.5rem; }
     .feasibility-kpi-value { display: block; font-size: 2.15rem; line-height: 1.2; font-weight: 800; margin-top: 1.25rem; color: #0f172a; }
@@ -113,7 +112,6 @@
                 <div class="feasibility-kpi-icon"><x-filament::icon :icon="$icons[$loop->index]" /></div>
                 <span class="feasibility-kpi-label">{{ $label }}</span>
                 <strong class="feasibility-kpi-value">{{ number_format($value, 0, ',', '.') }}</strong>
-                <span class="feasibility-kpi-hint">Lihat {{ $loop->first ? 'daftar site' : 'klasifikasi & data' }} →</span>
             </button>
         @endforeach
     </div>

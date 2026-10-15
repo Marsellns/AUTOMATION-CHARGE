@@ -143,77 +143,35 @@
     <div id="tab-content-overview" class="dashboard-tab-panel">
         {{-- Top 4 KPI Cards --}}
         <div class="row g-3 mb-4">
-            {{-- Card 1: Total Records / PnL --}}
+            {{-- Card 1: P&L sites --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-sites" role="button" tabindex="0">
-                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/dashboard.svg') }}" alt="" width="35" height="35"><span>Profit &amp; Loss</span></div>
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Total Sites / Master</span>
-                        <span class="kpi-trend-badge kpi-trend-up" id="kpi-sites-trend">—</span>
-                    </div>
-                    <div class="stat-number fs-3 mb-1" id="kpi-sites-count">{{ number_format($siteCount) }} <span class="fs-6 fw-normal text-secondary">Sites</span></div>
-                    <div class="small text-body-secondary mb-2" id="kpi-financial-summary">
-                        Rev: <strong>—</strong> | Cost: <strong>—</strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
-                        <span>Net PnL: <strong class="text-success" id="kpi-net-pnl">—</strong></span>
-                    </div>
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/dashboard.svg') }}" alt="" width="35" height="35"><span>Total Site P&amp;L</span></div>
+                    <div class="stat-number fs-3 mb-1" id="kpi-sites-count">{{ number_format($siteCount) }}</div>
                 </div>
             </div>
 
-            {{-- Card 2: Active Queries / Electricity --}}
+            {{-- Card 2: PLN customers --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-pln" role="button" tabindex="0">
-                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/electricity.svg') }}" alt="" width="35" height="35"><span>Electricity Monitoring</span></div>
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Electricity PLN</span>
-                        <span class="kpi-trend-badge kpi-trend-neutral">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="currentColor" viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>
-                            Active Sync
-                        </span>
-                    </div>
-                    <div class="stat-number fs-3 mb-1" id="kpi-pln-pelanggan">{{ number_format($listrikCount) }} <span class="fs-6 fw-normal text-secondary">Pelanggan</span></div>
-                    <div class="small text-body-secondary mb-2" id="kpi-pln-tagihan">
-                        Tagihan: <strong>Rp {{ number_format($totalTagihanPln / 1000000000, 2, ',', '.') }} Miliar</strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
-                        <span>Total Daya: <strong id="kpi-pln-daya">{{ number_format($totalDayaVa / 1000, 1) }} kVA</strong></span>
-                    </div>
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/electricity.svg') }}" alt="" width="35" height="35"><span>Pelanggan PLN</span></div>
+                    <div class="stat-number fs-3 mb-1" id="kpi-pln-pelanggan">{{ number_format($listrikCount) }}</div>
                 </div>
             </div>
 
-            {{-- Card 3: Storage Used / Infrastruktur --}}
+            {{-- Card 3: Infrastructure records --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-infra" role="button" tabindex="0">
-                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Infrastruktur Management</span></div>
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">Infrastruktur Assets</span>
-                        <span class="badge text-bg-light border small">{{ number_format($infraDataSourceCount) }} sumber data</span>
-                    </div>
-                    <div class="stat-number fs-3 mb-1">{{ number_format($infraTotal) }} <span class="fs-6 fw-normal text-secondary">Records</span></div>
-                    <div class="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
-                        <span>Sewa Lahan: <strong>{{ number_format($sewaLahanCount) }}</strong> · Combat: <strong>{{ number_format($combatCount) }}</strong></span>
-                    </div>
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Data Infrastruktur</span></div>
+                    <div class="stat-number fs-3 mb-1">{{ number_format($infraTotal) }}</div>
                 </div>
             </div>
 
-            {{-- Card 4: System Health & PO HQ --}}
+            {{-- Card 4: Purchase orders --}}
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-po" role="button" tabindex="0">
-                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/purchase-order.svg') }}" alt="" width="35" height="35"><span>PO Monitoring</span></div>
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="text-body-secondary small fw-semibold text-uppercase tracking-wider">PO HQ &amp; Health</span>
-                        <span class="kpi-trend-badge kpi-trend-up">
-                            {{ $totalAnomalies === 0 ? 'Tanpa Anomali' : number_format($totalAnomalies) . ' Anomali' }}
-                        </span>
-                    </div>
-                    <div class="stat-number fs-3 mb-1">{{ number_format($poCount) }} <span class="fs-6 fw-normal text-secondary">PO HQ</span></div>
-                    <div class="small text-body-secondary mb-2">
-                        Status Anomali: <strong class="text-success">{{ $totalAnomalies == 0 ? 'Normal / 0 Anomali' : $totalAnomalies . ' Terdeteksi' }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
-                        <span>Capex &amp; Opex Tracking</span>
-                    </div>
+                    <div class="module-kpi-title"><img src="{{ asset('assets/modules/purchase-order.svg') }}" alt="" width="35" height="35"><span>Total PO HQ</span></div>
+                    <div class="stat-number fs-3 mb-1">{{ number_format($poCount) }}</div>
                 </div>
             </div>
         </div>
@@ -1335,37 +1293,12 @@ $(function () {
         // Update KPI Summary on Screen 1
         const fin = res.financial_kpi || {};
         const plnKpi = res.pln_kpi || {};
-        const revBil = (fin.total_revenue || 0) / 1000000000;
-        const cstBil = (fin.total_cost || 0) / 1000000000;
-        const pnlBil = (fin.total_pnl || 0) / 1000000000;
-        const plnTagihanBil = (plnKpi.total_tagihan || 0) / 1000000000;
-
         if (fin.total_sites !== undefined) {
-            $('#kpi-sites-count').html(`${Number(fin.total_sites).toLocaleString('id-ID')} <span class="fs-6 fw-normal text-secondary">Sites</span>`);
-        }
-        $('#kpi-financial-summary').html(`Rev: <strong>Rp ${revBil.toFixed(2)} M</strong> | Cost: <strong>Rp ${cstBil.toFixed(2)} M</strong>`);
-        $('#kpi-net-pnl').text(`Rp ${pnlBil.toFixed(2)} Miliar`);
-
-        // Update badge persentase Total Sites secara dinamis
-        if (fin.trend_label) {
-            const $badge = $('#kpi-sites-trend');
-            $badge.text(fin.trend_label);
-            $badge.removeClass('kpi-trend-up kpi-trend-down kpi-trend-neutral');
-            if (fin.trend_type === 'up') {
-                $badge.addClass('kpi-trend-up');
-            } else if (fin.trend_type === 'down') {
-                $badge.addClass('kpi-trend-down');
-            } else {
-                $badge.addClass('kpi-trend-neutral');
-            }
+            $('#kpi-sites-count').text(Number(fin.total_sites).toLocaleString('id-ID'));
         }
 
         if (plnKpi.pelanggan_count !== undefined) {
-            $('#kpi-pln-pelanggan').html(`${Number(plnKpi.pelanggan_count).toLocaleString('id-ID')} <span class="fs-6 fw-normal text-secondary">Pelanggan</span>`);
-        }
-        $('#kpi-pln-tagihan').html(`Tagihan: <strong>Rp ${plnTagihanBil.toFixed(2)} Miliar</strong>`);
-        if (plnKpi.total_daya_va !== undefined) {
-            $('#kpi-pln-daya').text(`${Number((plnKpi.total_daya_va / 1000).toFixed(1)).toLocaleString('id-ID')} kVA`);
+            $('#kpi-pln-pelanggan').text(Number(plnKpi.pelanggan_count).toLocaleString('id-ID'));
         }
 
         // Screen 1: Overview

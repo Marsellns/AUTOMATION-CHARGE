@@ -41,5 +41,4 @@
 .simaster-report.simaster-infrastructure-report .card-header, .simaster-report.simaster-infrastructure-report .form-label, .simaster-report.simaster-infrastructure-report .enterprise-tab-btn { font-size: .96rem; }
 .simaster-report.simaster-infrastructure-report .table, .simaster-report.simaster-infrastructure-report table.dataTable, .simaster-report.simaster-infrastructure-report #infra-drilldown-table { font-size: .9rem; }
 .simaster-report.simaster-infrastructure-report h1.h4 { font-size: 1.6rem; }
-.simaster-report.simaster-infrastructure-report .infra-card-records-sub, .simaster-report #infra-records-sub { font-size: .8rem !important; line-height: 1.4 !important; }
 @media (prefers-reduced-motion: reduce) { .simaster-module-tile, .simaster-module-image, .simaster-module-toggle .fi-icon { transition: none; } .simaster-module-tile:hover .simaster-module-image { transform: none; } }

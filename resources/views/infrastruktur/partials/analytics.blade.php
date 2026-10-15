@@ -9,22 +9,18 @@
     @if ($scope !== 'all')
     <div class="row g-3 mb-3">
         @foreach ([
-            ['id' => 'total', 'label' => 'Total Catatan Dataset', 'class' => 'primary', 'icon' => 'tower', 'description' => 'Jumlah baris untuk cakupan ini. Site yang sama dapat tercatat pada tahun atau periode berbeda.'],
-            ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert', 'description' => 'Site unik dengan nomor PKS baru dan existing yang belum tercantum pada dataset. Klik untuk memeriksa datanya.'],
+            ['id' => 'unique_sites', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+            ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
         ] as $card)
             <div class="col-md-6 col-12">
                 <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
-                     data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
+                     data-filter-field="{{ $card['id'] === 'unique_sites' ? '' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
                      role="link" tabindex="0">
                     <div class="card-body py-2 infra-summary-card-body">
                         <div>
                             <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                             <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
-                            @if ($card['id'] === 'total')
-                                <div class="text-body-secondary infra-summary-distinct infra-card-records-sub"></div>
-                            @endif
-                            <p class="infra-summary-description text-body-secondary mb-0 mt-2">{{ $card['description'] }}</p>
                         </div>
                         <span class="infra-summary-icon" aria-hidden="true">
                             @switch($card['icon'])
@@ -635,8 +631,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
     modal.show();
 
     const params = new URLSearchParams({ scope: scope || 'all' });
-    // `all_records` is deliberately value-less: it tells the dashboard endpoint
-    // not to deduplicate Site ID values for the Total Site drill-down.
+    // Retain value-less requests for callers that explicitly need raw records.
     if (filterField && (filterField === 'all_records' || (filterValue !== undefined && filterValue !== null && filterValue !== ''))) {
         params.set('filter_field', filterField);
         if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
@@ -740,9 +735,8 @@ function dashboardTarget(scope, filterField, filterValue, ownershipScope = '') {
     const combatUrl = @json(route('infrastruktur.combat.index'));
     let target = scope === 'combat' ? combatUrl : sewaUrl;
 
-    // Kartu Total Site memakai jumlah baris data, bukan Site ID unik. Saat
-    // dibuka dari modul Sewa Lahan/Combat, tabel harus mempertahankan seluruh
-    // baris yang sama dan tidak menerima parameter unique_sites.
+    // Explicit raw-record requests retain historical rows; site cards use
+    // the canonical site selection below, as do their charts and tables.
     if (filterField === 'all_records') {
         const params = new URLSearchParams();
         if (scope === 'sewa' && (ownershipScope === 'Telkomsel' || ownershipScope === 'TP')) {
@@ -852,9 +846,6 @@ $(function () {
                 const el = root.find('.infra-card-' + key);
                 if (el.length) el.text(key === 'risk_value' ? 'Rp ' + new Intl.NumberFormat('id-ID').format(value) : new Intl.NumberFormat('id-ID').format(value));
             });
-            if (data.cards.unique_sites !== undefined) {
-                root.find('.infra-card-records-sub').text(`${new Intl.NumberFormat('id-ID').format(data.cards.unique_sites)} site unik`);
-            }
             if (scope !== 'all') {
                 const empty = !data.cards.total;
                 root.find('.infra-empty-state').toggleClass('d-none', !empty);

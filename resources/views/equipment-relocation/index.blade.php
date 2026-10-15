@@ -103,7 +103,6 @@
             <div class="kpi-content">
                 <span>Total BBP</span>
                 <h2 id="erKpiBbpTotal">0</h2>
-                <small>Seluruh equipment BBP (Safe &amp; Not Safe)</small>
             </div>
         </div>
 
@@ -120,9 +119,8 @@
             </div>
 
             <div class="kpi-content">
-                <span>Total BBP Safe to Reloc</span>
+                <span>BBP Siap Relokasi</span>
                 <h2 id="erKpiBbpSafe">0</h2>
-                <small>Equipment BBP not utilize &amp; aman direlokasi</small>
             </div>
         </div>
 
@@ -141,7 +139,6 @@
             <div class="kpi-content">
                 <span>Total RU</span>
                 <h2 id="erKpiRuTotal">0</h2>
-                <small>Seluruh equipment RU (Safe &amp; Not Safe)</small>
             </div>
         </div>
 
@@ -158,9 +155,8 @@
             </div>
 
             <div class="kpi-content">
-                <span>Total RU Safe to Reloc</span>
+                <span>RU Siap Relokasi</span>
                 <h2 id="erKpiRuSafe">0</h2>
-                <small>Equipment RU not utilize &amp; aman direlokasi</small>
             </div>
         </div>
 
@@ -177,9 +173,8 @@
             </div>
 
             <div class="kpi-content">
-                <span>On Going</span>
+                <span>Relokasi Berjalan</span>
                 <h2 id="erKpiOnGoing">0</h2>
-                <small>Proses relokasi berjalan (RU &amp; BBP)</small>
             </div>
         </div>
 

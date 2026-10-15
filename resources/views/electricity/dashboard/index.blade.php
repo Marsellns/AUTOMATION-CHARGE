@@ -189,62 +189,56 @@
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Total Site</span>
+                    <span class="summary-card-title text-body-secondary">Total Site</span>
                     <span class="kpi-icon" aria-hidden="true">⌂</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-sites">—</div>
-                <div class="small text-body-secondary mt-2" id="kpi-electricity-sites-detail">Site aktif: —</div>
             </article>
         </div>
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Kapasitas Daya</span>
+                    <span class="summary-card-title text-body-secondary">Kapasitas Daya</span>
                     <span class="kpi-icon" aria-hidden="true">ϟ</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-capacity">—</div>
-                <div class="small text-body-secondary mt-2">Akumulasi daya master site</div>
             </article>
         </div>
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Total Tagihan</span>
+                    <span class="summary-card-title text-body-secondary">Total Tagihan</span>
                     <span class="kpi-icon" aria-hidden="true">Rp</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-billed">—</div>
-                <div class="small text-body-secondary mt-2" id="kpi-electricity-billed-detail">— transaksi</div>
             </article>
         </div>
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Pembayaran</span>
+                    <span class="summary-card-title text-body-secondary">Pembayaran</span>
                     <span class="kpi-icon" aria-hidden="true">✓</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-rate">—</div>
                 <div class="electricity-progress mt-2"><span id="kpi-electricity-rate-bar"></span></div>
-                <div class="small text-body-secondary mt-2" id="kpi-electricity-rate-detail">Terbayar: —</div>
             </article>
         </div>
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Anomali</span>
+                    <span class="summary-card-title text-body-secondary">Anomali</span>
                     <span class="kpi-icon text-danger" aria-hidden="true">!</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-anomalies">—</div>
-                <div class="small text-body-secondary mt-2" id="kpi-electricity-anomaly-detail">Dampak: —</div>
             </article>
         </div>
         <div class="col-6 col-xl-2">
             <article class="enterprise-kpi electricity-kpi is-loading">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="small fw-semibold text-body-secondary text-uppercase">Tindak Lanjut</span>
+                    <span class="summary-card-title text-body-secondary">Tindak Lanjut</span>
                     <span class="kpi-icon text-warning" aria-hidden="true">↗</span>
                 </div>
                 <div class="stat-number fw-bold" id="kpi-electricity-pending">—</div>
-                <div class="small text-body-secondary mt-2" id="kpi-electricity-pending-detail">Bongkar rampung: —</div>
             </article>
         </div>
     </div>
@@ -461,17 +455,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderKpis(data) {
         const kpi = data.kpi;
         setText('kpi-electricity-sites', numberFormatter.format(kpi.total_sites));
-        setText('kpi-electricity-sites-detail', `Site aktif: ${numberFormatter.format(kpi.active_sites)} · Nonaktif: ${numberFormatter.format(kpi.inactive_sites)}`);
         setText('kpi-electricity-capacity', compactPower(kpi.total_capacity_va));
         setText('kpi-electricity-billed', compactCurrency(kpi.total_billed));
-        setText('kpi-electricity-billed-detail', `${numberFormatter.format(kpi.payment_records)} transaksi pada periode terpilih`);
         setText('kpi-electricity-rate', `${percentFormatter.format(kpi.payment_rate)}%`);
-        setText('kpi-electricity-rate-detail', `Terbayar: ${compactCurrency(kpi.paid_amount)}`);
         document.getElementById('kpi-electricity-rate-bar').style.width = `${Math.min(100, Math.max(0, kpi.payment_rate))}%`;
         setText('kpi-electricity-anomalies', numberFormatter.format(kpi.anomalies));
-        setText('kpi-electricity-anomaly-detail', `Dampak selisih: ${compactCurrency(kpi.anomaly_impact)}`);
         setText('kpi-electricity-pending', numberFormatter.format(kpi.pending_records));
-        setText('kpi-electricity-pending-detail', `Pending ${compactCurrency(kpi.pending_amount)} · Boram ${numberFormatter.format(kpi.boram)}`);
         setText('billing-period-badge', data.meta.period_label);
         setText('electricity-filter-caption', `${data.meta.scope_label} · ${data.meta.period_label}`);
     }

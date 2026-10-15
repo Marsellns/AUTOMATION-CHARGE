@@ -7,6 +7,22 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
+test('Total Site selections preserve unique-site and ownership scopes in the existing table', () => {
+    const source = read('resources/views/infrastruktur/partials/analytics.blade.php');
+    const start = source.indexOf('function dashboardTarget(');
+    const end = source.indexOf('window.applyInfrastructureFilter =', start);
+    const context = { URLSearchParams };
+    vm.createContext(context);
+    vm.runInContext(source.slice(start, end).replace(/@json\(route\('([^']+)'\)\)/g, '"/$1"'), context);
+
+    for (const scope of ['sewa', 'combat']) {
+        const target = new URL(context.dashboardTarget(scope, '', '', scope === 'sewa' ? 'TP' : ''), 'https://example.test');
+        assert.equal(target.searchParams.get('unique_sites'), '1');
+        assert.equal(target.searchParams.has('filter_field'), false);
+        assert.equal(target.searchParams.get('ownership_scope'), scope === 'sewa' ? 'TP' : null);
+    }
+});
+
 test('Sewa Lahan and Combat chart selections use their existing lower table', () => {
     const analytics = read('resources/views/infrastruktur/partials/analytics.blade.php');
     const guard = analytics.indexOf("if (scope === 'sewa' || scope === 'combat') {");

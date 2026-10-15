@@ -43,15 +43,11 @@ test('infrastructure summary cards use contextual inline icons', () => {
     assert.match(dashboard, /infra-summary-card/);
     assert.match(dashboard, /infra-summary-icon/);
     assert.match(dashboard, /'icon' => 'tower'/);
-    assert.match(dashboard, /'icon' => 'check'/);
-    assert.match(dashboard, /'icon' => 'contract'/);
     assert.match(dashboard, /'icon' => 'alert'/);
-    assert.match(dashboard, /'icon' => 'offline'/);
     assert.doesNotMatch(dashboard, /module-navigation/);
     assert.match(analytics, /infra-card-link infra-summary-card/);
-    assert.match(analytics, /infra-card-risk_value/);
     assert.match(analytics, /'icon' => 'tower'/);
-    assert.match(analytics, /'icon' => 'offline'/);
+    assert.match(analytics, /'icon' => 'alert'/);
     assert.match(css, /\.infra-summary-card-body\s*\{/);
     assert.match(css, /\.infra-summary-card\.border-info \.infra-summary-icon/);
 });
@@ -90,7 +86,7 @@ test('infrastructure only retains distinct, balanced chart pairs', () => {
     assert.match(css, /\.infra-overview-chart\s*\{\s*height: 320px/);
 });
 
-test('infrastructure shows row totals and moves performance into site details', () => {
+test('infrastructure site cards use canonical totals and retain performance in site details', () => {
     const dashboard = read('resources/views/infrastruktur/index.blade.php');
     const analytics = read('resources/views/infrastruktur/partials/analytics.blade.php');
     const controller = read('app/Http/Controllers/InfrastructureDashboardController.php');
@@ -99,7 +95,11 @@ test('infrastructure shows row totals and moves performance into site details', 
 
     assert.match(controller, /'total' => \$all->count\(\)/);
     assert.match(controller, /'unique_sites' => \$allSites->count\(\)/);
-    assert.match(dashboard, /data-filter-field="\{\{ \$card\['id'\] === 'total' \? 'all_records'/);
+    for (const view of [dashboard, analytics]) {
+        assert.match(view, /'id' => 'unique_sites', 'label' => 'Total Site'/);
+        assert.match(view, /data-filter-field="\{\{ \$card\['id'\] === 'unique_sites' \? '' : 'summary_status'/);
+        assert.doesNotMatch(view, /Total Catatan Dataset|infra-summary-description|infra-summary-distinct|infra-card-records-sub/);
+    }
     assert.match(analytics, /data-infra-performance-year/);
     assert.match(analytics, /data-infra-performance-month/);
     assert.match(analytics, /renderInfrastructureSitePerformance/);
