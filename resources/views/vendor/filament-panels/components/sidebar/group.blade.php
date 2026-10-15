@@ -64,7 +64,7 @@
                aria-label="Buka grafik {{ $label }}" aria-controls="{{ $groupItemsId }}"
                @if ($dashboardCurrent) aria-current="page" @endif
                x-bind:aria-expanded="! $store.sidebar.groupIsCollapsed(label)" x-on:click="openModule()">
-                <img src="{{ $moduleImage }}" alt="" width="68" height="68" class="simaster-module-image">
+                <img src="{{ $moduleImage }}" alt="" width="48" height="48" class="simaster-module-image">
                 <span class="simaster-module-caption">{{ $label }}</span>
             </a>
             <button type="button" class="simaster-module-toggle" aria-label="Tampilkan submodul {{ $label }}" aria-controls="{{ $groupItemsId }}"

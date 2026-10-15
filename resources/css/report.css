@@ -4,8 +4,17 @@
 /* Filament remains responsible for the panel's layout and color scheme. */
 .simaster-report.app-main {
     min-width: 0;
-    padding: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    /* Leave room for Bootstrap rows, whose gutters extend beyond their columns. */
+    padding: 0 1.5rem;
     overflow: visible;
+}
+
+@media (max-width: 40rem) {
+    .simaster-report.app-main {
+        padding-inline: 1rem;
+    }
 }
 
 /* Hide the oversized reserved scrollbar gutter when the Filament sidebar is collapsed. */
