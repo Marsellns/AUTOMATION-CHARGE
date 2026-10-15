@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Imports\Datasets\InfrastructureRebuildImport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -105,16 +106,83 @@ class InfrastructureRebuildImportTest extends TestCase
         $this->assertSame(1, substr_count($html, 'id="infra-renewal-tab-chart"'));
     }
 
-    private function workbook(bool $emptyCombat = false): string
+    public function test_rebuild_uploads_replace_only_the_selected_module_and_refresh_portfolio_charts(): void
+    {
+        DB::table('sewa_lahan_renewals')->insert(['site_code' => 'OLD-SEWA']);
+        DB::table('combat_sites')->insert(['site_code' => 'OLD-COMBAT']);
+        $this->actingAs($this->userWithRole('admin'));
+        $path = $this->workbook(includeTp: true);
+
+        foreach (['sewa-lahan', 'sewa-lahan', 'combat'] as $dataset) {
+            $this->post(route('infrastruktur.upload.store', $dataset), [
+                'dataset_file' => new UploadedFile($path, 'Rebuild.xlsm',
+                    'application/vnd.ms-excel.sheet.macroEnabled.12', null, true),
+            ])->assertSessionHasNoErrors()->assertRedirect(route('infrastruktur.'.$dataset.'.index'));
+            if ($dataset === 'sewa-lahan') {
+                $this->assertDatabaseCount('sewa_lahan_renewals', 3);
+                $this->assertDatabaseHas('combat_sites', ['site_code' => 'OLD-COMBAT']);
+            }
+        }
+        $this->assertDatabaseCount('combat_sites', 2);
+        $this->assertDatabaseMissing('sewa_lahan_renewals', ['site_code' => 'OLD-SEWA']);
+        $this->assertDatabaseMissing('combat_sites', ['site_code' => 'OLD-COMBAT']);
+        $details = json_decode(DB::table('combat_sites')->first()->source_details, true);
+        $this->assertSame('Rebuild.xlsm', $details['_source']['file']);
+        $this->assertSame('DATABASE COMBAT', $details['_source']['sheet']);
+
+        foreach ([['sewa', 'Telkomsel', 1], ['sewa', 'TP', 1], ['combat', null, 1]] as [$scope, $owner, $sites]) {
+            $params = ['scope' => $scope, 'ownership_scope' => $owner];
+            $response = $this->getJson(route('infrastruktur.dashboard.data', $params))
+                ->assertOk()->assertJsonPath('cards.unique_sites', $sites);
+            foreach (['status', 'owners', 'pks_status', 'lease_status', 'renewal_status', 'nop', 'pipeline'] as $series) {
+                $this->assertSame($sites, array_sum(array_column($response->json($series), 'y')));
+            }
+            $this->getJson(route('infrastruktur.dashboard.details', $params))
+                ->assertOk()->assertJsonPath('count', $sites);
+        }
+    }
+
+    public function test_invalid_rebuild_upload_preserves_the_existing_snapshot(): void
+    {
+        DB::table('combat_sites')->insert(['site_code' => 'KEEP-COMBAT']);
+        $this->actingAs($this->userWithRole('admin'));
+        $this->post(route('infrastruktur.upload.store', 'combat'), [
+            'dataset_file' => new UploadedFile($this->workbook(emptyCombat: true), 'Rebuild.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true),
+        ])->assertSessionHasErrors('dataset_file');
+        $this->assertDatabaseCount('combat_sites', 1);
+        $this->assertDatabaseHas('combat_sites', ['site_code' => 'KEEP-COMBAT']);
+    }
+
+    public function test_rebuild_missing_the_requested_sheet_does_not_import_its_backup_as_a_template(): void
+    {
+        DB::table('sewa_lahan_renewals')->insert(['site_code' => 'KEEP-SEWA']);
+        $this->actingAs($this->userWithRole('admin'));
+        $this->post(route('infrastruktur.upload.store', 'sewa-lahan'), [
+            'dataset_file' => new UploadedFile($this->workbook(missingSewa: true), 'Rebuild.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true),
+        ])->assertSessionHasErrors('dataset_file');
+        $this->assertDatabaseCount('sewa_lahan_renewals', 1);
+        $this->assertDatabaseHas('sewa_lahan_renewals', ['site_code' => 'KEEP-SEWA']);
+        $this->assertDatabaseMissing('sewa_lahan_renewals', ['site_code' => 'EXCLUDED']);
+    }
+
+    private function workbook(bool $emptyCombat = false, bool $includeTp = false, bool $missingSewa = false): string
     {
         $book = new Spreadsheet();
         $book->getActiveSheet()->setTitle('BACKUP')->fromArray([['Site ID'], ['EXCLUDED']]);
         $book->createSheet()->setTitle('DATABASE RENEWAL')->fromArray([['Site ID'], ['MASTER-EXCLUDED']]);
-        $book->createSheet()->setTitle('DATA SEWA LAHAN')->fromArray([
+        $sewa = [
             ['Site ID', 'Sitename', 'Tahun', 'Periode Awal (Baru)', 'Periode Akhir (Baru)', 'tp', 'tp'],
             ['sewa01', 'Sewa Site', 2026, '2026-01-01', '2026-12-31', 'Telkomsel', null],
             ['sewa01', 'Sewa Site', 2027, '2027-01-01', '00:00:00', 'Telkomsel', null],
-        ]);
+        ];
+        if ($includeTp) {
+            $sewa[] = ['SEWA-TP', 'TP Site', 2026, '2026-01-01', '2026-12-31', 'TP', null];
+        }
+        if (! $missingSewa) {
+            $book->createSheet()->setTitle('DATA SEWA LAHAN')->fromArray($sewa);
+        }
         $combat = [
             ['Site ID', 'Site Name', 'Year', 'Rev Jun 26', 'Rev Jul 26', 'revenue_month', 'revenue_mei_2026', 'tracy_month', 'margindirect'],
         ];

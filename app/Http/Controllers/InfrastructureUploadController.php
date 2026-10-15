@@ -7,6 +7,7 @@ use App\Imports\Datasets\CombatSiteImport;
 use App\Imports\Datasets\CombatWorkbookImport;
 use App\Imports\Datasets\DataSiteUnlockImport;
 use App\Imports\Datasets\JaknetContractImport;
+use App\Imports\Datasets\InfrastructureRebuildImport;
 use App\Imports\Datasets\RecurringIpasImport;
 use App\Imports\Datasets\RecurringTagihanIpasImport;
 use App\Imports\Datasets\SewaLahanRenewalImport;
@@ -99,7 +100,9 @@ class InfrastructureUploadController extends Controller
     public function store(Request $request, string $dataset): RedirectResponse
     {
         abort_unless(isset(self::DATASETS[$dataset]), 404);
-        $request->validate(['dataset_file' => 'required|file|mimes:xlsx,xls,csv|max:51200']);
+        $rebuildDataset = isset(InfrastructureRebuildImport::SHEETS[$dataset]);
+        $formats = $rebuildDataset ? 'xlsx,xls,xlsm,csv' : 'xlsx,xls,csv';
+        $request->validate(['dataset_file' => 'required|file|mimes:'.$formats.'|max:51200']);
         $definition = self::DATASETS[$dataset];
         $import = $dataset === 'combat'
             ? new CombatWorkbookImport()
@@ -109,6 +112,25 @@ class InfrastructureUploadController extends Controller
         }
 
         try {
+            if ($rebuildDataset) {
+                $file = $request->file('dataset_file');
+                $path = $file->getRealPath();
+                if ($path === false) {
+                    throw new \RuntimeException('File upload sementara tidak dapat dibaca.');
+                }
+                $rebuild = app(InfrastructureRebuildImport::class);
+                if ($rebuild->supports($path)) {
+                    $datasets = $rebuild->read($path, $dataset, $file->getClientOriginalName());
+                    $rebuild->synchronize($datasets);
+                    $count = count($datasets[$dataset]);
+
+                    return redirect()->route('infrastruktur.'.$dataset.'.index')
+                        ->with('success', "Sinkronisasi {$definition['label']} berhasil: {$count} catatan dari workbook Rebuild disimpan.");
+                }
+                if (strtolower($file->getClientOriginalExtension()) === 'xlsm') {
+                    throw new \RuntimeException('Sheet aktif Rebuild tidak ditemukan pada workbook.');
+                }
+            }
             DB::transaction(function () use ($dataset, $import, $request): void {
                 if ($dataset === 'bapss') {
                     DB::table('bapss')->delete();

@@ -14,7 +14,7 @@
   <form method="POST" enctype="multipart/form-data" action="{{ route('infrastruktur.upload.store', $dataset) }}">
    @csrf
    <label class="form-label fw-semibold" for="dataset-file">File Excel/CSV <span class="text-danger">*</span></label>
-   <input id="dataset-file" type="file" name="dataset_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+   <input id="dataset-file" type="file" name="dataset_file" class="form-control" accept="{{ in_array($dataset, ['sewa-lahan', 'combat'], true) ? '.xlsx,.xls,.xlsm,.csv' : '.xlsx,.xls,.csv' }}" required>
    <small class="text-body-secondary d-block mt-2">Maksimal 50 MB. Gunakan format kolom dataset yang tersedia.</small>
    <div class="mt-3 d-flex gap-2">
     <button class="btn btn-brand" type="submit">Upload dan simpan</button>
@@ -22,7 +22,7 @@
     <a class="btn btn-outline-secondary" href="{{ route('infrastruktur.'.$dataset.'.index') }}">Batal</a>
    </div>
   </form>
-  <div class="alert alert-info mt-4 mb-0">@if ($dataset === 'bapss') Upload BAPSS mengganti data modul ini. @else Upload menambahkan data baru dan memperbarui entri dengan kunci yang sama. Data lain tetap tersimpan. @endif Baris tanpa Site ID dilewati.</div>
+  <div class="alert alert-info mt-4 mb-0">@if ($dataset === 'bapss') Upload BAPSS mengganti data modul ini. @elseif (in_array($dataset, ['sewa-lahan', 'combat'], true)) Workbook Rebuild mengganti seluruh data {{ $definition['label'] }} dari sheet aktifnya dan mencadangkan data sebelumnya. File template biasa menambahkan atau memperbarui entri. @else Upload menambahkan data baru dan memperbarui entri dengan kunci yang sama. Data lain tetap tersimpan. @endif Baris tanpa Site ID dilewati.</div>
  </div>
 </div>
 @endsection

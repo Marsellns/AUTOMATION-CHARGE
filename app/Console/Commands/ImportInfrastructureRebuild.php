@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Imports\Datasets\InfrastructureRebuildImport;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class ImportInfrastructureRebuild extends Command
 {
@@ -31,36 +30,7 @@ class ImportInfrastructureRebuild extends Command
                 $this->info('Pemeriksaan sumber selesai; database belum diubah.');
                 return self::SUCCESS;
             }
-            if (DB::connection()->getDriverName() !== 'mysql') {
-                throw new RuntimeException('Sinkronisasi ini harus dijalankan pada database MySQL aplikasi.');
-            }
-            $backup = storage_path('app/backups/infrastructure-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.json');
-            if (! is_dir(dirname($backup))) mkdir(dirname($backup), 0700, true);
-            DB::transaction(function () use ($datasets, $backup): void {
-                $old = ['created_at' => now()->toIso8601String(), 'database' => DB::connection()->getDatabaseName(), 'tables' => []];
-                foreach ($datasets as $key => $records) {
-                    $table = InfrastructureRebuildImport::SHEETS[$key]['table'];
-                    $old['tables'][$table] = DB::table($table)->lockForUpdate()->get()->all();
-                }
-                if (file_put_contents($backup, json_encode($old, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) === false) {
-                    throw new RuntimeException('Backup snapshot sebelumnya gagal dibuat.');
-                }
-                chmod($backup, 0600);
-                foreach ($datasets as $key => $records) {
-                    $table = InfrastructureRebuildImport::SHEETS[$key]['table'];
-                    DB::table($table)->delete();
-                    $timestamp = now();
-                    foreach ($records as &$record) {
-                        $record['created_at'] = $timestamp;
-                        $record['updated_at'] = $timestamp;
-                    }
-                    unset($record);
-                    foreach (array_chunk($records, 250) as $chunk) DB::table($table)->insert($chunk);
-                    if (DB::table($table)->count() !== count($records)) {
-                        throw new RuntimeException('Jumlah sumber dan MySQL tidak cocok: '.$table);
-                    }
-                }
-            });
+            $backup = $importer->synchronize($datasets);
             $this->info('Transaksi Rebuild tersimpan pada MySQL '.DB::connection()->getDatabaseName().'.');
             $this->line('Backup snapshot sebelumnya: '.$backup);
             return self::SUCCESS;

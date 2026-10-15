@@ -3,6 +3,7 @@
 namespace App\Imports\Datasets;
 
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -18,8 +19,67 @@ class InfrastructureRebuildImport
         'combat' => ['sheet' => 'DATABASE COMBAT', 'table' => 'combat_sites'],
     ];
 
+    public function supports(string $path): bool
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        if (! method_exists($reader, 'listWorksheetNames')) {
+            return false;
+        }
+
+        return array_intersect(
+            array_column(self::SHEETS, 'sheet'),
+            $reader->listWorksheetNames($path)
+        ) !== [];
+    }
+
+    /** Replace validated source snapshots together and retain the previous data privately. */
+    public function synchronize(array $datasets): string
+    {
+        if ($datasets === [] || array_diff(array_keys($datasets), array_keys(self::SHEETS)) !== []) {
+            throw new RuntimeException('Dataset Rebuild tidak valid.');
+        }
+        foreach ($datasets as $records) {
+            if ($records === []) {
+                throw new RuntimeException('Snapshot Rebuild kosong; data sebelumnya dipertahankan.');
+            }
+        }
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            throw new RuntimeException('Sinkronisasi ini harus dijalankan pada database MySQL aplikasi.');
+        }
+
+        $backup = storage_path('app/backups/infrastructure-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.json');
+        if (! is_dir(dirname($backup))) mkdir(dirname($backup), 0700, true);
+        DB::transaction(function () use ($datasets, $backup): void {
+            $old = ['created_at' => now()->toIso8601String(), 'database' => DB::connection()->getDatabaseName(), 'tables' => []];
+            foreach ($datasets as $key => $records) {
+                $table = self::SHEETS[$key]['table'];
+                $old['tables'][$table] = DB::table($table)->lockForUpdate()->get()->all();
+            }
+            if (file_put_contents($backup, json_encode($old, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) === false) {
+                throw new RuntimeException('Backup snapshot sebelumnya gagal dibuat.');
+            }
+            chmod($backup, 0600);
+            foreach ($datasets as $key => $records) {
+                $table = self::SHEETS[$key]['table'];
+                DB::table($table)->delete();
+                $timestamp = now();
+                foreach ($records as &$record) {
+                    $record['created_at'] = $timestamp;
+                    $record['updated_at'] = $timestamp;
+                }
+                unset($record);
+                foreach (array_chunk($records, 250) as $chunk) DB::table($table)->insert($chunk);
+                if (DB::table($table)->count() !== count($records)) {
+                    throw new RuntimeException('Jumlah sumber dan MySQL tidak cocok: '.$table);
+                }
+            }
+        });
+
+        return $backup;
+    }
+
     /** @return array<string, list<array<string, mixed>>> */
-    public function read(string $path, ?string $only = null): array
+    public function read(string $path, ?string $only = null, ?string $sourceName = null): array
     {
         if (! is_file($path)) {
             throw new RuntimeException('Workbook Rebuild tidak ditemukan: '.$path);
@@ -95,7 +155,7 @@ class InfrastructureRebuildImport
                         throw new RuntimeException('Baris tidak dapat dipetakan pada '.$definition['sheet'].' baris '.$number);
                     }
                     $normalized['_source'] = [
-                        'file' => basename($path), 'sha256' => $fingerprint,
+                        'file' => basename($sourceName ?? $path), 'sha256' => $fingerprint,
                         'sheet' => $definition['sheet'], 'row' => $number, 'cells' => $source,
                     ];
                     $mapped['source_details'] = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
