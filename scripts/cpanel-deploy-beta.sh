@@ -101,24 +101,59 @@ fi
     "$php" artisan filament:optimize
 )
 
-# Only Git-ignored generated paths point to the private release. One atomic
-# switch of current changes the vendor and assets together.
-runtime=(vendor public/build public/css/filament public/js/filament public/fonts/filament public/vendor/simaster)
-for relative in "${runtime[@]}"; do
+# PHP runs as the cPanel account and can read the private release. Keep vendor
+# linked there, but serve generated assets as regular files: the web server
+# cannot traverse the private (0700) release directories through symlinks.
+[[ ! -e "$deploy_root/current" || -L "$deploy_root/current" ]] || fail 'current release is not a symlink'
+[[ -d "$release/vendor" ]] || fail 'release is missing vendor'
+vendor_target="$repo/vendor"
+vendor_link="$deploy_root/current/vendor"
+if [[ -L "$vendor_target" ]]; then
+    [[ "$(readlink "$vendor_target")" == "$vendor_link" ]] || fail "unexpected symlink at $vendor_target"
+elif [[ -e "$vendor_target" ]]; then
+    fail "review the existing $vendor_target before deploying generated files"
+else
+    ln -s "$vendor_link" "$vendor_target"
+fi
+
+public_runtime=(public/build public/css/filament public/js/filament public/fonts/filament public/vendor/simaster)
+marker=.simawar-deploy-managed
+for relative in "${public_runtime[@]}"; do
     [[ -d "$release/$relative" ]] || fail "release is missing $relative"
     target="$repo/$relative"
     link="$deploy_root/current/$relative"
     if [[ -L "$target" ]]; then
         [[ "$(readlink "$target")" == "$link" ]] || fail "unexpected symlink at $target"
     elif [[ -e "$target" ]]; then
-        fail "review the existing $target before deploying generated files"
-    else
-        mkdir -p "$(dirname "$target")"
-        ln -s "$link" "$target"
+        [[ -d "$target" && -f "$target/$marker" ]] ||
+            fail "review the existing $target before deploying generated files"
+        [[ -z "$(find "$target" -type l -print -quit)" ]] ||
+            fail "unexpected symlink in $target"
     fi
 done
 
-[[ ! -e "$deploy_root/current" || -L "$deploy_root/current" ]] || fail 'current release is not a symlink'
+for relative in "${public_runtime[@]}"; do
+    target="$repo/$relative"
+    if [[ -L "$target" ]]; then
+        unlink -- "$target"
+    fi
+    mkdir -p "$target"
+    cp -a -- "$release/$relative/." "$target/"
+    # umask 077 protects the release; these copies must be readable by the
+    # static-file server, including newly created public/fonts and public/vendor.
+    chmod 0755 "$(dirname "$target")"
+    find "$target" -type d -exec chmod 0755 {} +
+    find "$target" -type f -exec chmod 0644 {} +
+    printf '%s\n' "$sha" > "$target/$marker"
+    chmod 0644 "$target/$marker"
+done
+
+public_asset="$(find "$repo/public/build/assets" -maxdepth 1 -type f \( -name '*.css' -o -name '*.js' \) -print -quit)"
+[[ -n "$public_asset" ]] || fail 'release has no public CSS or JavaScript asset'
+asset_url="https://$domain/${public_asset#"$repo/public/"}?deploy=$sha"
+curl -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 25 \
+    -o /dev/null "$asset_url" || fail "web server cannot serve generated asset ${public_asset#"$repo/public/"}"
+
 next="$deploy_root/.current-next-$sha-$$"
 ln -s "$release" "$next"
 mv -Tf -- "$next" "$deploy_root/current"
