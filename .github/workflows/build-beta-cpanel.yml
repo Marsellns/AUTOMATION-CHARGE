@@ -47,6 +47,7 @@ jobs:
 
       - name: Verify application on strict MariaDB
         env:
+          APP_DEBUG: 'false'
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: '3306'
