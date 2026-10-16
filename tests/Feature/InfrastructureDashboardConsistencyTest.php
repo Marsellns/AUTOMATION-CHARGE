@@ -166,44 +166,71 @@ class InfrastructureDashboardConsistencyTest extends TestCase
         }
     }
 
-    public function test_on_air_and_off_air_cards_match_the_sites_opened_by_each_module(): void
+    public function test_status_cards_and_drilldowns_count_every_database_row_even_with_repeated_site_ids(): void
     {
         SewaLahanRenewal::query()->create(['site_code' => 'SEWA-ON', 'source_details' => ['status' => 'On Air']]);
         SewaLahanRenewal::query()->create(['site_code' => 'SEWA-OFF', 'source_details' => ['status' => 'Off Air']]);
-        // The imported workbook may repeat a Site ID. Its master status wins.
-        SewaLahanRenewal::query()->create(['site_code' => 'SEWA-ON']);
+        SewaLahanRenewal::query()->create(['site_code' => 'SEWA-ON', 'source_details' => ['status' => 'On Air']]);
         CombatSite::query()->create(['site_code' => 'COMBAT-ON', 'source_details' => ['database' => ['status' => 'On Air']]]);
         CombatSite::query()->create(['site_code' => 'COMBAT-OFF', 'source_details' => ['database' => ['status' => 'Off Air']]]);
-        CombatSite::query()->create(['site_code' => 'COMBAT-OFF', 'source_details' => ['database_revenue' => ['revenue_month' => 1]]]);
+        CombatSite::query()->create(['site_code' => 'COMBAT-OFF', 'source_details' => ['database' => ['status' => 'Off Air']]]);
 
         $controller = app(InfrastructureDashboardController::class);
         foreach ([
-            'sewa' => ['SEWA-ON', 'SEWA-OFF'],
-            'combat' => ['COMBAT-ON', 'COMBAT-OFF'],
-        ] as $scope => [$onAir, $offAir]) {
-            $cards = $controller->data(Request::create('/infrastruktur/dashboard-data', 'GET', [
+            'sewa' => ['active' => 2, 'off_air' => 1, 'on_site' => 'SEWA-ON', 'off_site' => 'SEWA-OFF'],
+            'combat' => ['active' => 1, 'off_air' => 2, 'on_site' => 'COMBAT-ON', 'off_site' => 'COMBAT-OFF'],
+        ] as $scope => $expected) {
+            $response = $controller->data(Request::create('/infrastruktur/dashboard-data', 'GET', [
                 'scope' => $scope,
-            ]))->getData(true)['cards'];
+            ]))->getData(true);
+            $cards = $response['cards'];
 
-            $this->assertSame(1, $cards['active']);
-            $this->assertSame(1, $cards['off_air']);
+            $this->assertSame(3, $cards['total']);
+            $this->assertSame(2, $cards['unique_sites']);
+            $this->assertSame($expected['active'], $cards['active']);
+            $this->assertSame($expected['off_air'], $cards['off_air']);
+            $this->assertSame(3, $cards['without_pks']);
+            $this->assertSame(3, array_sum(array_column($response['status'], 'y')));
+            foreach ($response['status'] as $statusSlice) {
+                $details = $controller->details(Request::create('/infrastruktur/dashboard-details', 'GET', [
+                    'scope' => $scope,
+                    'filter_field' => 'status',
+                    'filter_value' => $statusSlice['filter_value'],
+                ]))->getData(true);
+                $this->assertSame($statusSlice['y'], $details['count']);
+            }
 
-            foreach (['active' => $onAir, 'off_air' => $offAir] as $status => $siteCode) {
+            foreach (['active' => 'on_site', 'off_air' => 'off_site'] as $status => $siteKey) {
                 $details = $controller->details(Request::create('/infrastruktur/dashboard-details', 'GET', [
                     'scope' => $scope,
                     'filter_field' => 'summary_status',
                     'filter_value' => $status,
                 ]))->getData(true);
 
-                $this->assertSame(1, $details['count']);
-                $this->assertSame([$siteCode], array_column($details['data'], 'site_code'));
+                $this->assertSame($expected[$status], $details['count']);
+                $this->assertSame(array_fill(0, $expected[$status], $expected[$siteKey]), array_column($details['data'], 'site_code'));
                 $this->assertSame($status === 'active' ? 'On Air' : 'Off Air', $details['data'][0]['status_site']);
             }
+
+            $withoutPks = $controller->details(Request::create('/infrastruktur/dashboard-details', 'GET', [
+                'scope' => $scope,
+                'filter_field' => 'summary_status',
+                'filter_value' => 'without_pks',
+            ]))->getData(true);
+            $this->assertSame($cards['without_pks'], $withoutPks['count']);
         }
 
         $overview = $controller->data(Request::create('/infrastruktur/dashboard-data'))->getData(true);
-        $this->assertSame(2, $overview['cards']['active']);
-        $this->assertSame(2, $overview['cards']['off_air']);
+        $this->assertSame(6, $overview['cards']['total']);
+        $this->assertSame(4, $overview['cards']['unique_sites']);
+        $this->assertSame(3, $overview['cards']['active']);
+        $this->assertSame(3, $overview['cards']['off_air']);
+        $this->assertSame(6, array_sum(array_column($overview['status'], 'y')));
+
+        SewaLahanRenewal::query()->create(['site_code' => 'NEW-ON', 'source_details' => ['status' => 'On Air']]);
+        $updated = $controller->data(Request::create('/infrastruktur/dashboard-data'))->getData(true);
+        $this->assertSame(7, $updated['cards']['total']);
+        $this->assertSame(4, $updated['cards']['active']);
     }
 
     public function test_overview_alerts_count_an_overlapping_site_once(): void

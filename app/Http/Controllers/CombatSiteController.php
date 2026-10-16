@@ -105,8 +105,8 @@ class CombatSiteController extends Controller
                 } elseif ($value === 'off_air') {
                     $subQuery->whereRaw("{$status} REGEXP 'off[[:space:]]*air|non.?operational|non.?aktif|dismantle|unlock|relokasi|migrasi'");
                 } elseif ($value === 'without_pks') {
-                    $subQuery->where(function ($empty): void { $empty->whereNull('no_pks_baru')->orWhere('no_pks_baru', ''); })
-                        ->where(function ($empty): void { $empty->whereNull('no_pks_lama')->orWhere('no_pks_lama', ''); });
+                    $subQuery->whereRaw("NULLIF(TRIM(no_pks_baru), '') IS NULL")
+                        ->whereRaw("NULLIF(TRIM(no_pks_lama), '') IS NULL");
                 }
             });
         } elseif ($field === 'status_perpanjangan') {

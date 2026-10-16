@@ -24,7 +24,7 @@
                             <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                             <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
                             @if (in_array($card['id'], ['active', 'off_air'], true))
-                                <small class="text-body-secondary">site unik · klik untuk lihat data</small>
+                                <small class="text-body-secondary">klik untuk lihat semua baris data</small>
                             @endif
                         </div>
                         <span class="infra-summary-icon" aria-hidden="true">
@@ -659,7 +659,9 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             const sourceSummary = Object.entries(payload.source_counts || {})
                 .map(([source, count]) => `${source}: ${new Intl.NumberFormat('id-ID').format(count)}`)
                 .join(' · ');
-            const countLabel = filterField === 'all_records' ? 'baris data' : 'site unik';
+            const isRowLevel = filterField === 'all_records' || filterField === 'status'
+                || (filterField === 'summary_status' && ['active', 'off_air', 'without_pks'].includes(filterValue));
+            const countLabel = isRowLevel ? 'baris data' : 'site unik';
             summary.text(`${new Intl.NumberFormat('id-ID').format(payload.count || rows.length)} ${countLabel}${sourceSummary ? ` (${sourceSummary})` : ''}`);
 
             if (!rows.length) {
@@ -777,9 +779,11 @@ function dashboardTarget(scope, filterField, filterValue, ownershipScope = '') {
     if (scope === 'sewa' && filterField !== 'ownership' && (ownershipScope === 'Telkomsel' || ownershipScope === 'TP')) {
         params.set('ownership_scope', ownershipScope);
     }
-    // Diagram counts are based on unique Site ID.  Preserve that same
-    // definition when opening a table from an operational chart/status card.
-    params.set('unique_sites', '1');
+    // Status cards and charts count all source rows; other charts count
+    // canonical Site IDs and retain their existing table filter.
+    const isRowLevel = filterField === 'status'
+        || (filterField === 'summary_status' && ['active', 'off_air', 'without_pks'].includes(filterValue));
+    if (!isRowLevel) params.set('unique_sites', '1');
     return target + (params.toString() ? '?' + params.toString() : '');
 }
 

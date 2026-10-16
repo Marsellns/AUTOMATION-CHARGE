@@ -183,10 +183,10 @@ class InfrastructureDashboardController extends Controller
                 return ['name' => $name, 'y' => $items->unique('site_code')->count(), 'filter_field' => 'status_perpanjangan', 'filter_value' => $name];
             })
             ->sortByDesc('y')->values();
-        $airStatus = $allSites->groupBy(fn ($row) => $this->dimensionKey('status', $this->airStatusValue($row)))
+        $airStatus = $all->groupBy(fn ($row) => $this->dimensionKey('status', $this->airStatusValue($row)))
             ->map(function ($items): array {
                 $name = $this->airStatusValue($items->first());
-                return ['name' => $name, 'y' => $items->unique('site_code')->count(), 'filter_field' => 'status', 'filter_value' => $name];
+                return ['name' => $name, 'y' => $items->count(), 'filter_field' => 'status', 'filter_value' => $name];
             })
             ->sortByDesc('y')->values();
         $nop = $allSites->groupBy(fn ($row) => $this->nopValue($row))
@@ -259,15 +259,15 @@ class InfrastructureDashboardController extends Controller
 
         return response()->json([
             'cards' => [
-                // Total Site follows all workbook rows; operational charts
-                // retain their canonical Site ID aggregation.
+                // Summary cards and the status chart count database rows,
+                // including repeated Site IDs in either source table.
                 'total' => $all->count(),
                 'unique_sites' => $allSites->count(),
-                'active' => $allSites->filter($isOperational)->count(),
+                'active' => $all->filter($isOperational)->count(),
                 'contract' => $allSites->filter($needsAttention)->count(),
-                'without_pks' => $allSites->filter($withoutPks)->count(),
-                'off_air' => $allSites->filter($isOffAir)->count(),
-                'unknown_status' => $allSites->reject($isOperational)->reject($isOffAir)->count(),
+                'without_pks' => $all->filter($withoutPks)->count(),
+                'off_air' => $all->filter($isOffAir)->count(),
+                'unknown_status' => $all->reject($isOperational)->reject($isOffAir)->count(),
                 'risk_value' => $riskValue,
             ],
             // A pie composition must be mutually exclusive.  Contract and
@@ -303,11 +303,9 @@ class InfrastructureDashboardController extends Controller
     }
 
     /**
-     * Row-level drill-down used by chart and notification pop-ups.
-     *
-     * This endpoint intentionally uses the same unique Site ID rule as the
-     * dashboard: the master row wins over a revenue-only row, while records
-     * from Sewa Lahan and Combat remain separate sources.
+     * Row-level drill-down used by chart and notification pop-ups. Summary
+     * cards and status charts show all matching database rows; other charts
+     * retain their canonical Site ID aggregation.
      */
     public function details(Request $request): JsonResponse
     {
@@ -340,9 +338,11 @@ class InfrastructureDashboardController extends Controller
             )->values();
         }
 
-        // Total Site requests every source row, including repeated Site IDs.
-        // Operational chart selections retain their canonical Site IDs.
-        if ($filterField !== 'all_records') {
+        // Match the row counts shown by summary cards and status charts.
+        $rowLevelFilter = $filterField === 'all_records'
+            || $filterField === 'status'
+            || ($filterField === 'summary_status' && in_array($filterValue, ['active', 'off_air', 'without_pks'], true));
+        if (! $rowLevelFilter) {
             $records = $this->uniqueDetailRecords($records, $filterField !== 'source');
         }
 

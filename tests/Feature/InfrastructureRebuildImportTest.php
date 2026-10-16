@@ -134,7 +134,11 @@ class InfrastructureRebuildImportTest extends TestCase
             $params = ['scope' => $scope, 'ownership_scope' => $owner];
             $response = $this->getJson(route('infrastruktur.dashboard.data', $params))
                 ->assertOk()->assertJsonPath('cards.unique_sites', $sites);
-            foreach (['status', 'owners', 'pks_status', 'lease_status', 'renewal_status', 'nop', 'pipeline'] as $series) {
+            $this->assertSame(
+                $response->json('cards.total'),
+                array_sum(array_column($response->json('status'), 'y'))
+            );
+            foreach (['owners', 'pks_status', 'lease_status', 'renewal_status', 'nop', 'pipeline'] as $series) {
                 $this->assertSame($sites, array_sum(array_column($response->json($series), 'y')));
             }
             $this->getJson(route('infrastruktur.dashboard.details', $params))
