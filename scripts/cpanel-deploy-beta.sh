@@ -66,10 +66,11 @@ if [[ ! -d "$release" ]]; then
     actual_hash="$(sha256sum "$stage/$asset" | awk '{print $1}')"
     [[ "$actual_hash" == "$expected_hash" ]] || fail 'release checksum mismatch'
     unzip -tq "$stage/$asset" >/dev/null || fail 'release ZIP is damaged'
+    unzip -Z1 "$stage/$asset" > "$stage/zip-entries" || fail 'cannot list release ZIP entries'
     while IFS= read -r entry; do
         [[ "$entry" == RELEASE.json || "$entry" == simaster/* ]] || fail "unexpected ZIP entry: $entry"
         [[ "$entry" != /* && "$entry" != *'..'* && "$entry" != *'\\'* ]] || fail "unsafe ZIP entry: $entry"
-    done < <(unzip -Z1 "$stage/$asset")
+    done < "$stage/zip-entries"
     mkdir "$stage/extracted"
     unzip -q "$stage/$asset" -d "$stage/extracted"
     [[ -z "$(find "$stage/extracted" -type l -print -quit)" ]] || fail 'release ZIP contains symbolic links'
