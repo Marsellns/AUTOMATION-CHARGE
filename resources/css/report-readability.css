@@ -1,9 +1,11 @@
 /* Keep readable sizes while reserving emphasis for headings and key figures. */
 .simaster-report {
-    --report-label-size: 1rem;
-    --report-note-size: .9375rem;
-    --report-heading-size: 1.125rem;
-    --report-card-title-size: 1.2rem;
+    --report-label-size: .875rem;
+    --report-note-size: .8125rem;
+    --report-heading-size: 1rem;
+    --report-card-title-size: .9375rem;
+    --bs-body-font-size: .875rem;
+    font-size: .875rem;
     font-weight: 400;
 }
 .simaster-report :is(strong, b) {
@@ -44,14 +46,17 @@
     font-weight: 600 !important;
 }
 .simaster-report :is(.stat-number, .stat-value, .kpi-value, .kpi-content h2, .kpi-content h3, .feasibility-kpi-value, .infra-summary-card .fs-3, .infra-summary-card .fs-4, .card-body > .fs-3.fw-bold) {
-    font-size: clamp(1.9rem, 2.25vw, 2.4rem) !important;
+    font-size: clamp(1.5rem, 1.8vw, 1.9rem) !important;
     font-weight: 700 !important;
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
 .simaster-report .pnl-summary-value {
-    font-size: clamp(1.4rem, 1.7vw, 1.85rem) !important;
+    font-size: clamp(1rem, 7cqi, 1.5rem) !important;
     font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow-wrap: normal;
 }
 .simaster-report :is(.feasibility-category-card, .feasibility-category-name, .feasibility-category-meta, .feasibility-category-status, .feasibility-category-count small, .pnl-rank-row, .pnl-rank-row small, .pnl-rank-metrics) {
     font-size: var(--report-note-size) !important;
@@ -61,7 +66,7 @@
 .simaster-report :is(.feasibility-category-name, .feasibility-category-status) { font-weight: 500 !important; }
 .simaster-report .pnl-rank-amount { font-weight: 600; }
 .simaster-report .infra-summary-card-body > div { min-width: 0; }
-.simaster-report .feasibility-category-count { font-size: 1.85rem !important; font-weight: 700; }
+.simaster-report .feasibility-category-count { font-size: 1.5rem !important; font-weight: 700; }
 .simaster-report :is(.table, table.dataTable, .data-table) :is(th, td) {
     font-size: var(--report-note-size) !important;
 }
@@ -72,12 +77,10 @@
     font-size: var(--report-note-size);
     font-weight: 400;
 }
-.fi-wi-stats-overview-stat-label { font-size: 1.2rem; font-weight: 600; }
+.fi-wi-stats-overview-stat-label { font-size: .9375rem; font-weight: 600; }
 .fi-section-header-heading { font-size: 1rem; font-weight: 600; }
-.fi-wi-stats-overview-stat-value { font-size: 2.25rem; font-weight: 700; }
+.fi-wi-stats-overview-stat-value { font-size: 1.875rem; font-weight: 700; }
 @media (max-width: 40rem) {
-    .simaster-report { --report-heading-size: 1.0625rem; --report-card-title-size: 1.0625rem; }
-    .fi-wi-stats-overview-stat-label { font-size: 1.0625rem; }
     .simaster-report .infra-summary-icon { display: none; }
     .simaster-report :is(.enterprise-tabs-nav, .pnl-tabs) { max-width: 100%; flex-wrap: wrap; }
     .simaster-report :is(.enterprise-tab-btn, .pnl-tab) { white-space: normal; overflow-wrap: anywhere; }

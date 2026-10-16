@@ -15,6 +15,21 @@ concurrency:
 jobs:
   package:
     runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mariadb:10.11
+        env:
+          MARIADB_DATABASE: testing
+          MARIADB_USER: simawar_ci
+          MARIADB_PASSWORD: ci-check-only
+          MARIADB_ROOT_PASSWORD: ci-root-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,10 +45,29 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Verify application on strict MariaDB
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: testing
+          DB_USERNAME: simawar_ci
+          DB_PASSWORD: ci-check-only
+        run: |
+          set -euo pipefail
+          composer install --prefer-dist --no-interaction
+          cp .env.example .env
+          php artisan key:generate --force
+          php <<'PHP'
+          <?php
+          $db = new PDO('mysql:host=127.0.0.1;port=3306', 'root', 'ci-root-only');
+          $db->exec("SET GLOBAL sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'");
+          PHP
+          php artisan test --compact
+
       - name: Build runtime package
         run: |
           set -euo pipefail
-          composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
           npm ci
           npm run build
           php scripts/build-cpanel-package.php

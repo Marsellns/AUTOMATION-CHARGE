@@ -9,13 +9,13 @@
     max-width: 100%;
     box-sizing: border-box;
     /* Leave room for Bootstrap rows, whose gutters extend beyond their columns. */
-    padding: 0 1.5rem;
+    padding: 0 .5rem;
     overflow: visible;
 }
 
 @media (max-width: 40rem) {
     .simaster-report.app-main {
-        padding-inline: 1rem;
+        padding-inline: .25rem;
     }
 }
 

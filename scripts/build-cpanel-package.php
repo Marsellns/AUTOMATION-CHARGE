@@ -58,6 +58,11 @@ try {
     if (! is_file($base.'/public/build/manifest.json')) {
         throw new RuntimeException('Build Vite assets before packaging.');
     }
+    foreach (['telkomsel-logo.png', 'filter-icon.png'] as $image) {
+        if (! is_file($base.'/public/images/'.$image) || filesize($base.'/public/images/'.$image) === 0) {
+            throw new RuntimeException('Required public image is missing: '.$image);
+        }
+    }
     mkdir($stage, 0755, true);
     foreach (['app', 'bootstrap', 'config', 'database', 'public', 'resources', 'routes', 'deploy'] as $directory) {
         $copy($base.'/'.$directory, $stage.'/'.$directory);

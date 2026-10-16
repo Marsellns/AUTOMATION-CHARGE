@@ -67,19 +67,21 @@ class ModuleDashboardController extends Controller
     {
         $nop = "COALESCE(NULLIF(TRIM(nop), ''), 'Belum diisi')";
         $class = "COALESCE(NULLIF(UPPER(TRIM(site_class)), ''), 'Belum diisi')";
-        $rows = DB::table('site_owners')->selectRaw("{$nop} AS nop, {$class} AS site_class, COUNT(*) AS total")
-            ->groupByRaw("{$nop}, {$class}")->orderBy('nop')->orderBy('site_class')->get();
-        $categories = $rows->pluck('nop')->unique()->values()->all();
+        // Distinct aliases avoid MariaDB's ONLY_FULL_GROUP_BY expression bug
+        // and prevent GROUP BY from resolving to the untrimmed source columns.
+        $rows = DB::table('site_owners')->selectRaw("{$nop} AS nop_label, {$class} AS class_label, COUNT(*) AS total")
+            ->groupBy('nop_label', 'class_label')->orderBy('nop_label')->orderBy('class_label')->get();
+        $categories = $rows->pluck('nop_label')->unique()->values()->all();
         $classStyles = [
             'GOLD' => ['Gold', '#eab308'], 'SILVER' => ['Silver', '#94a3b8'],
             'BRONZE' => ['Bronze', '#16a34a'], 'PLATINUM' => ['Platinum', '#334155'],
             'DIAMOND' => ['Diamond', '#ef4444'],
         ];
-        $classes = $rows->pluck('site_class')->unique()->all();
+        $classes = $rows->pluck('class_label')->unique()->all();
         $classes = array_values(array_unique([...array_intersect(array_keys($classStyles), $classes), ...$classes]));
         $counts = [];
         foreach ($rows as $row) {
-            $counts[$row->site_class][$row->nop] = (int) $row->total;
+            $counts[$row->class_label][$row->nop_label] = (int) $row->total;
         }
 
         return [
@@ -98,7 +100,7 @@ class ModuleDashboardController extends Controller
         $label = DatasetCategoryFilters::label($column);
 
         return DB::table($table)->selectRaw("{$label} as name, COUNT(*) as total")
-            ->groupByRaw($label)->orderByDesc('total')->orderBy('name')->get()
+            ->groupBy('name')->orderByDesc('total')->orderBy('name')->get()
             ->map(fn ($row) => ['name' => $row->name, 'y' => (int) $row->total])->all();
     }
 }

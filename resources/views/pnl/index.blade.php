@@ -226,7 +226,7 @@
 @push('styles')
 <style>
     .pnl-tabs { display: flex; flex-wrap: wrap; gap: .65rem; }
-    .simaster-report .pnl-tab { border: 1px solid var(--bs-border-color); border-radius: .9rem; padding: .8rem 1rem; color: var(--bs-body-color); background: var(--bs-body-bg); font: inherit; font-size: .9rem; font-weight: 650; cursor: pointer; transition: background .2s, box-shadow .2s; }
+    .simaster-report .pnl-tab { border: 1px solid var(--bs-border-color); border-radius: .65rem; padding: .55rem .75rem; color: var(--bs-body-color); background: var(--bs-body-bg); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; transition: background .2s, box-shadow .2s; }
     .simaster-report .pnl-tab:hover { background: var(--bs-tertiary-bg); }
     .simaster-report .pnl-tab.active { color: #fff; background: linear-gradient(120deg, #0d9488, #0f766e); border-color: #0f766e; box-shadow: 0 4px 12px rgb(13 148 136 / .16); }
     .simaster-report .pnl-tab:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
@@ -234,6 +234,12 @@
     .pnl-chart { height: 320px; min-width: 0; width: 100%; }
     .pnl-chart-scroll { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; }
     .pnl-summary-compact { display: none; }
+    #pnl-financial-summary .card { container: pnl-summary / inline-size; }
+    #pnl-financial-summary .card-body { padding: 1rem; }
+    @container pnl-summary (max-width: 16rem) {
+        .pnl-summary-full { display: none; }
+        .pnl-summary-compact { display: inline; }
+    }
     .pnl-analytics-table { max-height: 370px; overflow: auto; }
     .pnl-analytics-table button { text-align: left; }
     @media (max-width: 575px) { .simaster-report .pnl-tab { flex: 1 1 42%; padding: .65rem .5rem; font-size: .78rem; } .pnl-chart { height: 290px; } }
@@ -430,8 +436,9 @@ $(function () {
                     const value = Number(summary[key] || 0);
                     const full = fmtRupiah(value);
                     const $value = $('#pnl-summary-' + key).empty().attr('title', full);
-                    $('<span class="pnl-summary-full">').text(full).appendTo($value);
-                    $('<span class="pnl-summary-compact">').text('Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(value)).appendTo($value);
+                    $('<span class="visually-hidden">').text(full).appendTo($value);
+                    $('<span class="pnl-summary-full" aria-hidden="true">').text(full).appendTo($value);
+                    $('<span class="pnl-summary-compact" aria-hidden="true">').text('Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(value)).appendTo($value);
                 });
                 $('#pnl-summary-profit_loss').toggleClass('text-profit', summary.profit_loss > 0).toggleClass('text-loss', summary.profit_loss < 0);
                 $('#pnl-summary-margin').text(summary.margin === null ? '—' : `${fmtNumber(summary.margin, 2)}%`);

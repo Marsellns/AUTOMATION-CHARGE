@@ -46,7 +46,7 @@ class ReportPanelProvider extends PanelProvider
             ->colors(['primary' => Color::Red])
             ->maxContentWidth('full')
             ->sidebarCollapsibleOnDesktop()
-            ->sidebarWidth('15.5rem')
+            ->sidebarWidth('14rem')
             ->collapsedSidebarWidth('6rem')
             ->homeUrl(fn () => route('dashboard'))
             ->plugins(ReportModuleRegistry::plugins())

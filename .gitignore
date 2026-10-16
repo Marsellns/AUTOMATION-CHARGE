@@ -47,6 +47,8 @@ Thumbs.db
 
 # Screenshots
 *.png
+!/public/images/telkomsel-logo.png
+!/public/images/filter-icon.png
 
 # Local cPanel metadata and temporary working files
 /.cpanel/

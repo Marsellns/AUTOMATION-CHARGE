@@ -514,7 +514,7 @@ class DashboardMasterController extends Controller
             })
             ->when($nop !== null, fn ($query) => $query->whereRaw('UPPER(TRIM(so.nop)) = ?', [strtoupper($nop)]))
             ->selectRaw("COALESCE(NULLIF(TRIM(so.site_owner), ''), 'Belum teridentifikasi') as owner_name, COUNT(DISTINCT s.id) as total")
-            ->groupByRaw("COALESCE(NULLIF(TRIM(so.site_owner), ''), 'Belum teridentifikasi')")
+            ->groupBy('owner_name')
             ->orderByDesc('total')
             ->get();
 

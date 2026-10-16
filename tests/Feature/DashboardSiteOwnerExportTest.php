@@ -7,6 +7,7 @@ use App\Models\SiteOwner;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
@@ -31,6 +32,32 @@ class DashboardSiteOwnerExportTest extends TestCase
             ->assertSee('id="site-owner-export"', false)
             ->assertSee('id="site-owner-detail-export"', false)
             ->assertSee(route('data-potensi.site-owner.export-excel'), false);
+    }
+
+    public function test_dashboard_groups_normalized_owners_without_counting_duplicate_master_rows(): void
+    {
+        $this->seedSiteOwners();
+        DB::table('site_owners')->insert(['site_code' => ' site-001 ', 'site_owner' => ' Mitratel ', 'nop' => 'NOP JAKARTA']);
+        foreach (range(1, 6) as $number) {
+            $id = DB::table('sites')->insertGetId(['site_id' => sprintf('SITE-%03d', $number), 'site_name' => 'Site '.$number]);
+            DB::table('site_monthly_metrics')->insert([
+                'site_id' => $id, 'tahun' => 2026, 'bulan' => 7,
+                'revenue' => 100, 'cost' => 40, 'profit_loss' => 60, 'is_anomaly' => false,
+            ]);
+        }
+
+        $this->actingAs(User::factory()->create(['account_status' => 'approved']));
+        $response = $this->getJson(route('dashboard.chart-data', ['tahun' => 2026, 'bulan' => 7]))
+            ->assertOk()->assertJsonPath('site_owners.total_sites', 6);
+        $this->assertSame([
+            'Belum teridentifikasi' => 3, 'Mitratel' => 2, 'Telkomsel' => 1,
+        ], collect($response->json('site_owners.items'))->pluck('total', 'name')->all());
+
+        $filtered = $this->getJson(route('dashboard.chart-data', ['tahun' => 2026, 'bulan' => 7, 'nop' => 'NOP JAKARTA']))
+            ->assertOk()->assertJsonPath('site_owners.total_sites', 4);
+        $this->assertEqualsCanonicalizing([
+            'Belum teridentifikasi' => 2, 'Mitratel' => 1, 'Telkomsel' => 1,
+        ], collect($filtered->json('site_owners.items'))->pluck('total', 'name')->all());
     }
 
     public function test_site_owner_export_can_be_filtered_by_owner_and_nop(): void
