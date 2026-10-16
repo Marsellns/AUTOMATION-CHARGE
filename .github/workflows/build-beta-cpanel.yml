@@ -56,6 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           composer install --prefer-dist --no-interaction
+          npm ci
+          npm run build
           cp .env.example .env
           php artisan key:generate --force
           php <<'PHP'
@@ -68,8 +70,6 @@ jobs:
       - name: Build runtime package
         run: |
           set -euo pipefail
-          npm ci
-          npm run build
           php scripts/build-cpanel-package.php
           package="$(find storage/app/releases -maxdepth 1 -type f -name 'simaster-cpanel-filament-php82-*.zip' -print -quit)"
           test -n "$package"
