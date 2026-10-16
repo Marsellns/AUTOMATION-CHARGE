@@ -23,6 +23,28 @@ test('Total Site selections include every row and preserve ownership in the exis
     }
 });
 
+test('On Air and Off Air cards filter the matching module table by unique Site ID', () => {
+    const source = read('resources/views/infrastruktur/partials/analytics.blade.php');
+    const overview = read('resources/views/infrastruktur/index.blade.php');
+    const start = source.indexOf('function dashboardTarget(');
+    const end = source.indexOf('window.applyInfrastructureFilter =', start);
+    const context = { URLSearchParams };
+    vm.createContext(context);
+    vm.runInContext(source.slice(start, end).replace(/@json\(route\('([^']+)'\)\)/g, '"/$1"'), context);
+
+    for (const [status, label] of [['active', 'Status On Air'], ['off_air', 'Status Off Air']]) {
+        assert.ok(source.includes(`'id' => '${status}', 'label' => '${label}'`));
+        assert.ok(overview.includes(`'id' => '${status}', 'label' => '${label}'`));
+        for (const scope of ['sewa', 'combat']) {
+            const target = new URL(context.dashboardTarget(scope, 'summary_status', status), 'https://example.test');
+            assert.equal(target.searchParams.get('filter_field'), 'summary_status');
+            assert.equal(target.searchParams.get('filter_value'), status);
+            assert.equal(target.searchParams.get('unique_sites'), '1');
+            assert.equal(target.pathname, scope === 'sewa' ? '/infrastruktur.sewa-lahan.index' : '/infrastruktur.combat.index');
+        }
+    }
+});
+
 test('Total Site clears previous year and search filters before reloading the table', () => {
     for (const module of ['sewa-lahan', 'combat']) {
         const source = read(`resources/views/infrastruktur/${module}/index.blade.php`);

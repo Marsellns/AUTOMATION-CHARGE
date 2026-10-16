@@ -35,9 +35,11 @@
 <div class="row g-3 mb-4">
     @foreach ([
         ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+        ['id' => 'active', 'label' => 'Status On Air', 'class' => 'success', 'icon' => 'check'],
+        ['id' => 'off_air', 'label' => 'Status Off Air', 'class' => 'warning', 'icon' => 'offline'],
         ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
     ] as $card)
-        <div class="col-md-6 col-12">
+        <div class="col-xl-3 col-md-6 col-12">
             <div class="card h-100 border-{{ $card['class'] }} infra-summary-link infra-summary-card"
                  data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}" data-filter-value="{{ $card['id'] === 'total' ? '' : $card['id'] }}"
                  role="link" tabindex="0" title="Buka data {{ $card['label'] }}">
@@ -45,6 +47,9 @@
                     <div>
                         <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                         <div class="fs-3 fw-bold" id="infra-{{ $card['id'] }}">—</div>
+                        @if (in_array($card['id'], ['active', 'off_air'], true))
+                            <small class="text-body-secondary">site unik · klik untuk lihat data</small>
+                        @endif
                     </div>
                     <span class="infra-summary-icon" aria-hidden="true">
                         @switch($card['icon'])

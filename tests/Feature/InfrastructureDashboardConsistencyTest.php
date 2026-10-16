@@ -166,6 +166,46 @@ class InfrastructureDashboardConsistencyTest extends TestCase
         }
     }
 
+    public function test_on_air_and_off_air_cards_match_the_sites_opened_by_each_module(): void
+    {
+        SewaLahanRenewal::query()->create(['site_code' => 'SEWA-ON', 'source_details' => ['status' => 'On Air']]);
+        SewaLahanRenewal::query()->create(['site_code' => 'SEWA-OFF', 'source_details' => ['status' => 'Off Air']]);
+        // The imported workbook may repeat a Site ID. Its master status wins.
+        SewaLahanRenewal::query()->create(['site_code' => 'SEWA-ON']);
+        CombatSite::query()->create(['site_code' => 'COMBAT-ON', 'source_details' => ['database' => ['status' => 'On Air']]]);
+        CombatSite::query()->create(['site_code' => 'COMBAT-OFF', 'source_details' => ['database' => ['status' => 'Off Air']]]);
+        CombatSite::query()->create(['site_code' => 'COMBAT-OFF', 'source_details' => ['database_revenue' => ['revenue_month' => 1]]]);
+
+        $controller = app(InfrastructureDashboardController::class);
+        foreach ([
+            'sewa' => ['SEWA-ON', 'SEWA-OFF'],
+            'combat' => ['COMBAT-ON', 'COMBAT-OFF'],
+        ] as $scope => [$onAir, $offAir]) {
+            $cards = $controller->data(Request::create('/infrastruktur/dashboard-data', 'GET', [
+                'scope' => $scope,
+            ]))->getData(true)['cards'];
+
+            $this->assertSame(1, $cards['active']);
+            $this->assertSame(1, $cards['off_air']);
+
+            foreach (['active' => $onAir, 'off_air' => $offAir] as $status => $siteCode) {
+                $details = $controller->details(Request::create('/infrastruktur/dashboard-details', 'GET', [
+                    'scope' => $scope,
+                    'filter_field' => 'summary_status',
+                    'filter_value' => $status,
+                ]))->getData(true);
+
+                $this->assertSame(1, $details['count']);
+                $this->assertSame([$siteCode], array_column($details['data'], 'site_code'));
+                $this->assertSame($status === 'active' ? 'On Air' : 'Off Air', $details['data'][0]['status_site']);
+            }
+        }
+
+        $overview = $controller->data(Request::create('/infrastruktur/dashboard-data'))->getData(true);
+        $this->assertSame(2, $overview['cards']['active']);
+        $this->assertSame(2, $overview['cards']['off_air']);
+    }
+
     public function test_overview_alerts_count_an_overlapping_site_once(): void
     {
         $endDate = today()->subDay()->toDateString();

@@ -10,9 +10,11 @@
     <div class="row g-3 mb-3">
         @foreach ([
             ['id' => 'total', 'label' => 'Total Site', 'class' => 'primary', 'icon' => 'tower'],
+            ['id' => 'active', 'label' => 'Status On Air', 'class' => 'success', 'icon' => 'check'],
+            ['id' => 'off_air', 'label' => 'Status Off Air', 'class' => 'warning', 'icon' => 'offline'],
             ['id' => 'without_pks', 'label' => 'Site tanpa Nomor PKS', 'class' => 'danger', 'icon' => 'alert'],
         ] as $card)
-            <div class="col-md-6 col-12">
+            <div class="col-xl-3 col-md-6 col-12">
                 <div class="card h-100 border-{{ $card['class'] }} infra-card-link infra-summary-card"
                      data-filter-field="{{ $card['id'] === 'total' ? 'all_records' : 'summary_status' }}"
                      data-filter-value="{{ in_array($card['id'], ['active', 'contract', 'without_pks', 'off_air'], true) ? $card['id'] : '' }}"
@@ -21,6 +23,9 @@
                         <div>
                             <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                             <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
+                            @if (in_array($card['id'], ['active', 'off_air'], true))
+                                <small class="text-body-secondary">site unik · klik untuk lihat data</small>
+                            @endif
                         </div>
                         <span class="infra-summary-icon" aria-hidden="true">
                             @switch($card['icon'])
@@ -166,12 +171,12 @@
                     <table class="table table-sm table-hover align-middle mb-0" id="infra-drilldown-table">
                         <thead class="table-light">
                             <tr>
-                                <th>Site ID</th><th>Nama Site</th><th>Sumber</th><th>Owner</th>
+                                <th>Site ID</th><th>Nama Site</th><th>Sumber</th><th>Owner</th><th>Status Site</th>
                                 <th>Status Dokumen</th><th>Status Perpanjangan</th><th>Masa Sewa</th>
                                 <th>Tanggal Akhir</th><th>Sisa Hari</th><th>Aging Proses</th><th></th>
                             </tr>
                         </thead>
-                        <tbody><tr><td colspan="11" class="text-center text-body-secondary py-4">Memuat data...</td></tr></tbody>
+                        <tbody><tr><td colspan="12" class="text-center text-body-secondary py-4">Memuat data...</td></tr></tbody>
                     </table>
                 </div>
                 </div>
@@ -575,6 +580,7 @@ window.showInfrastructureRowDetail = function (row, scope, title) {
     const entries = [
         ['Site ID', row.site_code], ['Nama Site', row.site_name], ['Sumber', source],
         ['Owner', row.owner], ['Tahun', row.tahun], ['NOP', row.nop], ['Vendor / TP', row.vendor],
+        ['Status Site', row.status_site],
         ['Status Dokumen', row.status_dokumen], ['Status Perpanjangan', row.status_perpanjangan],
         ['Status Masa Sewa', row.status_masa_sewa], ['Tanggal Akhir', row.end_date],
         ['Sisa Hari', row.days_remaining === null || row.days_remaining === undefined ? '—' : row.days_remaining],
@@ -627,7 +633,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
     $('#infraDrilldownModalLabel').text(`Detail ${scope === 'combat' ? 'Combat' : (scope === 'sewa' ? 'Sewa Lahan' : 'Infrastruktur')} — ${selectedTitle}`);
     summary.text('Memuat data...');
     error.addClass('d-none').text('');
-    body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat data...</td></tr>');
+    body.html('<tr><td colspan="12" class="text-center text-body-secondary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat data...</td></tr>');
     modal.show();
 
     const params = new URLSearchParams({ scope: scope || 'all' });
@@ -657,7 +663,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             summary.text(`${new Intl.NumberFormat('id-ID').format(payload.count || rows.length)} ${countLabel}${sourceSummary ? ` (${sourceSummary})` : ''}`);
 
             if (!rows.length) {
-                body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4">Tidak ada data untuk pilihan ini.</td></tr>');
+                body.html('<tr><td colspan="12" class="text-center text-body-secondary py-4">Tidak ada data untuk pilihan ini.</td></tr>');
                 return;
             }
 
@@ -685,6 +691,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
                     <td>${infrastructureDrilldownEscape(row.site_name)}</td>
                     <td>${infrastructureDrilldownEscape(row.source)}</td>
                     <td>${infrastructureDrilldownEscape(row.owner)}</td>
+                    <td>${infrastructureDrilldownEscape(row.status_site)}</td>
                     <td>${infrastructureDrilldownEscape(row.status_dokumen)}</td>
                     <td>${infrastructureDrilldownEscape(row.status_perpanjangan)}</td>
                     <td>${infrastructureDrilldownEscape(row.status_masa_sewa)}</td>
@@ -706,7 +713,7 @@ window.openInfrastructureDrilldown = function (scope, filterField, filterValue, 
             const message = payload?.message || 'Detail data belum dapat dimuat.';
             error.removeClass('d-none').text(message);
             summary.text('Gagal memuat data');
-            body.html('<tr><td colspan="11" class="text-center text-body-secondary py-4">Tidak ada data yang dapat ditampilkan.</td></tr>');
+            body.html('<tr><td colspan="12" class="text-center text-body-secondary py-4">Tidak ada data yang dapat ditampilkan.</td></tr>');
         });
 };
 

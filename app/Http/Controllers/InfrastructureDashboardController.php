@@ -411,6 +411,7 @@ class InfrastructureDashboardController extends Controller
                 'site_code' => $row->site_code,
                 'site_name' => $row->site_name,
                 'tahun' => $row->tahun_renewal ?? $row->tahun_justi_dirnet,
+                'status_site' => $this->dimensionLabel('status', $details['status'] ?? null),
                 'status_dokumen' => $row->status_dokumen,
                 'status_perpanjangan' => $row->status_perpanjangan,
                 'status_masa_sewa' => LeaseStatus::fromEndDate($endDate),
