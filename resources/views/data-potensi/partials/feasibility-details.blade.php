@@ -14,7 +14,7 @@
                                 <h3 class="h6 fw-bold mb-2">{{ $heading }}</h3>
                                 <label class="visually-hidden" for="feasibility-search-{{ $key }}">Cari {{ $searchLabel }}</label>
                                 <input id="feasibility-search-{{ $key }}" class="feasibility-search" type="search" placeholder="Cari {{ $searchLabel }}…" aria-controls="feasibility-list-{{ $key }}">
-                                <div class="feasibility-category-status" role="status" aria-live="polite">{{ count($classifications[$key]) }} kategori · klik untuk menyaring data</div>
+                                <div class="feasibility-category-status" role="status" aria-live="polite">{{ count($classifications[$key]) }} kategori</div>
                                 <div id="feasibility-list-{{ $key }}" class="feasibility-category-list" tabindex="0" role="region" aria-label="Daftar {{ $heading }}">
                                     <div class="feasibility-category-grid">
                                         @foreach ($classifications[$key] as $point)
@@ -39,7 +39,7 @@
                         </div>
                         <div id="feasibility-active-filters" class="feasibility-active-filters" aria-label="Filter data aktif"></div>
                         <div id="feasibility-detail-error" class="alert alert-danger py-2" role="alert" hidden></div>
-                        <p class="feasibility-note mb-2">Klik baris untuk melihat detail lengkap. Excel memuat seluruh baris yang cocok dengan filter dan pencarian.</p>
+                        <p class="feasibility-note mb-2">Excel memuat seluruh baris yang cocok dengan filter dan pencarian.</p>
                         <table id="feasibility-detail-table" class="table table-hover align-middle" style="width:100%"><thead></thead><tbody></tbody></table>
                     </section>
                 </div>

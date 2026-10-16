@@ -35,7 +35,6 @@
 
     <div class="card">
         <div class="card-body">
-            <p class="small text-muted mb-2">Klik salah satu baris untuk melihat seluruh detail kontrak, PR/PO, invoice, dan GR dari sumber data.</p>
             <table id="tagihan-table" class="display align-middle text-nowrap" style="width:100%">
                 <thead><tr>
                     <th>No</th><th>Site ID</th><th>Site Name</th><th>TP</th>

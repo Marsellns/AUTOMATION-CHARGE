@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
 
     // Presales adalah alur sirkulasi dan persetujuan dokumen dari sistem acuan.
     Route::get('/po-monitoring', [ModuleDashboardController::class, 'purchaseOrders'])->name('po-monitoring.dashboard');
+    Route::get('/po-monitoring/details', [ModuleDashboardController::class, 'purchaseOrderDetails'])->name('po-monitoring.details');
     Route::prefix('po-monitoring/presales')->name('presales.')->group(function () {
         Route::get('/', [PresalesController::class, 'index'])->name('index');
         Route::get('/create', [PresalesController::class, 'create'])->name('create');

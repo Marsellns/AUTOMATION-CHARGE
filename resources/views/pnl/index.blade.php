@@ -116,7 +116,6 @@
             <div class="card h-100">
                 <div class="card-header">
                     <h2 class="h6 mb-0">Performa Site per NOP</h2>
-                    <span class="text-body-secondary small">Klik kelompok untuk melihat daftar site pada NOP dan status tersebut.</span>
                 </div>
                 <div class="card-body">
                     <div id="pnl-site-status-chart" class="pnl-chart" aria-label="Jumlah site menurut NOP dan status"></div>
@@ -137,7 +136,6 @@
 
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div><h2 class="h5 mb-1">Performa Site</h2><p class="small text-body-secondary mb-0" id="pnl-ranking-caption">Memuat ringkasan periode dan NOP…</p></div>
-        <span class="small text-body-secondary">Pilih site untuk memfilter tabel, atau buka rincian historinya.</span>
     </div>
     <div class="row g-3 mb-4">
         @foreach (['profit' => 'Top 3 Site Profit', 'loss' => 'Top 3 Site Loss'] as $type => $title)
@@ -157,7 +155,7 @@
     @include('pnl.partials.analytics-panels')
     <section id="pnl-panel-analysis" data-pnl-panel="analysis" role="tabpanel" aria-labelledby="pnl-tab-analysis" hidden>
     <div class="card mb-3">
-        <div class="card-header"><h2 class="h6 mb-1">Revenue dan Cost per Site</h2><p class="small text-body-secondary mb-0">10 site dengan nilai absolut P&amp;L terbesar pada filter aktif. Klik batang untuk membuka histori.</p></div>
+        <div class="card-header"><h2 class="h6 mb-1">Revenue dan Cost per Site</h2><p class="small text-body-secondary mb-0">10 site dengan nilai absolut P&amp;L terbesar pada filter aktif.</p></div>
         <div class="card-body"><div id="pnl-site-comparison-chart" class="pnl-chart" aria-label="Perbandingan revenue dan cost site"></div></div>
     </div>
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">

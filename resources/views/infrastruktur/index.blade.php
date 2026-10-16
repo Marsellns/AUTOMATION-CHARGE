@@ -47,9 +47,6 @@
                     <div>
                         <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                         <div class="fs-3 fw-bold" id="infra-{{ $card['id'] }}">—</div>
-                        @if (in_array($card['id'], ['active', 'off_air'], true))
-                            <small class="text-body-secondary">klik untuk lihat semua baris data</small>
-                        @endif
                     </div>
                     <span class="infra-summary-icon" aria-hidden="true">
                         @switch($card['icon'])

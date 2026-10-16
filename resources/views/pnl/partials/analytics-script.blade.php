@@ -201,7 +201,7 @@
             url: chartApiUrl, data: getChartFilters(),
             success(res) {
                 analyticsData = res;
-                $('#pnl-chart-context').text(fmtNumber(res.sites_count) + ' site · ' + $('#filter-year').val() + ' · ' + $('#filter-month option:selected').text() + ' · ' + $('#filter-nop option:selected').text() + ' · ' + $('#filter-city option:selected').text() + '. Klik diagram untuk melihat data; status Loss mencakup impas (P&L = 0).');
+                $('#pnl-chart-context').text(fmtNumber(res.sites_count) + ' site · ' + $('#filter-year').val() + ' · ' + $('#filter-month option:selected').text() + ' · ' + $('#filter-nop option:selected').text() + ' · ' + $('#filter-city option:selected').text() + '. Status Loss mencakup impas (P&L = 0).');
                 renderActivePnlCharts();
             },
             error(_xhr, status) {

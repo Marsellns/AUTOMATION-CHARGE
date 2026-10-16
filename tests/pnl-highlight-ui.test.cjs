@@ -9,8 +9,8 @@ const view = fs.readFileSync(
 );
 
 test('PnL highlight cards route the selected category to the existing filtered table', () => {
-    assert.match(view, /id="pnl-highlight-profit"/);
-    assert.match(view, /id="pnl-highlight-loss"/);
+    assert.match(view, /'profit' => 'Top 3 Site Profit', 'loss' => 'Top 3 Site Loss'/);
+    assert.match(view, /id="pnl-ranking-\{\{ \$type \}\}"/);
     assert.match(view, /aria-controls="pnl-table"/);
     assert.match(view, /function showHighlightInTable\(\$card\)/);
     assert.match(view, /\$\('#filter-status'\)\.val\(''\)/);

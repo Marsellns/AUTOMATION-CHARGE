@@ -23,9 +23,6 @@
                         <div>
                             <div class="infra-summary-label text-body-secondary">{{ $card['label'] }}</div>
                             <div class="fs-4 fw-bold infra-card-{{ $card['id'] }}">—</div>
-                            @if (in_array($card['id'], ['active', 'off_air'], true))
-                                <small class="text-body-secondary">klik untuk lihat semua baris data</small>
-                            @endif
                         </div>
                         <span class="infra-summary-icon" aria-hidden="true">
                             @switch($card['icon'])
@@ -144,7 +141,7 @@
     @if ($chartTab === 'risk')
     <button type="button" class="card mt-3 w-100 text-start infra-priority-trigger" aria-label="Tampilkan site Prioritas Tindakan">
         <span class="card-body d-flex align-items-center justify-content-between gap-3 py-3">
-            <span><strong>Prioritas Tindakan</strong><small class="d-block text-body-secondary">Klik untuk menampilkan site yang memerlukan tindak lanjut.</small></span>
+            <span><strong>Prioritas Tindakan</strong></span>
             <span class="badge text-bg-warning rounded-pill fs-6 infra-priority-count">—</span>
         </span>
     </button>

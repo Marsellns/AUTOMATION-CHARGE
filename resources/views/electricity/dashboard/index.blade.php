@@ -338,7 +338,6 @@
         <header class="enterprise-card-header">
             <div>
                 <h2 class="enterprise-card-title">Anomali Prioritas</h2>
-                <div class="small text-body-secondary mt-1">Klik baris untuk membuka daftar anomali pada modul terkait</div>
             </div>
             <div class="d-flex gap-2">
                 <a href="{{ route('electricity.centralized.anomali.index') }}" class="btn btn-sm btn-outline-primary">Anomali PLN</a>

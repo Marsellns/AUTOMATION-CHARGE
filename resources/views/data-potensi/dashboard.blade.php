@@ -120,7 +120,7 @@
         <div class="col-xl-8">
             <section class="feasibility-panel">
                 <header class="feasibility-panel-header">
-                    <div><h2>NOP per Site Class</h2><p>Klik batang untuk melihat daftar site per NOP dan kelas.</p></div>
+                    <div><h2>NOP per Site Class</h2></div>
                     <button type="button" data-feasibility-open="classes" class="btn btn-sm btn-outline-secondary">Lihat data</button>
                 </header>
                 <div class="feasibility-panel-body"><div class="feasibility-chart-scroll" tabindex="0" role="region" aria-label="Grafik Site Class per NOP"><div id="feasibility-class-chart" class="feasibility-chart"></div></div></div>
@@ -128,7 +128,7 @@
         </div>
         <div class="col-xl-4">
             <section class="feasibility-panel">
-                <header class="feasibility-panel-header"><div><h2>Status MLA &amp; Non MLA</h2><p>Klik status untuk melihat daftar site.</p></div></header>
+                <header class="feasibility-panel-header"><div><h2>Status MLA &amp; Non MLA</h2></div></header>
                 <div class="feasibility-panel-body">
                     <div class="feasibility-mla-chart">
                         <div id="feasibility-mla-chart" aria-label="Diagram status MLA dan Non MLA"></div>
@@ -150,7 +150,7 @@
     <div class="row g-4">
         <div class="col-xl-6">
             <section class="feasibility-panel">
-                <header class="feasibility-panel-header"><div><h2>Distribusi Site per NOP</h2><p>Klik batang untuk melihat daftar site di NOP tersebut.</p></div><button type="button" data-feasibility-open="sites" class="btn btn-sm btn-outline-secondary">Lihat data</button></header>
+                <header class="feasibility-panel-header"><div><h2>Distribusi Site per NOP</h2></div><button type="button" data-feasibility-open="sites" class="btn btn-sm btn-outline-secondary">Lihat data</button></header>
                 <div class="feasibility-panel-body"><div class="feasibility-chart-scroll" tabindex="0" role="region" aria-label="Grafik distribusi site per NOP"><div id="feasibility-nop-chart" class="feasibility-chart"></div></div></div>
             </section>
         </div>
