@@ -26,7 +26,8 @@ class EquipmentRelocationTest extends TestCase
         $this->actingAs($admin)->get(route('equipment-relocation.index'))
             ->assertOk()
             ->assertSee('Equipment Relocation')
-            ->assertSee('Download Excel')
+            ->assertSee('Excel')
+            ->assertDontSee('Download Excel')
             ->assertSee('Upload Excel')
             ->assertSee('chart.umd.min.js');
         $inventoryResponse = $this->actingAs($admin)->get(route('equipment-relocation.inventory-data'));

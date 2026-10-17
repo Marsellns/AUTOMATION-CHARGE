@@ -125,7 +125,7 @@ class EquipmentRelocationController extends Controller
             report($exception);
 
             return back()->withErrors([
-                'relocation_file' => 'File Excel gagal diproses. Pastikan format dan kolomnya sesuai file hasil Download Excel.',
+                'relocation_file' => 'File Excel gagal diproses. Pastikan format dan kolomnya sesuai file hasil ekspor Excel.',
             ])->withInput();
         }
     }

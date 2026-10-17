@@ -44,11 +44,11 @@
         <div class="header-actions">
 
             <a
-                class="btn-secondary"
+                class="btn-secondary d-inline-flex align-items-center gap-1 text-nowrap"
                 href="{{ route('equipment-relocation.export-excel') }}"
             >
                 <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></svg>
-                Download Excel
+                Excel
             </a>
 
             @if ($canEditRelocation)
@@ -428,11 +428,11 @@
                 </button>
 
                 <button
-                    class="btn-secondary"
+                    class="btn-secondary text-nowrap"
                     id="erExportData"
                 >
                     <svg class="er-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></svg>
-                    Export Inventory CSV
+                    Inventory CSV
                 </button>
 
             </div>

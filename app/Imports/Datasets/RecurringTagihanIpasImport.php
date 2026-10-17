@@ -45,7 +45,7 @@ class RecurringTagihanIpasImport extends BaseDatasetImport
     protected function mapRow(Collection $row): ?array
     {
         if ($row->has('jumlah_rincian') || $row->has('total_tagihan')) {
-            throw ValidationException::withMessages(['dataset_file' => 'File ringkasan per site tidak dapat diimpor sebagai rincian termin. Gunakan Download Rincian CSV atau template upload.']);
+            throw ValidationException::withMessages(['dataset_file' => 'File ringkasan per site tidak dapat diimpor sebagai rincian termin. Gunakan tombol Rincian CSV atau template upload.']);
         }
         $siteCode = $this->cleanText($row['siteid'] ?? $row['site_id'] ?? $row['site_code'] ?? null);
         if ($siteCode === null) {

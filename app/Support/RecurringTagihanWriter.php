@@ -41,7 +41,7 @@ final class RecurringTagihanWriter
                 }
                 $matches = $query->limit(2)->get();
                 if ($matches->count() > 1) {
-                    throw ValidationException::withMessages(['dataset_file' => 'Ada beberapa kontrak untuk termin ini. Gunakan Download Rincian CSV agar Recurring ID sumber tetap disertakan.']);
+                    throw ValidationException::withMessages(['dataset_file' => 'Ada beberapa kontrak untuk termin ini. Gunakan tombol Rincian CSV agar Recurring ID sumber tetap disertakan.']);
                 }
                 $existing = $matches->first();
                 if ($existing && $rejectExisting) {
