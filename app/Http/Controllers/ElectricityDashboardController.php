@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ElectricityPaymentComparisonService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\View\View;
 
 class ElectricityDashboardController extends Controller
 {
+    public function __construct(private readonly ElectricityPaymentComparisonService $paymentComparison) {}
+
     private const PAID_STATUS_SQL = "LOWER(TRIM(COALESCE(status, ''))) IN ('done', 'paid', 'lunas', 'terbayar')";
 
     private const MONTH_LABELS = [
@@ -218,6 +221,7 @@ class ElectricityDashboardController extends Controller
         $activeSites = $centralActiveSites + $inbuildingActiveSites;
 
         return response()->json([
+            'electricity_comparison' => $this->paymentComparison->summary($year, $month, $nop, $scope),
             'filters' => [
                 'tahun' => $year,
                 'bulan' => $month,
@@ -318,6 +322,7 @@ class ElectricityDashboardController extends Controller
         $periods = collect();
 
         if (in_array($scope, ['all', 'centralized'], true)) {
+            $periods = $periods->merge(DB::table('payment_pln_master_monthly')->select('tahun', 'bulan')->distinct()->get());
             $periods = $periods->merge(
                 DB::table('payment_pln')
                     ->whereNotNull('tahun')

@@ -20,6 +20,7 @@ use App\Models\SiteMonthlyMetric;
 use App\Models\StatusPembayaran;
 use App\Models\UploadFile;
 use App\Services\SiteStatusSummaryService;
+use App\Services\ElectricityPaymentComparisonService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,8 @@ use Illuminate\View\View;
 class DashboardMasterController extends Controller
 {
     public function __construct(
-        private readonly SiteStatusSummaryService $summaryService
+        private readonly SiteStatusSummaryService $summaryService,
+        private readonly ElectricityPaymentComparisonService $paymentComparison
     ) {}
 
     /**
@@ -96,10 +98,11 @@ class DashboardMasterController extends Controller
             ListrikAll::query()->max('updated_at') ?? 'empty',
             ListrikPln::query()->max('updated_at') ?? 'empty',
             ListrikInbuilding::query()->max('updated_at') ?? 'empty',
+            DB::table('payment_ibc')->max('updated_at') ?? 'empty',
             AnomaliTagihanPln::query()->max('updated_at') ?? 'empty',
             AnomaliTagihanInbuilding::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.chart-data.v6:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
+        $cacheKey = 'dashboard.chart-data.v7:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
 
         return response()->json(Cache::remember(
             $cacheKey,
@@ -118,6 +121,7 @@ class DashboardMasterController extends Controller
             ->select('tahun', 'bulan')
             ->distinct()
             ->get()
+            ->merge(DB::table('payment_ibc')->select('tahun', 'bulan')->whereNotNull('tahun')->whereNotNull('bulan')->distinct()->get())
             ->merge(
                 DB::table('status_pembayaran')
                     ->select('tahun', 'bulan')
@@ -564,6 +568,7 @@ class DashboardMasterController extends Controller
             ],
             'electricity_payment' => $electricityPayment,
             'electricity_all' => $electricityAll,
+            'electricity_comparison' => $this->paymentComparison->summary($tahun, $allMonths ? null : $bulan, $nop),
             'filters' => [
                 'tahun' => $tahun,
                 'bulan' => $bulan,

@@ -244,6 +244,27 @@
     </div>
 
     <div class="row g-4 mb-4">
+        <div class="col-12">
+            <section class="enterprise-card electricity-chart-card is-loading">
+                <header class="enterprise-card-header"><div>
+                    <h2 class="enterprise-card-title">Cakupan Data Pembayaran Listrik — Makro dan Inbuilding</h2>
+                    <div id="electricity-comparison-caption" class="small text-body-secondary mt-1"></div>
+                </div></header>
+                <div class="enterprise-card-body"><div id="chart-electricity-comparison-sites" style="height:430px"></div></div>
+            </section>
+        </div>
+        <div class="col-12">
+            <section class="enterprise-card electricity-chart-card is-loading">
+                <header class="enterprise-card-header"><div>
+                    <h2 class="enterprise-card-title">Tren Nominal Pembayaran Listrik — Makro dan Inbuilding</h2>
+                    <div class="small text-body-secondary mt-1">Flagging Listrik All dan Payment IBC berstatus terbayar. Inquiry dan Pending tidak dihitung sebagai pembayaran.</div>
+                </div></header>
+                <div class="enterprise-card-body"><div id="chart-electricity-comparison-amount" style="height:430px"></div></div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
         <div class="col-xl-8">
             <section class="enterprise-card electricity-chart-card is-loading h-100">
                 <header class="enterprise-card-header">
@@ -369,6 +390,7 @@
 @push('scripts')
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<script src="{{ asset('js/electricity-comparison-charts.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const dataUrl = @json(route('electricity.dashboard.data'));
@@ -441,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             exporting: { enabled: false },
             legend: { itemStyle: { color: dark ? '#cbd5e1' : '#475569', fontWeight: '600' }, itemHoverStyle: { color: dark ? '#fff' : '#0f172a' } },
             xAxis: { lineColor: dark ? '#334155' : '#e2e8f0', tickColor: dark ? '#334155' : '#e2e8f0', labels: { style: { color: dark ? '#94a3b8' : '#64748b' } } },
-            yAxis: { gridLineColor: dark ? '#1f2937' : '#eef2f7', labels: { style: { color: dark ? '#94a3b8' : '#64748b' } }, title: { style: { color: dark ? '#94a3b8' : '#64748b' } } },
+            yAxis: { gridLineColor: dark ? '#475569' : '#cbd5e1', gridLineWidth: 1, gridLineDashStyle: 'ShortDash', labels: { style: { color: dark ? '#94a3b8' : '#64748b' } }, title: { style: { color: dark ? '#94a3b8' : '#64748b' } } },
             tooltip: { backgroundColor: dark ? '#0f172a' : '#fff', borderColor: dark ? '#334155' : '#e2e8f0', style: { color: dark ? '#f8fafc' : '#0f172a' } },
         };
     }
@@ -465,6 +487,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBillingChart(data) {
+        const renderer = window.SimasterElectricityComparison;
+        const theme = { text: isDark() ? '#e2e8f0' : '#334155', gridLine: isDark() ? '#475569' : '#cbd5e1' };
+        const comparison = data.electricity_comparison || { labels: [], periods: [], series: [], notes: [] };
+        setText('electricity-comparison-caption', renderer.caption(comparison));
+        const openPayment = (key, period) => {
+            if (!period) return;
+            const url = key === 'macro' ? @json(route('electricity.centralized.listrik-all.index')) : @json(route('electricity.inbuilding.payment.index'));
+            window.location.href = `${url}?${new URLSearchParams({ tahun: period.tahun, bulan: period.bulan, status: 'Done' })}`;
+        };
+        upsertChart('comparisonSites', 'chart-electricity-comparison-sites', renderer.options(comparison, theme, 'sites', openPayment));
+        upsertChart('comparisonAmount', 'chart-electricity-comparison-amount', renderer.options(comparison, theme, 'amount', openPayment));
         const trend = data.billing_trend;
         upsertChart('billing', 'chart-electricity-billing', {
             chart: { type: 'column' },

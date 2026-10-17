@@ -27,6 +27,19 @@ Ringkasan Listrik All menghitung seluruh bulan dalam satu query agregasi. Grafik
 
 Pengukuran lokal 17 Oktober 2026 pada snapshot Agustus 2026: rincian semua NOP sekitar 4.391 ms menjadi 217 ms, dan filter NOP Bekasi sekitar 23.020 ms menjadi 82 ms. Jumlah dan daftar Site ID sebelum/sesudah sama pada data yang diperiksa. Angka ini bukan pengukuran server live; jaringan, beban akun hosting, dan cache database dapat memengaruhi hasil live. Perubahan ini tidak memerlukan migrasi database.
 
+## Perbandingan Site Makro dan Inbuilding
+
+Dashboard Utama dan Electricity Monitoring memakai `ElectricityPaymentComparisonService` serta renderer grafik bersama. Respons API lama tetap tersedia; payload `electricity_comparison` ditambahkan tanpa mengubah skema tabel atau alur impor. Perubahan ini tidak memerlukan migrasi/SQL di cPanel dan tidak mengimpor ulang atau menghapus data operasional.
+
+- Site Makro memakai `payment_pln_master_monthly`, yaitu snapshot kolom Flagging dari workbook dalam `Centralized/Listrik All`. Bila snapshot periode tidak tersedia, nilai Flagging positif pada `listrik_all` dapat menjadi fallback. Inquiry dan daftar transaksi `payment_pln` tidak menggantikan Flagging. Rekening berbeda dijumlahkan nominalnya, sementara Site ID dihitung satu kali. Status tidak aktif yang tersedia pada snapshot dikecualikan.
+- Inbuilding memakai `payment_ibc` berstatus Done/Paid/Lunas/Terbayar. Pending tidak termasuk nominal pembayaran. Site ID dinormalisasi dan dihitung sekali; nominal menjumlahkan transaksi terbayar. Penyebut cakupan adalah site pada master Inbuilding aktif saat ini, bukan populasi historis per bulan. Pembayaran di luar master tetap masuk nominal, tetapi dikeluarkan dari persentase dan diberi keterangan di tooltip.
+- Filter NOP mempertahankan kontrak yang ada: berlaku untuk Makro. Inbuilding tidak ditampilkan pada perbandingan berfilter NOP karena master Inbuilding belum menyimpan NOP. Grafik menyampaikan batasan ini, bukan menampilkan seluruh Inbuilding seolah sudah terfilter.
+- Grafik jumlah site/persentase dan nominal rupiah dipisahkan. Bulan tanpa sumber diberi nilai `null`, sedangkan periode yang ada tetapi belum memiliki pembayaran positif tetap bernilai nol. Garis skala serta batas kategori diperjelas pada grafik batang melalui helper tampilan Highcharts yang sudah ada; grafik pie tidak diberi grid.
+
+Rekonsiliasi sumber 17 Oktober 2026: file Payment IBC Done 2026 mempunyai 116, 116, 116, 108, 103, 70, dan 11 Site ID unik untuk Januari–Juli. Agustus–Desember belum mempunyai file pembayaran. Master yang telah diimpor berisi 186 site aktif (gabungan master ekspor dan tracker). Workbook tracker sendiri memuat 175 site Inbuilding; 131 di antaranya berkategori TAGIHAN LISTRIK EXCLUDE. Karena kategori tagihan itu belum tersimpan dalam master database, grafik tidak mengklaim persentase berbasis 131 site atau menyalin angka 117/115/112/108/69/2 dari gambar contoh. Penyebut 186 ditulis eksplisit pada caption, dan setiap tooltip menampilkan pembilang/penyebut.
+
+Hasil Flagging Makro Januari–Agustus tetap 3.872, 3.882, 3.904, 3.918, 3.942, 3.951, 3.983, dan 4.021 dari 4.023 site. Nilai 4.021/4.023 ditampilkan 99,95%, bukan dibulatkan menjadi klaim 100%. Dataset keuangan dan workbook tetap di luar repository/paket deployment.
+
 ## Notifikasi pagi dan sore
 
 - Waktu: pukul 08.00 dan 17.00 WIB setiap hari (`Asia/Jakarta`). Pengaturan: `NOTIFICATION_DAILY_AT`, `NOTIFICATION_EVENING_AT`, dan `NOTIFICATION_TIMEZONE`.

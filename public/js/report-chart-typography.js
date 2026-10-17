@@ -16,6 +16,9 @@
 
     function highchartsOptions(H, options = {}, defaults = true) {
         const result = H.merge({}, options);
+        const hasBars = ['column', 'bar'].includes(result.chart?.type)
+            || (result.series || []).some(series => ['column', 'bar'].includes(series.type));
+        const dark = document.documentElement?.getAttribute?.('data-bs-theme') === 'dark';
         const label = (value, weight = '400') => {
             if (Array.isArray(value)) return value.map(item => label(item, weight));
             if (value === false) return value;
@@ -36,6 +39,16 @@
             if (key === 'colorAxis' && !result[key]) continue;
             const axis = value => {
                 const axisOptions = H.merge({}, value || {});
+                if (hasBars && key !== 'colorAxis') {
+                    // Keep month/category boundaries and value steps visible on report backgrounds.
+                    Object.assign(axisOptions, {
+                        gridLineWidth: 1,
+                        gridLineColor: dark ? (key === 'yAxis' ? '#475569' : '#334155') : (key === 'yAxis' ? '#cbd5e1' : '#d8e0eb'),
+                        gridLineDashStyle: key === 'yAxis' ? 'ShortDash' : 'Solid',
+                        lineColor: dark ? '#64748b' : '#94a3b8',
+                        lineWidth: 1,
+                    });
+                }
                 axisOptions.labels = label(axisOptions.labels);
                 axisOptions.title = label(axisOptions.title, '500');
                 if (axisOptions.stackLabels) axisOptions.stackLabels = label(axisOptions.stackLabels, '500');

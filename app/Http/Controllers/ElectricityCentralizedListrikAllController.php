@@ -47,7 +47,7 @@ class ElectricityCentralizedListrikAllController extends Controller
 
         return $headers;
     }
-    public function index(): View
+    public function index(Request $request): View
     {
         $years = ListrikAll::query()
             ->distinct()
@@ -70,7 +70,7 @@ class ElectricityCentralizedListrikAllController extends Controller
 
         return view('electricity.centralized.listrik-all.index', [
             'years' => $years,
-            'selectedYear' => (int) $years[0],
+            'selectedYear' => in_array((int) $request->query('tahun'), $years, true) ? (int) $request->query('tahun') : (int) $years[0],
         ]);
     }
 

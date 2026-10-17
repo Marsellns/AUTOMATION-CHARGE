@@ -17,7 +17,7 @@ function merge(...objects) {
     return result;
 }
 
-function load() {
+function load(theme = 'light') {
     class HighchartsChart {
         init(options) { this.options = options; }
         update(options) { this.updated = options; }
@@ -32,7 +32,7 @@ function load() {
     };
     const Chart = { defaults: { font: {} }, register(plugin) { this.plugin = plugin; } };
     const window = { Highcharts, Chart, Apex: { chart: { animations: { enabled: false } } } };
-    vm.runInNewContext(source, { window, document: { addEventListener() {} } });
+    vm.runInNewContext(source, { window, document: { documentElement: { getAttribute: () => theme }, addEventListener() {} } });
     return window;
 }
 
@@ -79,6 +79,22 @@ test('Highcharts updates and responsive options keep the typography hierarchy', 
     assert.equal(mobile.legend.enabled, false);
     assert.equal(mobile.xAxis.labels.style.fontWeight, '400');
     assert.equal(mobile.xAxis.labels.rotation, -45);
+});
+
+test('bar charts retain visible category boundaries and value steps in both themes', () => {
+    for (const theme of ['light', 'dark']) {
+        const { Highcharts: H } = load(theme);
+        const chart = new H.Chart();
+        chart.init({ chart: { type: 'column' }, yAxis: { gridLineColor: '#f1f5f9' }, series: [{ data: [10, 20] }] });
+        assert.equal(chart.options.xAxis.gridLineWidth, 1);
+        assert.equal(chart.options.yAxis.gridLineWidth, 1);
+        assert.equal(chart.options.yAxis.gridLineDashStyle, 'ShortDash');
+        assert.equal(chart.options.yAxis.gridLineColor, theme === 'dark' ? '#475569' : '#cbd5e1');
+        assert.deepEqual(chart.options.series[0].data, [10, 20]);
+        const pie = new H.Chart();
+        pie.init({ chart: { type: 'pie' }, series: [{ data: [10, 20] }] });
+        assert.equal(pie.options.yAxis.gridLineWidth, undefined);
+    }
 });
 
 test('Chart.js keeps scriptable fonts stable across updates and distinguishes their roles', () => {

@@ -285,12 +285,12 @@
                             <div class="enterprise-card chart-card">
                                 <div class="enterprise-card-header">
                                     <div>
-                                        <h2 class="enterprise-card-title">Cakupan Flagging Pembayaran PLN</h2>
+                                        <h2 class="enterprise-card-title">Cakupan Data Pembayaran Listrik — Makro dan Inbuilding</h2>
                                         <span class="text-body-secondary small" id="electricity-payment-caption">Site dengan flagging pembayaran per bulan</span>
                                     </div>
                                 </div>
                                 <div class="enterprise-card-body">
-                                    <div id="chart-electricity-payment" style="width: 100%; height: 340px;"></div>
+                                    <div id="chart-electricity-payment" style="width: 100%; height: 430px;"></div>
                                 </div>
                             </div>
 
@@ -299,13 +299,13 @@
                                     <div class="enterprise-card chart-card">
                                         <div class="enterprise-card-header">
                                             <div>
-                                                <h2 class="enterprise-card-title">Listrik All — Total Flagging Pembayaran</h2>
+                                                <h2 class="enterprise-card-title">Tren Nominal Pembayaran Listrik — Makro dan Inbuilding</h2>
                                                 <span class="text-body-secondary small" id="electricity-all-caption">Nilai flagging pembayaran dari dataset Listrik All</span>
                                             </div>
-                                            <span class="badge text-bg-light border small">Sumber: Listrik All</span>
+                                            <span class="badge text-bg-light border small">Listrik All dan Payment IBC</span>
                                         </div>
                                         <div class="enterprise-card-body">
-                                            <div id="chart-electricity-all" style="width: 100%; height: 340px;"></div>
+                                            <div id="chart-electricity-all" style="width: 100%; height: 430px;"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -458,6 +458,7 @@
 @push('scripts')
 <script src="https://code.highcharts.com/highcharts.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<script src="{{ asset('js/electricity-comparison-charts.js') }}"></script>
 
 <script>
 $(function () {
@@ -519,7 +520,7 @@ $(function () {
             isDark,
             text: isDark ? '#cbd5e1' : '#334155',
             titleText: isDark ? '#f8fafc' : '#0f172a',
-            gridLine: isDark ? '#1e293b' : '#f1f5f9',
+            gridLine: isDark ? '#475569' : '#cbd5e1',
             tooltipBg: isDark ? '#0f172a' : '#ffffff',
             tooltipBorder: isDark ? '#334155' : '#e2e8f0',
             tooltipText: isDark ? '#f8fafc' : '#1e293b',
@@ -1303,6 +1304,23 @@ $(function () {
     }
 
     // Render All Charts & UI
+    function renderElectricityComparison(data, theme) {
+        const renderer = window.SimasterElectricityComparison;
+        $('#electricity-payment-caption').text(renderer.caption(data));
+        $('#electricity-all-caption').text('Nominal pembayaran per bulan. Inquiry PLN dan transaksi IBC Pending tidak dihitung sebagai pembayaran. Bulan tanpa sumber ditandai belum tersedia.');
+        const openDetail = function (key, period) {
+            if (!period) return;
+            if (key === 'macro') {
+                showElectricityPaymentDetail(period.tahun, period.bulan, cachedChartData?.filters?.nop || '');
+            } else {
+                const params = new URLSearchParams({ tahun: period.tahun, bulan: period.bulan, status: 'Done' });
+                window.location.href = `{{ route('electricity.inbuilding.payment.index') }}?${params}`;
+            }
+        };
+        upsertChart('electricityPayment', 'chart-electricity-payment', renderer.options(data, theme, 'sites', openDetail));
+        upsertChart('electricityAll', 'chart-electricity-all', renderer.options(data, theme, 'amount', openDetail));
+    }
+
     function renderAllCharts(res) {
         if (!res) return;
         cachedChartData = res;
@@ -1329,8 +1347,12 @@ $(function () {
         renderGrowthBars(res.pnl || {}, theme);
         renderCategoryDonut(res.pnl_status || [], theme);
         renderSiteOwners(res.site_owners || {}, theme);
-        renderElectricityPayment(res.electricity_payment || {}, theme);
-        renderElectricityAll(res.electricity_all || {}, theme);
+        if (res.electricity_comparison) {
+            renderElectricityComparison(res.electricity_comparison, theme);
+        } else {
+            renderElectricityPayment(res.electricity_payment || {}, theme);
+            renderElectricityAll(res.electricity_all || {}, theme);
+        }
 
         // Screen 2: Analytics
         renderAnalyticsPerformance(res.pnl || {}, theme);

@@ -41,8 +41,8 @@
                     <label for="filter-status" class="form-label mb-0 small fw-semibold text-nowrap">Status:</label>
                     <select id="filter-status" class="form-select form-select-sm" style="min-width: 140px;">
                         <option value="">Semua Status</option>
-                        <option value="Done">Done</option>
-                        <option value="Pending">Pending</option>
+                        <option value="Done" @selected(request('status') === 'Done')>Done</option>
+                        <option value="Pending" @selected(request('status') === 'Pending')>Pending</option>
                     </select>
                 </div>
 
@@ -52,7 +52,7 @@
                     <select id="filter-bulan" class="form-select form-select-sm" style="width:auto">
                         <option value="">Semua Bulan</option>
                         @foreach ([1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'] as $num => $nama)
-                            <option value="{{ $num }}">{{ $nama }}</option>
+                            <option value="{{ $num }}" @selected((string) request('bulan') === (string) $num)>{{ $nama }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -63,7 +63,7 @@
                     <select id="filter-tahun" class="form-select form-select-sm" style="width:auto">
                         <option value="">Semua Tahun</option>
                         @foreach ($years as $yr)
-                            <option value="{{ $yr }}" @selected($yr == 2025)>{{ $yr }}</option>
+                            <option value="{{ $yr }}" @selected($yr == request('tahun', $years[0] ?? now()->year))>{{ $yr }}</option>
                         @endforeach
                     </select>
                 </div>
