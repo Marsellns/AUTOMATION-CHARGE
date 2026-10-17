@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RecurringTagihanIpas;
+use App\Models\RecurringTagihanIpasTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,7 +14,7 @@ class RecurringTagihanIpasController extends Controller
     public function index(): View
     {
         // Daftar TP unik untuk dropdown filter
-        $tpList = RecurringTagihanIpas::query()
+        $tpList = RecurringTagihanIpasTerm::query()
             ->whereNotNull('tp')
             ->where('tp', '!=', '')
             ->distinct()
@@ -25,15 +26,20 @@ class RecurringTagihanIpasController extends Controller
 
     public function data(Request $request): JsonResponse
     {
-        $query = RecurringTagihanIpas::query()->latest('id');
+        $query = RecurringTagihanIpas::query()->orderBy('site_code');
 
         // Filter khusus TP
         if ($request->filled('tp') && $request->tp !== 'all') {
-            $query->where('tp', $request->tp);
+            $query->whereHas('terms', fn ($terms) => $terms->where('tp', $request->tp));
         }
 
         return DataTables::of($query)
             ->addIndexColumn()
             ->toJson();
+    }
+
+    public function show(RecurringTagihanIpas $site): JsonResponse
+    {
+        return response()->json(['data' => $site->terms()->orderBy('termin_start')->orderBy('id')->get()]);
     }
 }

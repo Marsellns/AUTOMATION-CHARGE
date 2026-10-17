@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInfrastructureManualEntryRequest;
 use App\Support\InfrastructureManualEntry;
+use App\Support\RecurringTagihanWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,11 @@ class InfrastructureManualEntryController extends Controller
         $paths = [];
         try {
             DB::transaction(function () use ($request, $definition, $dataset, &$data, &$paths): void {
+                if ($dataset === 'recurring-tagihan-ipas') {
+                    app(RecurringTagihanWriter::class)->store([$data], rejectExisting: true);
+
+                    return;
+                }
                 // Never update an imported row when the user chooses Tambah Manual.
                 $existing = $definition['model']::query()->whereRaw('UPPER(TRIM(site_code)) = ?', [$data['site_code']]);
                 foreach (array_slice($definition['key'], 1) as $key) {

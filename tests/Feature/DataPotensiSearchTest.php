@@ -24,7 +24,10 @@ class DataPotensiSearchTest extends TestCase
             ['site_code' => 'TEST001', 'site_name' => 'ANT Test', 'site_owner' => 'TELKOMSEL', 'rtp' => 'RTP1'],
             ['site_code' => 'TEST001', 'site_name' => 'ANT Test', 'site_owner' => 'TELKOMSEL', 'rtp' => 'RTP1'],
         ]);
-        DB::table('recurring_tagihan_ipas')->insert([['site_code' => 'TEST001'], ['site_code' => 'TEST001']]);
+        $ipas = DB::table('recurring_tagihan_ipas')->insertGetId(['site_code' => 'TEST001']);
+        DB::table('recurring_tagihan_ipas_terms')->insert([
+            ['site_id' => $ipas, 'site_code' => 'TEST001'], ['site_id' => $ipas, 'site_code' => 'TEST001'],
+        ]);
         SiteMonthlyMetric::create(['site_id' => $site->id, 'tahun' => 2026, 'bulan' => 6, 'revenue' => 100, 'cost' => 40]);
         SiteMonthlyMetric::create(['site_id' => $site->id, 'tahun' => 2026, 'bulan' => 7, 'revenue' => 200, 'cost' => 250]);
         // Legacy FAST data must not replace the monthly P&L.

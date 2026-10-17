@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\RecurringTagihanSummary;
 use DateTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -15,13 +16,13 @@ use ZipArchive;
 
 class ImportRecurringTagihanIpasDataset extends Command
 {
-    protected $signature = 'dataset:import-recurring-tagihan-ipas';
+    protected $signature = 'dataset:import-recurring-tagihan-ipas {--file= : Path workbook snapshot pengganti}';
 
     protected $description = 'Import snapshot Recurring Tagihan IPAS secara streaming untuk file besar';
 
     public function handle(): int
     {
-        $file = base_path('DATASET/02 Infrastruktur management/03 Recurring ( Tagihan Ipas)/ExportTagihan-09-09-2026 gg.xlsx');
+        $file = $this->option('file') ?: base_path('DATASET/02 Infrastruktur management/03 Recurring ( Tagihan Ipas)/ExportTagihan-09-09-2026 gg.xlsx');
 
         if (! is_file($file)) {
             $this->error("File tidak ditemukan: {$file}");
@@ -34,11 +35,13 @@ class ImportRecurringTagihanIpasDataset extends Command
             $sharedStrings = $this->sharedStrings($file);
 
             $stored = DB::transaction(function () use ($file, $sharedStrings): int {
+                DB::table('recurring_tagihan_ipas_terms')->delete();
                 DB::table('recurring_tagihan_ipas')->delete();
 
                 $headers = [];
                 $batch = [];
                 $inserted = 0;
+                $siteIds = [];
 
                 foreach ($this->worksheetRows($file, $sharedStrings) as $rowNumber => $cells) {
                     if ($rowNumber === 1) {
@@ -62,13 +65,19 @@ class ImportRecurringTagihanIpasDataset extends Command
                         continue;
                     }
 
+                    $code = RecurringTagihanSummary::siteCode($record['site_code']);
+                    if (! isset($siteIds[$code])) {
+                        $siteIds[$code] = DB::table('recurring_tagihan_ipas')->insertGetId(['site_code' => $code, 'created_at' => now()]);
+                    }
+                    $record['site_id'] = $siteIds[$code];
+
                     $batch[] = $record;
 
                     if (count($batch) < 500) {
                         continue;
                     }
 
-                    DB::table('recurring_tagihan_ipas')->insert($batch);
+                    DB::table('recurring_tagihan_ipas_terms')->insert($batch);
                     $inserted += count($batch);
                     $batch = [];
 
@@ -78,9 +87,14 @@ class ImportRecurringTagihanIpasDataset extends Command
                 }
 
                 if ($batch !== []) {
-                    DB::table('recurring_tagihan_ipas')->insert($batch);
+                    DB::table('recurring_tagihan_ipas_terms')->insert($batch);
                     $inserted += count($batch);
                 }
+
+                if ($inserted === 0) {
+                    throw new RuntimeException('Sumber tidak memiliki baris dengan Site ID.');
+                }
+                RecurringTagihanSummary::refresh(array_values($siteIds));
 
                 return $inserted;
             });
@@ -90,19 +104,13 @@ class ImportRecurringTagihanIpasDataset extends Command
             return self::FAILURE;
         }
 
-        if ($stored === 0) {
-            $this->error('Import dibatalkan: sumber tidak memiliki baris dengan Site ID.');
-
-            return self::FAILURE;
-        }
-
-        $databaseCount = DB::table('recurring_tagihan_ipas')->count();
+        $databaseCount = DB::table('recurring_tagihan_ipas_terms')->count();
 
         if ($databaseCount !== $stored) {
             throw new RuntimeException("Verifikasi gagal: importer {$stored} baris, database {$databaseCount} baris.");
         }
 
-        $this->info('✓ Recurring Tagihan IPAS tersinkron: '.number_format($databaseCount).' baris.');
+        $this->info('✓ Recurring Tagihan IPAS tersinkron: '.number_format(DB::table('recurring_tagihan_ipas')->count()).' site, '.number_format($databaseCount).' rincian termin.');
 
         return self::SUCCESS;
     }
@@ -110,7 +118,7 @@ class ImportRecurringTagihanIpasDataset extends Command
     /** @return array<int, string> */
     private function sharedStrings(string $file): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($file) !== true) {
             throw new RuntimeException('Workbook tidak dapat dibuka.');
         }
@@ -122,7 +130,7 @@ class ImportRecurringTagihanIpasDataset extends Command
             return [];
         }
 
-        $reader = new XMLReader();
+        $reader = new XMLReader;
         if (! $reader->open($this->zipUri($file, 'xl/sharedStrings.xml'), null, LIBXML_NONET | LIBXML_COMPACT)) {
             throw new RuntimeException('Shared strings workbook tidak dapat dibaca.');
         }
@@ -148,7 +156,7 @@ class ImportRecurringTagihanIpasDataset extends Command
     /** @return \Generator<int, array<string, mixed>> */
     private function worksheetRows(string $file, array $sharedStrings): \Generator
     {
-        $reader = new XMLReader();
+        $reader = new XMLReader;
         if (! $reader->open($this->zipUri($file, 'xl/worksheets/sheet1.xml'), null, LIBXML_NONET | LIBXML_COMPACT)) {
             throw new RuntimeException('Worksheet pertama tidak dapat dibaca.');
         }
@@ -200,7 +208,7 @@ class ImportRecurringTagihanIpasDataset extends Command
     }
 
     /** @param array<string, mixed> $source
-     *  @return array<string, mixed>|null
+     * @return array<string, mixed>|null
      */
     private function record(array $source): ?array
     {
@@ -245,19 +253,9 @@ class ImportRecurringTagihanIpasDataset extends Command
         return $value === '' || $value === '-' ? null : $value;
     }
 
-    private function amount(mixed $value): ?float
+    private function amount(mixed $value): ?string
     {
-        if ($value === null || trim((string) $value) === '' || trim((string) $value) === '-') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        $value = preg_replace('/[^0-9\-]/', '', (string) $value);
-
-        return $value === '' || $value === '-' ? null : (float) $value;
+        return RecurringTagihanSummary::money($value);
     }
 
     private function date(mixed $value): ?string

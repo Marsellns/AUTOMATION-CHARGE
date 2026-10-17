@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\RecurringTagihanSitesExport;
 use App\Imports\Datasets\BapssImport;
 use App\Imports\Datasets\CombatSiteImport;
 use App\Imports\Datasets\CombatWorkbookImport;
 use App\Imports\Datasets\DataSiteUnlockImport;
-use App\Imports\Datasets\JaknetContractImport;
 use App\Imports\Datasets\InfrastructureRebuildImport;
+use App\Imports\Datasets\JaknetContractImport;
 use App\Imports\Datasets\RecurringIpasImport;
 use App\Imports\Datasets\RecurringTagihanIpasImport;
 use App\Imports\Datasets\SewaLahanRenewalImport;
@@ -15,10 +16,11 @@ use App\Support\InfrastructureUploadTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InfrastructureUploadController extends Controller
 {
@@ -35,6 +37,7 @@ class InfrastructureUploadController extends Controller
     public function create(string $dataset): View
     {
         abort_unless(isset(self::DATASETS[$dataset]), 404);
+
         return view('infrastruktur.upload', ['dataset' => $dataset, 'definition' => self::DATASETS[$dataset]]);
     }
 
@@ -47,7 +50,8 @@ class InfrastructureUploadController extends Controller
             ? [$headers]
             : [[self::DATASETS[$dataset]['label'].' - Template Upload'], $headers];
 
-        return Excel::download(new class($rows, $dataset) implements FromArray, WithTitle {
+        return Excel::download(new class($rows, $dataset) implements FromArray, WithTitle
+        {
             public function __construct(private readonly array $rows, private readonly string $dataset) {}
 
             public function array(): array
@@ -62,15 +66,30 @@ class InfrastructureUploadController extends Controller
         }, 'template-'.str_replace('-', '_', $dataset).'.xlsx');
     }
 
-    public function export(string $dataset)
+    public function export(Request $request, string $dataset)
     {
         abort_unless(isset(self::DATASETS[$dataset]), 404);
 
+        if ($dataset === 'recurring-tagihan-ipas' && ! $request->boolean('detail')) {
+            return Excel::download(new RecurringTagihanSitesExport, 'tagihan-ipas-per-site-'.now()->format('Ymd_His').'.xlsx');
+        }
+        if ($dataset === 'recurring-tagihan-ipas') {
+            // Stream large histories instead of constructing 1.5M Excel cells in memory.
+            return response()->streamDownload(function (): void {
+                $output = fopen('php://output', 'wb');
+                fwrite($output, "\xEF\xBB\xBF");
+                $columns = ['site_code', 'site_name', 'tp', 'contract_type', 'termin', 'periode_ke', 'termin_start', 'termin_end', 'amount', 'batch_name', 'source_details'];
+                fputcsv($output, ['Site ID', 'Site Name', 'TP', 'Contract Type', 'Termin', 'Periode Ke', 'Termin Start', 'Termin End', 'Amount', 'Batch Name', 'Source Details'], escape: '');
+                DB::table('recurring_tagihan_ipas_terms')->orderBy('id')->chunkById(1000, function ($rows) use ($output, $columns): void {
+                    foreach ($rows as $row) {
+                        fputcsv($output, array_map(fn ($column) => $row->{$column}, $columns), escape: '');
+                    }
+                });
+                fclose($output);
+            }, 'tagihan-ipas-rincian-'.now()->format('Ymd_His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+
         $definitions = [
-            'recurring-tagihan-ipas' => [
-                'headers' => ['Site ID', 'Site Name', 'TP', 'Contract Type', 'Termin', 'Periode Ke', 'Termin Start', 'Termin End', 'Amount', 'Batch Name'],
-                'columns' => ['site_code', 'site_name', 'tp', 'contract_type', 'termin', 'periode_ke', 'termin_start', 'termin_end', 'amount', 'batch_name'],
-            ],
             'site-unlock' => [
                 'headers' => ['Site ID', 'Site Name', 'Class', 'City', 'Batch', 'Status', 'Final Status', 'Update By', 'Tanggal'],
                 'columns' => ['site_code', 'site_name', 'site_class', 'city', 'batch', 'status', 'final_status', 'update_by', 'tanggal'],
@@ -87,7 +106,8 @@ class InfrastructureUploadController extends Controller
 
         array_unshift($rows, $definition['headers']);
 
-        return Excel::download(new class($rows) implements FromArray {
+        return Excel::download(new class($rows) implements FromArray
+        {
             public function __construct(private readonly array $rows) {}
 
             public function array(): array
@@ -105,8 +125,8 @@ class InfrastructureUploadController extends Controller
         $request->validate(['dataset_file' => 'required|file|mimes:'.$formats.'|max:51200']);
         $definition = self::DATASETS[$dataset];
         $import = $dataset === 'combat'
-            ? new CombatWorkbookImport()
-            : new $definition['import']();
+            ? new CombatWorkbookImport
+            : new $definition['import'];
         if ($dataset !== 'combat' && $dataset !== 'bapss') {
             $import->incremental();
         }
@@ -149,11 +169,16 @@ class InfrastructureUploadController extends Controller
                 }
             });
         } catch (\Throwable $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
             report($e);
+
             return back()->withErrors(['dataset_file' => 'File gagal diproses. Periksa format file atau hubungi administrator.'])->withInput();
         }
 
         $stats = $import->getStats();
+
         return redirect()->route('infrastruktur.'.$dataset.'.index')
             ->with('success', "Upload {$definition['label']} berhasil: {$stats['inserted']} baris disimpan, {$stats['skipped']} baris dilewati.");
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RecurringTagihanIpas extends Model
 {
@@ -21,5 +22,11 @@ class RecurringTagihanIpas extends Model
         'source_details' => 'array',
         'termin_start' => 'date',
         'termin_end' => 'date',
+        'amount' => 'decimal:2',
     ];
+
+    public function terms(): HasMany
+    {
+        return $this->hasMany(RecurringTagihanIpasTerm::class, 'site_id');
+    }
 }

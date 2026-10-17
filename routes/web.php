@@ -187,6 +187,7 @@ Route::middleware('auth')->group(function () {
         // -- Recurring (Tagihan Ipas) --
         Route::get('recurring-tagihan-ipas', [RecurringTagihanIpasController::class, 'index'])->name('recurring-tagihan-ipas.index');
         Route::get('recurring-tagihan-ipas/data', [RecurringTagihanIpasController::class, 'data'])->name('recurring-tagihan-ipas.data');
+        Route::get('recurring-tagihan-ipas/{site}', [RecurringTagihanIpasController::class, 'show'])->whereNumber('site')->name('recurring-tagihan-ipas.show');
 
         // -- Sewa Lahan (Jaknet & Dapot) --
         Route::get('jaknet', [JaknetContractController::class, 'index'])->name('jaknet.index');

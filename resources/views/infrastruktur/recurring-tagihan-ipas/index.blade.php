@@ -8,6 +8,7 @@
         <div class="d-flex flex-wrap gap-2">
             @include('infrastruktur.partials.entry-actions', ['dataset' => 'recurring-tagihan-ipas'])
             <a href="{{ route('infrastruktur.upload.export', 'recurring-tagihan-ipas') }}" class="btn btn-sm btn-outline-brand">Download Excel</a>
+            <a href="{{ route('infrastruktur.upload.export', ['dataset' => 'recurring-tagihan-ipas', 'detail' => 1]) }}" class="btn btn-sm btn-outline-brand">Download Rincian CSV</a>
         </div>
     </div>
 
@@ -35,11 +36,12 @@
 
     <div class="card">
         <div class="card-body">
-            <table id="tagihan-table" class="display align-middle text-nowrap" style="width:100%">
+            <p class="small text-muted mb-3">Satu baris per Site ID. Termin dan periode merangkum nomor yang tersedia; rentang tanggal mencakup seluruh kontrak. Total Tagihan adalah jumlah semua rincian, bukan nilai per termin. Klik site untuk melihat setiap siklus kontrak dan dokumen sumbernya.</p>
+            <table id="tagihan-table" class="display align-middle" style="width:100%">
                 <thead><tr>
                     <th>No</th><th>Site ID</th><th>Site Name</th><th>TP</th>
                     <th>Contract Type</th><th>Termin</th><th>Periode Ke</th>
-                    <th>Termin Start</th><th>Termin End</th><th>Amount</th><th>Batch Name</th>
+                    <th>Rentang Termin</th><th>Jumlah Rincian</th><th>Total Tagihan</th><th>Batch Name</th>
                 </tr></thead>
             </table>
         </div>
@@ -74,19 +76,14 @@ $(function () {
     };
     const columns = [
         { data: 'DT_RowIndex', name: 'no', orderable: false, searchable: false },
-        { data: 'site_code', name: 'site_code' },
-        { data: 'site_name', name: 'site_name' },
-        { data: 'tp', name: 'tp' },
-        { data: 'contract_type', name: 'contract_type' },
-        { data: 'termin', name: 'termin' },
-        { data: 'periode_ke', name: 'periode_ke' },
-        { data: 'termin_start', name: 'termin_start', render: date },
-        { data: 'termin_end', name: 'termin_end', render: date },
+        ...['site_code', 'site_name', 'tp', 'contract_type', 'termin', 'periode_ke'].map((key) => ({ data: key, name: key, render: DataTable.render.text(), defaultContent: '-' })),
+        { data: 'termin_start', name: 'termin_start', render: (data, type, row) => `${date(data)} s.d. ${date(row.termin_end)}` },
+        { data: 'term_count', name: 'term_count', searchable: false },
         {
             data: 'amount', name: 'amount', className: 'text-end',
             render: (data) => data == null || data === '' ? '-' : new Intl.NumberFormat('id-ID').format(data),
         },
-        { data: 'batch_name', name: 'batch_name' },
+        { data: 'batch_name', name: 'batch_name', render: DataTable.render.text(), defaultContent: '-' },
     ];
     const table = new DataTable('#tagihan-table', {
         processing: true, serverSide: true, scrollX: true,
@@ -113,33 +110,46 @@ $(function () {
         batch_name: 'Batch Name',
     };
 
+    let detailRequest;
     $('#tagihan-table tbody').on('click', 'tr', function () {
         const row = table.row(this).data();
         if (!row) return;
 
-        let details = row.source_details || {};
-        if (typeof details === 'string') {
-            try { details = JSON.parse(details); } catch (_) { details = {}; }
-        }
-
         $('#tagihan-detail-title').text(row.site_code || 'Detail Tagihan IPAS');
-        $('#tagihan-detail-subtitle').text([row.site_name, row.tp].filter(Boolean).join(' • '));
-
+        $('#tagihan-detail-subtitle').text(`${row.site_name || ''} • ${row.term_count} rincian • ${date(row.termin_start)} s.d. ${date(row.termin_end)}`);
         const container = $('#tagihan-detail-fields').empty();
-        Object.entries(details).forEach(([key, value]) => {
-            if (value === null || value === '') return;
-            const label = labels[key] || key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-            const field = $('<div>').addClass('col-12 col-md-6 col-xl-4');
-            field.append($('<div>').addClass('small text-muted').text(label));
-            field.append($('<div>').addClass('fw-semibold text-break').text(String(value)));
-            container.append(field);
-        });
-
-        if (!container.children().length) {
-            container.append($('<div>').addClass('col-12 text-muted').text('Detail sumber tidak tersedia.'));
-        }
-
+        if (detailRequest) detailRequest.abort();
+        container.append($('<div>').addClass('col-12 text-muted').text('Memuat rincian termin…'));
         bootstrap.Modal.getOrCreateInstance(document.getElementById('tagihan-detail-modal')).show();
+        const url = @json(route('infrastruktur.recurring-tagihan-ipas.show', ['site' => 0])).replace(/\/0$/, `/${row.id}`);
+        detailRequest = $.getJSON(url).done(({ data }) => {
+            container.empty();
+            data.forEach((term) => {
+                const details = term.source_details || {};
+                const section = $('<section>').addClass('col-12 border-bottom pb-3');
+                section.append($('<h3>').addClass('fs-6').text(`Termin ${term.termin || '-'} • Periode ${term.periode_ke || '-'} • ${date(term.termin_start)} s.d. ${date(term.termin_end)}`));
+                section.append($('<p>').addClass('small mb-2').text([
+                    term.tp, term.contract_type,
+                    `Kontrak: ${details.contract_no || '-'} / Siklus: ${details.infra_contract || '-'}`,
+                    `Nominal: ${term.amount == null ? '-' : new Intl.NumberFormat('id-ID').format(term.amount)}`,
+                    `Batch: ${term.batch_name || '-'}`,
+                ].filter(Boolean).join(' • ')));
+                const source = $('<details>').append($('<summary>').addClass('small').text('Lihat detail sumber / PO / invoice'));
+                const fields = $('<div>').addClass('row g-3 mt-1');
+                Object.entries(details).forEach(([key, value]) => {
+                    if (value === null || value === '') return;
+                    const field = $('<div>').addClass('col-12 col-md-6 col-xl-4');
+                    field.append($('<div>').addClass('small text-muted').text(labels[key] || key.replaceAll('_', ' ')));
+                    field.append($('<div>').addClass('text-break').text(String(value)));
+                    fields.append(field);
+                });
+                section.append(source.append(fields));
+                container.append(section);
+            });
+            if (!data.length) container.append($('<div>').addClass('col-12 text-muted').text('Belum ada rincian termin.'));
+        }).fail((xhr, status) => {
+            if (status !== 'abort') container.empty().append($('<div>').addClass('col-12 text-danger').text('Rincian gagal dimuat. Tutup dan buka kembali site untuk mencoba lagi.'));
+        });
     });
 
     $('#filter-tp').on('change', () => table.ajax.reload());

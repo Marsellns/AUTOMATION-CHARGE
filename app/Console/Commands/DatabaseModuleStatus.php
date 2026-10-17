@@ -15,7 +15,7 @@ class DatabaseModuleStatus extends Command
     public const MODULE_TABLES = [
         'Profit & Loss' => ['sites', 'site_monthly_metrics'],
         'Sewa Lahan & Combat' => ['sewa_lahan_renewals', 'combat_sites'],
-        'Infrastruktur lainnya' => ['recurring_ipas', 'recurring_tagihan_ipas', 'jaknet_contracts', 'data_site_unlocks', 'bapss', 'upload_files', 'document_circulations', 'document_approvals'],
+        'Infrastruktur lainnya' => ['recurring_ipas', 'recurring_tagihan_ipas', 'recurring_tagihan_ipas_terms', 'jaknet_contracts', 'data_site_unlocks', 'bapss', 'upload_files', 'document_circulations', 'document_approvals'],
         'Electricity Centralized' => ['listrik_pln', 'payment_pln', 'payment_pln_master_monthly', 'status_pembayaran', 'anomali_tagihan_pln', 'bongkar_rampung_mandiri', 'bongkar_rampung_pln', 'listrik_all'],
         'Electricity Inbuilding' => ['listrik_inbuilding', 'payment_ibc', 'anomali_tagihan_inbuilding', 'input_upload_tagihan_ibc', 'inbuilding_all'],
         'PO Monitoring' => ['po_hq', 'po_varcost'],
@@ -27,6 +27,7 @@ class DatabaseModuleStatus extends Command
     {
         if (DB::connection()->getDriverName() !== 'mysql') {
             $this->error('Koneksi aplikasi bukan MySQL.');
+
             return self::FAILURE;
         }
         $this->info('MySQL: '.DB::connection()->getDatabaseName());
@@ -42,6 +43,7 @@ class DatabaseModuleStatus extends Command
         }
         $this->table(['Modul', 'Tabel / view MySQL', 'Baris', 'Status'], $rows);
         $this->line('KOSONG berarti tabel tersedia tetapi belum memiliki transaksi; tidak dibuat data contoh.');
+
         return $missing ? self::FAILURE : self::SUCCESS;
     }
 }

@@ -35,6 +35,8 @@ Hosting ini mempunyai PHP CLI 8.3 di `/opt/alt/php83/usr/bin/php`, tetapi `php` 
 
 ## Memperbarui beta
 
+Untuk pembaruan Tagihan IPAS menjadi satu baris per site, gunakan urutan maintenance, backup, migrasi khusus, dan deployment di [panduan Tagihan IPAS](recurring-tagihan-ipas.md). Tidak perlu mengimpor ulang workbook atau menyalin database lokal ke beta.
+
 1. Commit dan push perubahan ke branch `main` di `https://github.com/Marsellns/SIMAWAR-TKM`. Pastikan remote checkout cPanel juga menunjuk repository ini; skrip mengambil paket rilis dari repository yang sama. Tunggu GitHub Actions **Build SIMAWAR beta for cPanel Git** berhasil dan prerelease `beta-<SHA>` berisi ZIP serta `.sha256`. Paket dibangun dari commit yang sama dengan source Git.
 2. Di cPanel **Git Version Control**, klik **Update from Remote**. Periksa HEAD berubah ke SHA commit tersebut dan checkout bersih.
 3. Klik **Deploy HEAD Commit**. `.cpanel.yml` menjalankan `scripts/cpanel-deploy-beta.sh`. Skrip memeriksa Document Root dan PHP web melalui URL HTTPS sementara, memakai PHP CLI 8.2 atau lebih baru, mengunduh paket dengan checksum, memeriksa `RELEASE.json` dan `composer.lock`, menjalankan preflight database, lalu mengaktifkan runtime yang cocok dengan commit. Pesan gagal diawali `SIMAWAR beta deployment stopped:`.
