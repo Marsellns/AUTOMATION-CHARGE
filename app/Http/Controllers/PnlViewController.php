@@ -90,7 +90,10 @@ class PnlViewController extends Controller
 
         $import = new SimawarPnLImport();
         try {
-            Excel::import($import, $validated['pnl_file']);
+            DB::transaction(function () use ($import, $validated): void {
+                Excel::import($import, $validated['pnl_file']);
+                if ($import->getStats()['processed_rows'] === 0) throw new \RuntimeException('File tidak berisi data site yang valid.');
+            });
         } catch (\Throwable $e) {
             report($e);
             return back()->withErrors(['pnl_file' => 'File PnL gagal diproses. Periksa header dan isi template.']);
@@ -114,7 +117,9 @@ class PnlViewController extends Controller
         $headers = ['Site ID', 'Site Name'];
         $months = [];
         $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        for ($year = 2025; $year <= (int) now()->year; $year++) {
+        $firstYear = min((int) now()->year - 1, (int) (SiteMonthlyMetric::min('tahun') ?? now()->year));
+        $lastYear = max((int) now()->year + 1, (int) (SiteMonthlyMetric::max('tahun') ?? now()->year));
+        for ($year = $firstYear; $year <= $lastYear; $year++) {
             foreach ($labels as $month) {
                 $months[] = [$month, substr((string) $year, -2)];
             }
@@ -152,7 +157,7 @@ class PnlViewController extends Controller
     public function data(Request $request): JsonResponse
     {
         $periods = $this->getAvailablePeriods();
-        $defaultPeriod = $periods[0] ?? ['bulan' => 6, 'tahun' => 2026];
+        $defaultPeriod = $periods[0] ?? ['bulan' => (int) now()->month, 'tahun' => (int) now()->year];
 
         $bulanInput = $request->query('bulan', '');
         $allMonths = ($bulanInput === 'all' || $bulanInput === '');
@@ -610,7 +615,7 @@ class PnlViewController extends Controller
     public function exportExcel(Request $request): BinaryFileResponse
     {
         $periods = $this->getAvailablePeriods();
-        $defaultPeriod = $periods[0] ?? ['bulan' => 6, 'tahun' => 2026];
+        $defaultPeriod = $periods[0] ?? ['bulan' => (int) now()->month, 'tahun' => (int) now()->year];
 
         $bulanInput = $request->query('bulan', '');
         $allMonths = ($bulanInput === 'all' || $bulanInput === '');
@@ -675,7 +680,7 @@ class PnlViewController extends Controller
         // Jika semua bulan diminta atau modul baru dibuka, gunakan tahun yang
         // dipilih (jika valid) atau tahun terbaru yang tersedia.
         if ($allMonths) {
-            $annualYear = $tahun > 0 ? $tahun : (int) ($periods[0]['tahun'] ?? 2026);
+            $annualYear = $tahun > 0 ? $tahun : (int) ($periods[0]['tahun'] ?? now()->year);
             foreach ($periods as $period) {
                 if ($period['tahun'] === $annualYear) {
                     return "0-{$annualYear}";
@@ -699,7 +704,7 @@ class PnlViewController extends Controller
             }
         }
 
-        $default = $periods[0] ?? ['bulan' => 6, 'tahun' => 2026];
+        $default = $periods[0] ?? ['bulan' => (int) now()->month, 'tahun' => (int) now()->year];
 
         return "{$default['bulan']}-{$default['tahun']}";
     }

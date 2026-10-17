@@ -24,7 +24,8 @@
                 Daftar data finansial dan status performa site per periode (Revenue, Cost, dan Profit/Loss).
             </p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            @include('operations.actions', ['dataset' => 'pnl'])
             <a href="{{ route('pnl.upload') }}" class="btn btn-outline-brand btn-sm">Upload Excel</a>
         </div>
     </div>

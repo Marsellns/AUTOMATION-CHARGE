@@ -486,6 +486,9 @@
             }
         });
     </script>
+    @once
+    <script src="{{ asset('js/report-data-refresh.js') }}?v={{ filemtime(public_path('js/report-data-refresh.js')) }}" data-version-url="{{ route('reports.data-version') }}" data-initial-version="{{ \App\Support\ReportDataVersion::current() }}" defer></script>
+    @endonce
 
     {{-- Shared compact contextual filter. Existing controls are moved, not
          cloned, so every page keeps its current IDs and event handlers. --}}

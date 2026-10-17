@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AnomaliTagihanInbuilding;
-use App\Models\AnomaliTagihanPln;
+use App\Models\Read\AnomaliTagihanInbuilding;
+use App\Models\Read\AnomaliTagihanPln;
 use App\Models\Bapss;
 use App\Models\CombatSite;
 use App\Models\JaknetContract;
@@ -11,8 +11,8 @@ use App\Models\ListrikAll;
 use App\Models\ListrikInbuilding;
 use App\Models\ListrikPln;
 use App\Models\PoHq;
-use App\Models\PaymentPlnMasterMonthly;
-use App\Models\PaymentPln;
+use App\Models\Read\PaymentPlnMasterMonthly;
+use App\Models\Read\PaymentPln;
 use App\Models\RecurringIpas;
 use App\Models\SewaLahanRenewal;
 use App\Models\Site;
@@ -93,16 +93,18 @@ class DashboardMasterController extends Controller
         $nop = strtoupper(trim((string) $request->query('nop', 'all')));
         $sourceVersion = implode('|', [
             SiteMonthlyMetric::query()->max('updated_at') ?? 'empty',
-            PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
-            PaymentPln::query()->max('updated_at') ?? 'empty',
+            DB::table('payment_pln_master_monthly')->max('updated_at') ?? 'empty',
+            DB::table('payment_pln')->max('updated_at') ?? 'empty',
             ListrikAll::query()->max('updated_at') ?? 'empty',
             ListrikPln::query()->max('updated_at') ?? 'empty',
             ListrikInbuilding::query()->max('updated_at') ?? 'empty',
             DB::table('payment_ibc')->max('updated_at') ?? 'empty',
-            AnomaliTagihanPln::query()->max('updated_at') ?? 'empty',
-            AnomaliTagihanInbuilding::query()->max('updated_at') ?? 'empty',
+            DB::table('input_upload_tagihan_ibc')->max('updated_at') ?? 'empty',
+            DB::table('status_pembayaran')->max('updated_at') ?? 'empty',
+            DB::table('anomali_tagihan_pln')->max('updated_at') ?? 'empty',
+            DB::table('anomali_tagihan_inbuilding')->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.chart-data.v7:'.$sourceVersion.':'.$tahun.':'.$bulan.':'.$nop;
+        $cacheKey = 'dashboard.chart-data.v9:'.hash('sha256', implode('|', [\App\Support\ReportDataVersion::current(), $sourceVersion, $tahun, $bulan, $nop]));
 
         return response()->json(Cache::remember(
             $cacheKey,
@@ -117,11 +119,11 @@ class DashboardMasterController extends Controller
         $siteCount = Site::count();
         $pnlPeriods = $this->summaryService->availablePeriods();
         $availablePeriods = $pnlPeriods;
-        $electricityPeriods = DB::table('payment_pln_master_monthly')
+        $electricityPeriods = DB::table('payment_pln_master_monthly_effective as payment_pln_master_monthly')
             ->select('tahun', 'bulan')
             ->distinct()
             ->get()
-            ->merge(DB::table('payment_ibc')->select('tahun', 'bulan')->whereNotNull('tahun')->whereNotNull('bulan')->distinct()->get())
+            ->merge(DB::table('payment_ibc_effective as payment_ibc')->select('tahun', 'bulan')->whereNotNull('tahun')->whereNotNull('bulan')->distinct()->get())
             ->merge(
                 DB::table('status_pembayaran')
                     ->select('tahun', 'bulan')
@@ -129,7 +131,7 @@ class DashboardMasterController extends Controller
                     ->get()
             )
             ->merge(
-                DB::table('payment_pln')
+                DB::table('payment_pln_effective as payment_pln')
                     ->select('tahun', 'bulan')
                     ->distinct()
                     ->get()
@@ -440,7 +442,7 @@ class DashboardMasterController extends Controller
                 $query->whereExists(function ($nopQuery) use ($electricityNop) {
                     $nopQuery->selectRaw('1')
                         ->from('listrik_pln as nop_listrik')
-                        ->whereRaw('UPPER(TRIM(nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                        ->whereRaw('UPPER(TRIM(nop_listrik.site_id)) = UPPER(TRIM(payment_pln_effective.site_id))')
                         ->whereRaw(
                             "REPLACE(REPLACE(UPPER(TRIM(nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
                             [$electricityNop]
@@ -542,6 +544,7 @@ class DashboardMasterController extends Controller
 
         $pnlTotal = max(1, (int) ($pnlStatusSummary['profit'] ?? 0) + (int) ($pnlStatusSummary['loss'] ?? 0) + (int) ($pnlStatusSummary['inactive'] ?? 0));
         return response()->json([
+            'global_summary' => $this->index()->getData(),
             'pnl_status' => [
                 ['name' => 'Profit Site', 'y' => $pnlStatusSummary['profit'] ?? 0, 'percentage' => round(($pnlStatusSummary['profit'] ?? 0) * 100 / $pnlTotal, 1), 'color' => '#10B981'],
                 ['name' => 'Loss Site', 'y' => $pnlStatusSummary['loss'] ?? 0, 'percentage' => round(($pnlStatusSummary['loss'] ?? 0) * 100 / $pnlTotal, 1), 'color' => '#EF4444'],
@@ -610,7 +613,7 @@ class DashboardMasterController extends Controller
         $electricityNop = $nop === null ? null : $this->normalizedElectricityNop($nop);
         // Aggregate this period once. Correlated UPPER/TRIM lookups otherwise
         // rescan the payment snapshot for every site on shared hosting.
-        $snapshotSites = DB::table('payment_pln_master_monthly')
+        $snapshotSites = DB::table('payment_pln_master_monthly_effective as payment_pln_master_monthly')
             ->where('tahun', $validated['tahun'])
             ->where('bulan', $validated['bulan'])
             ->selectRaw('UPPER(TRIM(site_id)) as site_id, MAX(site_name) as site_name, MAX(id_pelanggan) as id_pelanggan, MAX(status_aktif_site) as status_aktif_site')
@@ -666,11 +669,12 @@ class DashboardMasterController extends Controller
     {
         $nop = $nop === null ? null : $this->normalizedElectricityNop($nop);
         $sourceVersion = implode('|', [
-            PaymentPlnMasterMonthly::query()->max('updated_at') ?? 'empty',
-            PaymentPln::query()->max('updated_at') ?? 'empty',
+            DB::table('payment_pln_master_monthly')->max('updated_at') ?? 'empty',
+            DB::table('payment_pln')->max('updated_at') ?? 'empty',
+            DB::table('status_pembayaran')->max('updated_at') ?? 'empty',
             ListrikPln::query()->max('updated_at') ?? 'empty',
         ]);
-        $cacheKey = 'dashboard.electricity-payment.v6:'.$sourceVersion.':'.$tahun.':'.($bulan ?? 'all').':'.($nop ?? 'all');
+        $cacheKey = 'dashboard.electricity-payment.v8:'.hash('sha256', implode('|', [\App\Support\ReportDataVersion::current(), $sourceVersion, $tahun, $bulan ?? 'all', $nop ?? 'all']));
 
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($tahun, $bulan, $nop): array {
             return $this->buildElectricityPaymentSummary($tahun, $bulan, $nop);

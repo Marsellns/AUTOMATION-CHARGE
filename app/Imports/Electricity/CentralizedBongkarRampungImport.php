@@ -24,8 +24,13 @@ class CentralizedBongkarRampungImport implements ToCollection
                 'updated_at' => now(),
             ];
         }
-        foreach (array_chunk($batch, 500) as $chunk) {
-            DB::table('bongkar_rampung_mandiri')->insert($chunk);
+        if ($batch === []) throw new \RuntimeException('File Bongkar Rampung tidak berisi data.');
+        foreach ($batch as $record) {
+            $key = array_intersect_key($record, array_flip(['id_pelanggan', 'site_id']));
+            DB::table('bongkar_rampung_mandiri')->updateOrInsert($key, static function (bool $exists) use ($record): array {
+                if ($exists) unset($record['created_at']);
+                return $record;
+            });
         }
     }
 }

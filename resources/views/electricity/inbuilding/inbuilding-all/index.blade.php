@@ -38,7 +38,7 @@
                     <label for="filter-tahun" class="form-label mb-0 small fw-semibold text-nowrap">Pilih Tahun:</label>
                     <select id="filter-tahun" class="form-select form-select-sm" style="width:auto">
                         @foreach ($years as $yr)
-                            <option value="{{ $yr }}" @selected($yr == 2025)>{{ $yr }}</option>
+                            <option value="{{ $yr }}" @selected($loop->first)>{{ $yr }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -162,7 +162,7 @@ $(function () {
 
     function updateExportLink() {
         const params = new URLSearchParams({
-            tahun: $('#filter-tahun').val() || '2025',
+            tahun: $('#filter-tahun').val() || @json((string) ($years[0] ?? now()->year)),
         });
         $('#btn-export').attr('href', exportBaseUrl + '?' + params.toString());
     }

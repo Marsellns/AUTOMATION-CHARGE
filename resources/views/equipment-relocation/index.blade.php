@@ -42,6 +42,7 @@
         </div>
 
         <div class="header-actions">
+            @include('operations.actions', ['dataset' => 'inventory', 'entryLabel' => 'Tambah / Upload Inventaris'])
 
             <a
                 class="btn-secondary d-inline-flex align-items-center gap-1 text-nowrap"

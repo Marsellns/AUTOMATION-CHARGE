@@ -3,8 +3,9 @@
 @section('title', 'Search All Resource — Feasibility Site — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h1 class="h4 mb-0">Search All Resource</h1>
+        @include('operations.actions', ['dataset' => 'site-owner'])
     </div>
 
     <div class="card mb-3" data-simaster-filter-panel="Filter Search All Resource">

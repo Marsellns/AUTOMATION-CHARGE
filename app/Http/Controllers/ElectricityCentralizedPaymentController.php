@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\PaymentPlnExport;
 use App\Imports\Electricity\CentralizedPaymentImport;
 use App\Models\ListrikPln;
-use App\Models\PaymentPln;
+use App\Models\Read\PaymentPln;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +72,7 @@ class ElectricityCentralizedPaymentController extends Controller
      */
     public function data(Request $request): JsonResponse
     {
-        $query = PaymentPln::query()->select('payment_pln.*');
+        $query = PaymentPln::query()->select('payment_pln_effective.*');
 
         // Filter Bulan
         if ($request->filled('bulan') && is_numeric($request->bulan)) {
@@ -166,7 +166,7 @@ class ElectricityCentralizedPaymentController extends Controller
         $query->whereExists(function ($nopQuery) use ($nop) {
             $nopQuery->selectRaw('1')
                 ->from('listrik_pln as payment_nop_listrik')
-                ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln_effective.site_id))')
                 ->whereRaw(
                     "REPLACE(REPLACE(UPPER(TRIM(payment_nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
                     [$nop]

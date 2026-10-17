@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\AnomaliTagihanInbuilding;
+use App\Models\Read\AnomaliTagihanInbuilding;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;

@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\InbuildingAll;
+use App\Models\Read\InbuildingAll;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;

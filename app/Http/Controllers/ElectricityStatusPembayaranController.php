@@ -90,6 +90,7 @@ class ElectricityStatusPembayaranController extends Controller
             ],
             [
                 'id_pelanggan'   => $listrikPln->id_pelanggan,
+                'is_operational' => true,
                 'harga'          => $validated['harga'],
                 'remark'         => $validated['remark'] ?? null,
                 'update_by'      => auth()->user()->name,
@@ -115,6 +116,7 @@ class ElectricityStatusPembayaranController extends Controller
 
         $statusPembayaran->update([
             'harga'     => $validated['harga'],
+            'is_operational' => true,
             'remark'    => $validated['remark'] ?? null,
             'update_by' => auth()->user()->name,
             'tanggal'   => $validated['tanggal'] ?? now(),

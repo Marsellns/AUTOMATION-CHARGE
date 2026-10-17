@@ -42,6 +42,13 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/reports/data-version', fn () => response()->json(['version' => \App\Support\ReportDataVersion::current()])->header('Cache-Control', 'private, no-store'))->name('reports.data-version');
+    Route::middleware('role:admin')->prefix('operations/{dataset}')->where(['dataset' => implode('|', array_keys(\App\Support\OperationalDatasets::DEFINITIONS))])->group(function () {
+        Route::get('/create', [\App\Http\Controllers\OperationalDataEntryController::class, 'create'])->name('operations.create');
+        Route::post('/', [\App\Http\Controllers\OperationalDataEntryController::class, 'store'])->name('operations.store');
+        Route::post('/upload', [\App\Http\Controllers\OperationalDataEntryController::class, 'upload'])->name('operations.upload');
+        Route::get('/template', [\App\Http\Controllers\OperationalDataEntryController::class, 'template'])->name('operations.template');
+    });
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/site-loss', [NotificationController::class, 'siteLoss'])->name('notifications.site-loss');

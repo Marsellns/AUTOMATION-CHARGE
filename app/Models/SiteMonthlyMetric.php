@@ -22,6 +22,7 @@ class SiteMonthlyMetric extends Model
         'tahun',
         'revenue',
         'cost',
+        'is_anomaly',
         'opex_freq', 'opex_isr', 'opex_trans', 'opex_power', 'opex_rm',
         'total_direct_dep', 'rev_voice', 'rev_sms', 'rev_broath', 'rev_digi', 'rev_tapout',
     ];

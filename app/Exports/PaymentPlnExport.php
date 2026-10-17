@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\PaymentPln;
+use App\Models\Read\PaymentPln;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -52,7 +52,7 @@ class PaymentPlnExport implements FromQuery, WithHeadings, WithMapping, WithCust
             $query->whereExists(function ($nopQuery) {
                 $nopQuery->selectRaw('1')
                     ->from('listrik_pln as payment_nop_listrik')
-                    ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln.site_id))')
+                    ->whereRaw('UPPER(TRIM(payment_nop_listrik.site_id)) = UPPER(TRIM(payment_pln_effective.site_id))')
                     ->whereRaw(
                         "REPLACE(REPLACE(UPPER(TRIM(payment_nop_listrik.nop)), 'NOP ', ''), 'NOP-', '') = ?",
                         [strtoupper(trim($this->nop))]

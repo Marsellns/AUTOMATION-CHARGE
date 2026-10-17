@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Support\OperationalDatasets;
 use App\Support\ReportModules;
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -58,6 +60,12 @@ class OperationalReport extends Page
 
     public function getTitle(): string
     {
+        if ($this->sourceRoute === 'operations.create') {
+            $definition = OperationalDatasets::DEFINITIONS[$this->sourceParameters['dataset'] ?? ''] ?? null;
+            if ($definition) {
+                return 'Tambah Data '.$definition[1];
+            }
+        }
         $module = collect(ReportModules::navigation())
             ->filter(fn ($module) => str($this->sourceRoute)->is($module[3])
                 && collect($module[5] ?? [])->every(fn ($value, $key) => ($this->sourceQuery[$key] ?? null) === $value))
@@ -80,7 +88,7 @@ class OperationalReport extends Page
         $router = app('router');
         $source = $router->getRoutes()->getByName($this->sourceRoute);
         abort_unless($source, 404);
-        abort_unless(auth()->user()?->canAccessPanel(\Filament\Facades\Filament::getPanel('report')), 403);
+        abort_unless(auth()->user()?->canAccessPanel(Filament::getPanel('report')), 403);
 
         // Locked route identifiers only select an existing server-side controller.
         // Persistent middleware rechecks its original auth / role requirements.

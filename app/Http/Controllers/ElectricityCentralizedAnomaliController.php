@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\AnomaliTagihanPlnExport;
 use App\Imports\Electricity\CentralizedAnomaliImport;
-use App\Models\AnomaliTagihanPln;
+use App\Models\Read\AnomaliTagihanPln;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

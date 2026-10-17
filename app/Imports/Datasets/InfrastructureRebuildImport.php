@@ -19,6 +19,31 @@ class InfrastructureRebuildImport
         'combat' => ['sheet' => 'DATABASE COMBAT', 'table' => 'combat_sites'],
     ];
 
+    /** Website uploads merge contracts; the explicit CLI snapshot operation remains available. */
+    public function merge(array $datasets): void
+    {
+        if ($datasets === [] || array_diff(array_keys($datasets), array_keys(self::SHEETS)) !== []) {
+            throw new RuntimeException('Dataset Rebuild tidak valid.');
+        }
+        DB::transaction(function () use ($datasets): void {
+            foreach ($datasets as $key => $records) {
+                if ($records === []) throw new RuntimeException('File tidak berisi transaksi.');
+                $table = self::SHEETS[$key]['table'];
+                $year = $key === 'combat' ? 'tahun_justi_dirnet' : 'tahun_renewal';
+                foreach ($records as $record) {
+                    $record['site_code'] = strtoupper(trim($record['site_code']));
+                    $identity = array_intersect_key($record + [$year => null, 'no_pks_baru' => null], array_flip(['site_code', $year, 'no_pks_baru']));
+                    $record['updated_at'] = now();
+                    $record['deleted_at'] = null;
+                    DB::table($table)->updateOrInsert($identity, function (bool $exists) use ($record): array {
+                        if (! $exists) $record['created_at'] = now();
+                        return $record;
+                    });
+                }
+            }
+        });
+    }
+
     public function supports(string $path): bool
     {
         $reader = IOFactory::createReaderForFile($path);

@@ -127,7 +127,7 @@ class InfrastructureUploadController extends Controller
         $import = $dataset === 'combat'
             ? new CombatWorkbookImport
             : new $definition['import'];
-        if ($dataset !== 'combat' && $dataset !== 'bapss') {
+        if ($dataset !== 'combat') {
             $import->incremental();
         }
 
@@ -141,7 +141,7 @@ class InfrastructureUploadController extends Controller
                 $rebuild = app(InfrastructureRebuildImport::class);
                 if ($rebuild->supports($path)) {
                     $datasets = $rebuild->read($path, $dataset, $file->getClientOriginalName());
-                    $rebuild->synchronize($datasets);
+                    $rebuild->merge($datasets);
                     $count = count($datasets[$dataset]);
 
                     return redirect()->route('infrastruktur.'.$dataset.'.index')
@@ -152,9 +152,6 @@ class InfrastructureUploadController extends Controller
                 }
             }
             DB::transaction(function () use ($dataset, $import, $request): void {
-                if ($dataset === 'bapss') {
-                    DB::table('bapss')->delete();
-                }
                 if ($dataset === 'combat' && $import instanceof CombatWorkbookImport) {
                     $path = $request->file('dataset_file')->getRealPath();
                     if ($path === false) {

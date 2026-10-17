@@ -31,7 +31,7 @@ class ElectricityInbuildingController extends Controller
 
         try {
             $import = new ListrikInbuildingImport();
-            Excel::import($import, $file);
+            \Illuminate\Support\Facades\DB::transaction(fn () => Excel::import($import, $file));
 
             $stats = $import->getStats();
 

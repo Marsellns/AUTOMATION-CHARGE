@@ -74,7 +74,6 @@ class ElectricityCentralizedBoramController extends Controller
 
         try {
             DB::transaction(function () use ($request): void {
-                DB::table('bongkar_rampung_mandiri')->delete();
                 Excel::import(new CentralizedBongkarRampungImport(), $request->file('boram_file'));
             });
         } catch (\Throwable $e) {

@@ -23,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\CommandFinished::class, function ($event): void {
+            if ($event->exitCode === 0 && (str_starts_with((string) $event->command, 'dataset:import') || in_array($event->command, ['simawar:import-pnl', 'equipment:import-inventory'], true))) {
+                app(\App\Services\SiteStatusSummaryService::class)->invalidateCache();
+            }
+        });
         // Service providers boot after cached configuration is available.
         // Trust only the explicitly configured reverse proxies.
         $trustedProxies = trim((string) config('app.trusted_proxies', ''));

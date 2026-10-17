@@ -4,14 +4,15 @@
 
 @section('content')
     {{-- Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <h1 class="h4 mb-1">{{ $showForm ? 'Input Data Tagihan IBC' : 'Daftar Tagihan Listrik IBC Tersimpan' }}</h1>
             <p class="text-body-secondary mb-0 small">
                 {{ $showForm ? 'Form pencatatan tagihan listrik inbuilding manual dengan kalkulasi otomatis Total Tagihan & Total Payment.' : 'Daftar seluruh tagihan listrik IBC yang sudah tersimpan.' }}
             </p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            @include('operations.actions', ['dataset' => 'input-ibc', 'entryLabel' => 'Upload Excel'])
             <a href="{{ route('electricity.inbuilding.listrik-inbuilding.index') }}" class="btn btn-outline-secondary btn-sm">
                 Master Listrik Inbuilding
             </a>
@@ -104,6 +105,7 @@
                         <div class="col-md-3">
                             <label for="no_invoice_bm" class="form-label small fw-semibold">No. Invoice BM</label>
                             <input type="text" name="no_invoice_bm" id="no_invoice_bm" class="form-control form-control-sm" placeholder="Nomor Invoice BM">
+                            <small class="text-muted">Isi invoice untuk menambah/koreksi invoice tertentu. Kosong berarti total tagihan site pada periode ini.</small>
                         </div>
                         <div class="col-md-3">
                             <label for="tgl_bayar_to_bm" class="form-label small fw-semibold">Tgl. Bayar to BM</label>

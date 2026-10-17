@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\PaymentIbc;
+use App\Models\Read\PaymentIbc;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;

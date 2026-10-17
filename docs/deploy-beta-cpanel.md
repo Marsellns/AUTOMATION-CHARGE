@@ -35,6 +35,8 @@ Hosting ini mempunyai PHP CLI 8.3 di `/opt/alt/php83/usr/bin/php`, tetapi `php` 
 
 ## Memperbarui beta
 
+Untuk pembaruan input manual/Excel dan laporan dinamis, ikuti urutan backup, migrasi view operasional, refresh laporan, serta deployment pada [panduan data operasional](operational-data-flow.md).
+
 Untuk pembaruan Tagihan IPAS menjadi satu baris per site, gunakan urutan maintenance, backup, migrasi khusus, dan deployment di [panduan Tagihan IPAS](recurring-tagihan-ipas.md). Tidak perlu mengimpor ulang workbook atau menyalin database lokal ke beta.
 
 1. Commit dan push perubahan ke branch `main` di `https://github.com/Marsellns/SIMAWAR-TKM`. Pastikan remote checkout cPanel juga menunjuk repository ini; skrip mengambil paket rilis dari repository yang sama. Tunggu GitHub Actions **Build SIMAWAR beta for cPanel Git** berhasil dan prerelease `beta-<SHA>` berisi ZIP serta `.sha256`. Paket dibangun dari commit yang sama dengan source Git.

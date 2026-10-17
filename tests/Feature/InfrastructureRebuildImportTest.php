@@ -106,7 +106,7 @@ class InfrastructureRebuildImportTest extends TestCase
         $this->assertSame(1, substr_count($html, 'id="infra-renewal-tab-chart"'));
     }
 
-    public function test_rebuild_uploads_replace_only_the_selected_module_and_refresh_portfolio_charts(): void
+    public function test_rebuild_uploads_merge_selected_contracts_and_refresh_portfolio_charts(): void
     {
         DB::table('sewa_lahan_renewals')->insert(['site_code' => 'OLD-SEWA']);
         DB::table('combat_sites')->insert(['site_code' => 'OLD-COMBAT']);
@@ -119,18 +119,18 @@ class InfrastructureRebuildImportTest extends TestCase
                     'application/vnd.ms-excel.sheet.macroEnabled.12', null, true),
             ])->assertSessionHasNoErrors()->assertRedirect(route('infrastruktur.'.$dataset.'.index'));
             if ($dataset === 'sewa-lahan') {
-                $this->assertDatabaseCount('sewa_lahan_renewals', 3);
+                $this->assertDatabaseCount('sewa_lahan_renewals', 4);
                 $this->assertDatabaseHas('combat_sites', ['site_code' => 'OLD-COMBAT']);
             }
         }
-        $this->assertDatabaseCount('combat_sites', 2);
-        $this->assertDatabaseMissing('sewa_lahan_renewals', ['site_code' => 'OLD-SEWA']);
-        $this->assertDatabaseMissing('combat_sites', ['site_code' => 'OLD-COMBAT']);
-        $details = json_decode(DB::table('combat_sites')->first()->source_details, true);
+        $this->assertDatabaseCount('combat_sites', 3);
+        $this->assertDatabaseHas('sewa_lahan_renewals', ['site_code' => 'OLD-SEWA']);
+        $this->assertDatabaseHas('combat_sites', ['site_code' => 'OLD-COMBAT']);
+        $details = json_decode(DB::table('combat_sites')->where('site_code', 'COMBAT01')->first()->source_details, true);
         $this->assertSame('Rebuild.xlsm', $details['_source']['file']);
         $this->assertSame('DATABASE COMBAT', $details['_source']['sheet']);
 
-        foreach ([['sewa', 'Telkomsel', 1], ['sewa', 'TP', 1], ['combat', null, 1]] as [$scope, $owner, $sites]) {
+        foreach ([['sewa', 'Telkomsel', 1], ['sewa', 'TP', 1], ['combat', null, 2]] as [$scope, $owner, $sites]) {
             $params = ['scope' => $scope, 'ownership_scope' => $owner];
             $response = $this->getJson(route('infrastruktur.dashboard.data', $params))
                 ->assertOk()->assertJsonPath('cards.unique_sites', $sites);

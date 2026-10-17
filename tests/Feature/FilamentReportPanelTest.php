@@ -260,10 +260,24 @@ class FilamentReportPanelTest extends TestCase
     public function test_every_existing_controller_view_route_has_a_module_page(): void
     {
         foreach (app('router')->getRoutes() as $route) {
-            if (! ReportModules::isReportRoute($route) || $route->getName() === 'infrastruktur.upload') {
+            if (! ReportModules::isReportRoute($route) || in_array($route->getName(), ['infrastruktur.upload', 'operations.create'], true)) {
                 continue;
             }
             $this->assertNotNull(ReportModuleRegistry::pageForRoute($route), $route->getName());
+        }
+    }
+
+    public function test_operational_entry_forms_keep_their_source_module_page_on_livewire_refresh(): void
+    {
+        $this->actingAs($this->userWithRole('admin'));
+        foreach (\App\Support\OperationalDatasets::DEFINITIONS as $dataset => $definition) {
+            $snapshot = $this->reportSnapshot(route('operations.create', $dataset));
+            $decoded = json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR);
+            $source = app('router')->getRoutes()->getByName($definition[2]);
+            $page = ReportModuleRegistry::pageForRoute($source);
+            $this->assertSame($page::reportComponentName(), $decoded['memo']['name']);
+            $this->withHeader('X-Livewire', 'true')->postJson(Livewire::getUpdateUri(), $this->refreshPayload($snapshot))
+                ->assertOk()->assertJsonStructure(['components' => [['effects' => ['html']]]]);
         }
     }
 

@@ -12,7 +12,7 @@ class CentralizedListrikAllImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_import_reads_flagging_columns_without_changing_payment_master(): void
+    public function test_import_updates_uploaded_flagging_months_and_preserves_other_snapshot_accounts(): void
     {
         DB::table('payment_pln_master_monthly')->insert([
             'id_pelanggan' => 'OLD', 'site_id' => 'OLD', 'tahun' => 2026, 'bulan' => 1,
@@ -28,7 +28,7 @@ class CentralizedListrikAllImportTest extends TestCase
         $this->assertDatabaseHas('listrik_all', [
             'id_pelanggan' => 'ACC-1', 'tahun' => 2026, 'ags' => 1000, 'sep' => 0,
         ]);
-        $this->assertDatabaseCount('payment_pln_master_monthly', 1);
+        $this->assertDatabaseCount('payment_pln_master_monthly', 7);
         $this->assertDatabaseHas('payment_pln_master_monthly', ['site_id' => 'OLD', 'amount' => 123]);
     }
 
@@ -36,7 +36,7 @@ class CentralizedListrikAllImportTest extends TestCase
     {
         $user = User::factory()->create(['account_status' => 'approved']);
         (new CentralizedListrikAllImport())->collection($this->sampleRows());
-        DB::table('payment_pln_master_monthly')->insert([
+        foreach ([
             [
                 'id_pelanggan' => 'ACC-1', 'site_id' => 'SITE-A', 'site_name' => 'Site A',
                 'tahun' => 2026, 'bulan' => 8, 'amount' => 1100, 'is_paid' => true,
@@ -45,7 +45,11 @@ class CentralizedListrikAllImportTest extends TestCase
                 'id_pelanggan' => 'ACC-2', 'site_id' => 'SITE-A', 'site_name' => 'Site A',
                 'tahun' => 2026, 'bulan' => 8, 'amount' => 2200, 'is_paid' => true,
             ],
-        ]);
+        ] as $record) {
+            DB::table('payment_pln_master_monthly')->updateOrInsert(
+                array_intersect_key($record, array_flip(['id_pelanggan','site_id','tahun','bulan'])), $record
+            );
+        }
 
         $response = $this->actingAs($user)->getJson(route('electricity.centralized.listrik-all.data', [
             'tahun' => 2026,

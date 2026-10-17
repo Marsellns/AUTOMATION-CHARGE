@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\PaymentIbcExport;
-use App\Models\PaymentIbc;
+use App\Models\Read\PaymentIbc;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,7 +20,7 @@ class ElectricityInbuildingPaymentController extends Controller
             ->toArray();
 
         if (empty($years)) {
-            $years = [2026, 2025, 2024];
+            $years = [(int) now()->year, (int) now()->year - 1, (int) now()->year - 2];
         }
 
         return view('electricity.inbuilding.payment.index', compact('years'));
@@ -28,7 +28,7 @@ class ElectricityInbuildingPaymentController extends Controller
 
     public function data(Request $request): JsonResponse
     {
-        $query = PaymentIbc::query()->select('payment_ibc.*');
+        $query = PaymentIbc::query()->select('payment_ibc_effective.*');
 
         if ($request->filled('bulan') && is_numeric($request->bulan)) {
             $query->where('bulan', (int) $request->bulan);

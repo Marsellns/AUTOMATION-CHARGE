@@ -3,6 +3,7 @@
 namespace App\Filament\Modules;
 
 use App\Filament\Pages\OperationalReport;
+use App\Support\OperationalDatasets;
 use Filament\Pages\PageConfiguration;
 use Filament\Panel;
 use Illuminate\Routing\Route;
@@ -22,6 +23,14 @@ abstract class ModuleReportPage extends OperationalReport
 
     public static function routeMatchScore(Route $route, array $query = []): ?int
     {
+        $routeName = $route->getName();
+        if ($routeName === 'operations.create') {
+            $dataset = $route->parameter('dataset');
+            $routeName = OperationalDatasets::DEFINITIONS[$dataset][2] ?? null;
+            if ($routeName === null) {
+                return null;
+            }
+        }
         foreach (static::$reportQuery as $key => $value) {
             if (($query[$key] ?? null) !== $value) {
                 return null;
@@ -30,7 +39,7 @@ abstract class ModuleReportPage extends OperationalReport
 
         $score = null;
         foreach (static::$reportRoutes as $pattern) {
-            if (Str::is($pattern, $route->getName())) {
+            if (Str::is($pattern, $routeName)) {
                 $score = max($score ?? 0, strlen($pattern) + count(static::$reportQuery) * 100);
             }
         }

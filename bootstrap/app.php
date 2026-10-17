@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\EnsureAccountApproved::class,
+            \App\Http\Middleware\RefreshReportData::class,
             \App\Http\Middleware\RenderReportInFilament::class,
         ]);
 

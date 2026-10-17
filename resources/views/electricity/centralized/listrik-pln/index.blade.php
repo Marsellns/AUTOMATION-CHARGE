@@ -3,12 +3,15 @@
 @section('title', 'Listrik PLN — Electricity Centralized — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h1 class="h4 mb-0">Electricity — Listrik PLN</h1>
+        <div class="d-flex flex-wrap gap-2">
+            @include('operations.actions', ['dataset' => 'listrik-pln'])
         <a href="{{ route('electricity.centralized.upload-flagging') }}" class="btn btn-outline-brand btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M.5 9.9a.5.5 0 0 1 .5.1v2.5A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5V10a.5.5 0 0 1 1 0v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5V10a.5.5 0 0 1 .5-.1"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
             Upload Data Flagging
         </a>
+        </div>
     </div>
 
     {{-- Toolbar --}}

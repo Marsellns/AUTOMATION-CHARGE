@@ -12,7 +12,7 @@ class StatusPembayaran extends Model
     protected $table = 'status_pembayaran';
 
     protected $fillable = [
-        'listrik_pln_id', 'id_pelanggan', 'bulan', 'tahun', 'harga', 'remark', 'update_by', 'tanggal',
+        'is_operational', 'listrik_pln_id', 'id_pelanggan', 'bulan', 'tahun', 'harga', 'remark', 'update_by', 'tanggal',
     ];
 
     protected $casts = [

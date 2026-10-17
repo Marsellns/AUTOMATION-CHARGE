@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\AnomaliTagihanInbuildingExport;
-use App\Models\AnomaliTagihanInbuilding;
+use App\Models\Read\AnomaliTagihanInbuilding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;

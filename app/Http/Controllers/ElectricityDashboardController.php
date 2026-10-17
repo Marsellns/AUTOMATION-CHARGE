@@ -7,6 +7,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -44,7 +45,13 @@ class ElectricityDashboardController extends Controller
             'scope' => ['nullable', 'in:all,centralized,inbuilding'],
             'nop' => ['nullable', 'string', 'max:100'],
         ]);
+        $key = 'electricity.dashboard.v1:'.hash('sha256', \App\Support\ReportDataVersion::current().'|'.json_encode($validated));
 
+        return response()->json(Cache::remember($key, now()->addMinute(), fn () => $this->buildData($validated)->getData(true)));
+    }
+
+    private function buildData(array $validated): JsonResponse
+    {
         $scope = (string) ($validated['scope'] ?? 'all');
         $availablePeriods = $this->availablePeriods($scope);
         $availableYears = $availablePeriods
@@ -133,7 +140,7 @@ class ElectricityDashboardController extends Controller
         $centralCapacity = $includeCentralized ? (float) (clone $centralMaster)->sum('daya_va') : 0.0;
         $inbuildingCapacity = $includeInbuilding ? (float) (clone $inbuildingMaster)->sum('daya') : 0.0;
 
-        $centralPayments = DB::table('payment_pln')
+        $centralPayments = DB::table('payment_pln_effective as payment_pln')
             ->where('tahun', $year)
             ->when($month !== null, fn (Builder $query) => $query->where('bulan', $month))
             ->when($nop !== null, function (Builder $query) use ($nopValues): void {
@@ -141,7 +148,7 @@ class ElectricityDashboardController extends Controller
                     ->select('site_id')
                     ->whereIn('nop', $nopValues));
             });
-        $inbuildingPayments = DB::table('payment_ibc')
+        $inbuildingPayments = DB::table('payment_ibc_effective as payment_ibc')
             ->where('tahun', $year)
             ->when($month !== null, fn (Builder $query) => $query->where('bulan', $month));
 
@@ -160,7 +167,7 @@ class ElectricityDashboardController extends Controller
             ? $this->paymentTrend($inbuildingPayments, 'jumlah_tagihan')
             : collect();
 
-        $centralAnomalies = DB::table('anomali_tagihan_pln')
+        $centralAnomalies = DB::table('anomali_tagihan_pln_effective as anomali_tagihan_pln')
             ->where('tahun', $year)
             ->when($month !== null, fn (Builder $query) => $query->where('bulan', $month))
             ->when($nop !== null, function (Builder $query) use ($nopValues): void {
@@ -169,33 +176,31 @@ class ElectricityDashboardController extends Controller
                     ->whereIn('nop', $nopValues));
             });
         $periodPrefix = sprintf('%04d-', $year);
-        $inbuildingAnomalies = DB::table('anomali_tagihan_inbuilding')
+        $inbuildingAnomalies = DB::table('anomali_tagihan_inbuilding_effective as anomali_tagihan_inbuilding')
             ->where('periode_saat_ini', 'like', $periodPrefix.'%')
             ->when($month !== null, fn (Builder $query) => $query->where(
                 'periode_saat_ini',
                 sprintf('%04d-%02d', $year, $month)
             ));
 
-        $centralAnomalyCount = $includeCentralized ? (clone $centralAnomalies)->count() : 0;
-        $inbuildingAnomalyCount = $includeInbuilding ? (clone $inbuildingAnomalies)->count() : 0;
-        $centralAnomalyImpact = $includeCentralized
-            ? (float) ((clone $centralAnomalies)->selectRaw('COALESCE(SUM(ABS(selisih)), 0) as total')->value('total') ?? 0)
-            : 0.0;
-        $inbuildingAnomalyImpact = $includeInbuilding
-            ? (float) ((clone $inbuildingAnomalies)->selectRaw('COALESCE(SUM(ABS(selisih)), 0) as total')->value('total') ?? 0)
-            : 0.0;
-
-        $centralAnomalyTrend = $includeCentralized
+        $centralAnomalyStats = $includeCentralized
             ? (clone $centralAnomalies)
-                ->selectRaw('bulan, COUNT(*) as total')
+                ->selectRaw('bulan, COUNT(*) as total, COALESCE(SUM(ABS(selisih)),0) as impact')
                 ->groupBy('bulan')
-                ->pluck('total', 'bulan')
+                ->get()
             : collect();
-        $inbuildingAnomalyTrend = $includeInbuilding
+        $inbuildingAnomalyStats = $includeInbuilding
             ? (clone $inbuildingAnomalies)
-                ->pluck('periode_saat_ini')
-                ->countBy(static fn (?string $period): int => (int) substr((string) $period, 5, 2))
+                ->selectRaw('CAST(SUBSTR(periode_saat_ini,6,2) AS UNSIGNED) as bulan, COUNT(*) as total, COALESCE(SUM(ABS(selisih)),0) as impact')
+                ->groupByRaw('CAST(SUBSTR(periode_saat_ini,6,2) AS UNSIGNED)')
+                ->get()
             : collect();
+        $centralAnomalyCount = (int) $centralAnomalyStats->sum('total');
+        $inbuildingAnomalyCount = (int) $inbuildingAnomalyStats->sum('total');
+        $centralAnomalyImpact = (float) $centralAnomalyStats->sum('impact');
+        $inbuildingAnomalyImpact = (float) $inbuildingAnomalyStats->sum('impact');
+        $centralAnomalyTrend = $centralAnomalyStats->pluck('total', 'bulan');
+        $inbuildingAnomalyTrend = $inbuildingAnomalyStats->pluck('total', 'bulan');
 
         $latestAnomalies = $this->latestAnomalies(
             $includeCentralized ? $centralAnomalies : null,
@@ -322,9 +327,9 @@ class ElectricityDashboardController extends Controller
         $periods = collect();
 
         if (in_array($scope, ['all', 'centralized'], true)) {
-            $periods = $periods->merge(DB::table('payment_pln_master_monthly')->select('tahun', 'bulan')->distinct()->get());
+            $periods = $periods->merge(DB::table('payment_pln_master_monthly_effective as payment_pln_master_monthly')->select('tahun', 'bulan')->distinct()->get());
             $periods = $periods->merge(
-                DB::table('payment_pln')
+                DB::table('payment_pln_effective as payment_pln')
                     ->whereNotNull('tahun')
                     ->whereNotNull('bulan')
                     ->select('tahun', 'bulan')
@@ -335,7 +340,7 @@ class ElectricityDashboardController extends Controller
 
         if (in_array($scope, ['all', 'inbuilding'], true)) {
             $periods = $periods->merge(
-                DB::table('payment_ibc')
+                DB::table('payment_ibc_effective as payment_ibc')
                     ->whereNotNull('tahun')
                     ->whereNotNull('bulan')
                     ->select('tahun', 'bulan')

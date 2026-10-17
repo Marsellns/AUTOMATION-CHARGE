@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ListrikInbuildingExport;
 use App\Models\ListrikInbuilding;
-use App\Models\PaymentIbc;
+use App\Models\Read\PaymentIbc;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,9 @@ class ElectricityInbuildingListrikController extends Controller
 {
     public function index(): View
     {
-        return view('electricity.inbuilding.listrik-inbuilding.index');
+        $years = PaymentIbc::query()->whereNotNull('tahun')->distinct()->orderByDesc('tahun')->pluck('tahun')->map(fn ($year) => (int) $year)->all();
+        if ($years === []) $years = [(int) now()->year];
+        return view('electricity.inbuilding.listrik-inbuilding.index', compact('years'));
     }
 
     public function data(Request $request): JsonResponse
@@ -137,7 +139,7 @@ class ElectricityInbuildingListrikController extends Controller
      */
     public function chartData(Request $request, ListrikInbuilding $listrikInbuilding): JsonResponse
     {
-        $year = (int) $request->input('tahun', 2025);
+        $year = (int) $request->input('tahun', PaymentIbc::query()->where('site_id', $listrikInbuilding->site_id)->max('tahun') ?? now()->year);
 
         $namaBulan = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
@@ -148,6 +150,9 @@ class ElectricityInbuildingListrikController extends Controller
         $paymentRows = PaymentIbc::query()
             ->where('site_id', $listrikInbuilding->site_id)
             ->where('tahun', $year)
+            ->selectRaw('bulan, SUM(jumlah_tagihan) AS jumlah_tagihan, MAX(tanggal_update_status) AS tanggal_update_status')
+            ->selectRaw("GROUP_CONCAT(DISTINCT status ORDER BY status SEPARATOR ' / ') AS status, GROUP_CONCAT(DISTINCT invoice ORDER BY invoice SEPARATOR ', ') AS invoice, GROUP_CONCAT(DISTINCT update_by ORDER BY update_by SEPARATOR ', ') AS update_by")
+            ->groupBy('bulan')
             ->get()
             ->keyBy('bulan');
 

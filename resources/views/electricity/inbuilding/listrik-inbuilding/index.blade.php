@@ -124,8 +124,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <label for="grafikYearSelect" class="form-label mb-0 fw-semibold small">Pilih Tahun:</label>
                             <select id="grafikYearSelect" class="form-select form-select-sm" style="width: 120px;">
-                                @foreach ([2026, 2025, 2024] as $yr)
-                                    <option value="{{ $yr }}" @selected($yr === 2025)>{{ $yr }}</option>
+                                @foreach ($years as $yr)
+                                    <option value="{{ $yr }}" @selected($loop->first)>{{ $yr }}</option>
                                 @endforeach
                             </select>
                         </div>

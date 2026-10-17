@@ -167,8 +167,9 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
             $revenue = $this->parseNumeric($row[$revKey] ?? null);
             $cost = $this->parseNumeric($row[$costKey] ?? null);
 
-            // Skip bulan yang tidak ada data (kedua kolom null/0)
-            if ($revenue == 0 && $cost == 0) {
+            // Blank months preserve previous data; an explicit zero is a correction.
+            $empty = static fn ($value) => $value === null || trim((string) $value) === '' || trim((string) $value) === '-';
+            if ($empty($row[$revKey] ?? null) && $empty($row[$costKey] ?? null)) {
                 continue;
             }
 
@@ -300,6 +301,7 @@ class SimawarPnLImport implements ToCollection, WithHeadingRow, WithChunkReading
                 ]
             );
             $this->siteCache[$siteId] = $site->id;
+            \App\Models\SiteOwner::firstOrCreate(['site_code' => strtoupper(trim($siteId))], ['site_name' => $siteName]);
         }
 
         return $this->siteCache[$siteId];

@@ -255,6 +255,7 @@ class SiteStatusSummaryService
      */
     public function invalidateCache(): void
     {
+        \App\Support\ReportDataVersion::changed();
         Cache::put(
             self::CACHE_VERSION_KEY,
             (int) Cache::get(self::CACHE_VERSION_KEY, 1) + 1,
@@ -267,6 +268,6 @@ class SiteStatusSummaryService
     {
         $version = (int) Cache::get(self::CACHE_VERSION_KEY, 1);
 
-        return "dashboard.v{$version}.{$suffix}";
+        return "dashboard.v{$version}.".\App\Support\ReportDataVersion::current().".{$suffix}";
     }
 }

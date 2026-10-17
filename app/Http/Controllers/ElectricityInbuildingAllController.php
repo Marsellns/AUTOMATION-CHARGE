@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\InbuildingAllExport;
-use App\Models\InbuildingAll;
+use App\Models\Read\InbuildingAll;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,7 +20,7 @@ class ElectricityInbuildingAllController extends Controller
             ->toArray();
 
         if (empty($years)) {
-            $years = [2026, 2025, 2024];
+            $years = [(int) now()->year];
         }
 
         return view('electricity.inbuilding.inbuilding-all.index', compact('years'));
@@ -28,7 +28,7 @@ class ElectricityInbuildingAllController extends Controller
 
     public function data(Request $request): JsonResponse
     {
-        $tahun = $request->filled('tahun') ? (int) $request->tahun : 2025;
+        $tahun = $request->filled('tahun') ? (int) $request->tahun : (int) (InbuildingAll::max('tahun') ?? now()->year);
         $query = InbuildingAll::query()->where('tahun', $tahun);
 
         $fmt = fn($val) => (float)$val > 0 ? 'Rp ' . number_format((float)$val, 0, ',', '.') : '<span class="text-muted">-</span>';
@@ -57,7 +57,7 @@ class ElectricityInbuildingAllController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $tahun = $request->filled('tahun') ? (int) $request->tahun : 2025;
+        $tahun = $request->filled('tahun') ? (int) $request->tahun : (int) (InbuildingAll::max('tahun') ?? now()->year);
 
         $filename = 'inbuilding_all_' . $tahun . '_' . now()->format('Ymd_His') . '.xlsx';
         return (new InbuildingAllExport($tahun))->download($filename);

@@ -769,6 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    window.addEventListener('simaster:data-changed', event => { event.detail.handled = true; loadDashboard(); });
     loadDashboard({ scope: 'all', bulan: 'all' });
 });
 </script>

@@ -4,14 +4,15 @@
 
 @section('content')
     {{-- Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <h1 class="h4 mb-1">Payment IBC</h1>
             <p class="text-body-secondary mb-0 small">
                 Data pembayaran tagihan listrik inbuilding gabungan (Status: Done & Pending).
             </p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            @include('operations.actions', ['dataset' => 'input-ibc'])
             <a href="{{ route('electricity.inbuilding.listrik-inbuilding.index') }}" class="btn btn-outline-secondary btn-sm">
                 Master Listrik Inbuilding
             </a>

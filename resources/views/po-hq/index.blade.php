@@ -3,11 +3,14 @@
 @section('title', 'PO HQ — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h1 class="h4 mb-0">PO HQ</h1>
+        <div class="d-flex flex-wrap gap-2">
+            @include('operations.actions', ['dataset' => 'po-hq', 'entryLabel' => 'Upload Excel'])
         @role('admin')
             <a href="{{ route('po-hq.create') }}" class="btn btn-brand btn-sm">+ Tambah PO</a>
         @endrole
+        </div>
     </div>
 
     <div class="card">

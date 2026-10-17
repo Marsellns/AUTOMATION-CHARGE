@@ -75,8 +75,6 @@ class CentralizedListrikAllImport implements ToCollection, WithCalculatedFormula
                     'gol_tarif' => trim((string) ($row[$tariffColumn] ?? '')) ?: null,
                     'unit_pln' => trim((string) ($row[$unitColumn] ?? '')) ?: null,
                     'tahun' => $monthColumn['year'],
-                    'jan'=>0,'feb'=>0,'mar'=>0,'apr'=>0,'mei'=>0,'jun'=>0,
-                    'jul'=>0,'ags'=>0,'sep'=>0,'okt'=>0,'nov'=>0,'des'=>0,
                     'created_at' => now(), 'updated_at' => now(),
                 ];
                 $batches[$key][$monthNames[$monthColumn['month']]] = $this->number($row[$monthColumn['column']] ?? 0);
@@ -95,6 +93,21 @@ class CentralizedListrikAllImport implements ToCollection, WithCalculatedFormula
                 }
                 return $record;
             });
+            // Flagging uploads and the comparison charts must read the same month values.
+            // Only months explicitly present in this upload are changed.
+            $status = DB::table('listrik_pln')->where('site_id', $record['site_id'])->where('id_pelanggan', $record['id_pelanggan'])->value('status_aktif_site');
+            foreach ($monthColumns as $monthColumn) {
+                if ($monthColumn['year'] !== $record['tahun']) continue;
+                $amount = $record[$monthNames[$monthColumn['month']]];
+                DB::table('payment_pln_master_monthly')->updateOrInsert([
+                    'site_id' => $record['site_id'], 'id_pelanggan' => $record['id_pelanggan'],
+                    'tahun' => $record['tahun'], 'bulan' => $monthColumn['month'],
+                ], static fn (bool $exists): array => [
+                    'site_name' => $record['site_name'], 'amount' => $amount, 'is_paid' => $amount > 0,
+                    'status_aktif_site' => $status, 'updated_at' => now(),
+                    ...($exists ? [] : ['created_at' => now()]),
+                ]);
+            }
         }
     }
 

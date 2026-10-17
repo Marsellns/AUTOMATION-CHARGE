@@ -32,7 +32,7 @@ class ElectricityCentralizedController extends Controller
 
         try {
             $import = new ListrikPlnImport();
-            Excel::import($import, $file);
+            \Illuminate\Support\Facades\DB::transaction(fn () => Excel::import($import, $file));
 
             $stats = $import->getStats();
 

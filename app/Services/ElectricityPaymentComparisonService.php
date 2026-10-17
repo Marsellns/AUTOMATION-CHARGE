@@ -76,7 +76,7 @@ class ElectricityPaymentComparisonService
     {
         $master = $this->activeInbuilding();
         $population = DB::query()->fromSub(clone $master, 'master')->count();
-        $stats = DB::table('payment_ibc')->where('tahun', $year)
+        $stats = DB::table('payment_ibc_effective as payment_ibc')->where('tahun', $year)
             ->leftJoinSub($master, 'master', fn ($join) => $join->on('master.site_id', '=', DB::raw('UPPER(TRIM(payment_ibc.site_id))')))
             ->selectRaw('bulan, COUNT(*) as records_count')
             ->selectRaw('COUNT(DISTINCT CASE WHEN '.self::PAID.' AND jumlah_tagihan > 0 AND master.site_id IS NOT NULL THEN UPPER(TRIM(payment_ibc.site_id)) END) as paid_sites')
@@ -120,7 +120,7 @@ class ElectricityPaymentComparisonService
 
     private function macroSnapshot(int $year, array $months, ?string $nop): Builder
     {
-        return $this->filterNop(DB::table('payment_pln_master_monthly')->where('tahun', $year)->whereIn('bulan', $months), $nop);
+        return $this->filterNop(DB::table('payment_pln_master_monthly_effective as payment_pln_master_monthly')->where('tahun', $year)->whereIn('bulan', $months), $nop);
     }
 
     /** Read the same payment sources as the clicked chart, grouped once per site. */
@@ -132,7 +132,7 @@ class ElectricityPaymentComparisonService
         $membership = "'Pada snapshot'";
         $siteColumn = 'site_id';
         if ($metric === 'billing') {
-            $table = $source === 'macro' ? 'payment_pln' : 'payment_ibc';
+            $table = $source === 'macro' ? 'payment_pln_effective' : 'payment_ibc_effective';
             $amount = $source === 'macro' ? 'harga' : 'jumlah_tagihan';
             $query = DB::table($table)->where('tahun', $year)->where('bulan', $month);
             if ($source === 'macro') {
@@ -152,7 +152,7 @@ class ElectricityPaymentComparisonService
             }
             $sourceLabel = 'Flagging Listrik All';
         } else {
-            $query = DB::table('payment_ibc')->where('tahun', $year)->where('bulan', $month)->whereRaw(self::PAID)
+            $query = DB::table('payment_ibc_effective as payment_ibc')->where('tahun', $year)->where('bulan', $month)->whereRaw(self::PAID)
                 ->leftJoinSub($this->activeInbuilding(), 'master', fn ($join) => $join->on('master.site_id', '=', DB::raw('UPPER(TRIM(payment_ibc.site_id))')));
             $siteColumn = 'payment_ibc.site_id';
             $amount = 'jumlah_tagihan';

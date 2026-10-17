@@ -52,7 +52,7 @@ class CentralizedPaymentImport implements ToCollection
 
         foreach ($batch as $record) {
             $key = array_intersect_key($record, array_flip([
-                'id_pelanggan', 'site_id', 'status', 'bulan', 'tahun',
+                'id_pelanggan', 'site_id', 'bulan', 'tahun',
             ]));
             DB::table('payment_pln')->updateOrInsert($key, static function (bool $exists) use ($record): array {
                 if ($exists) {

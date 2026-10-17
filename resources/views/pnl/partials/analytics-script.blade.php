@@ -228,5 +228,10 @@
         drillPnl({});
     });
     window.addEventListener('simaster:theme-changed', renderActivePnlCharts);
+    window.addEventListener('simaster:data-changed', event => {
+        event.detail.handled = true;
+        loadPnlCharts();
+        loadPnlHighlights();
+    });
     loadPnlCharts();
     loadPnlHighlights();

@@ -6,6 +6,7 @@ use App\Exports\ListrikPlnExport;
 use App\Http\Requests\UpdateListrikPlnRequest;
 use App\Models\BongkarRampungPln;
 use App\Models\ListrikPln;
+use App\Models\Read\PaymentPln;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -173,6 +174,8 @@ class ElectricityCentralizedListrikPlnController extends Controller
             ->toArray();
 
         $defaultYears = [(int) date('Y'), (int) date('Y') - 1, (int) date('Y') - 2];
+        $dbYears = array_merge($dbYears, PaymentPln::query()->where('site_id', $listrikPln->site_id)
+            ->where('id_pelanggan', $listrikPln->id_pelanggan)->whereNotNull('tahun')->distinct()->pluck('tahun')->map(fn ($year) => (int) $year)->all());
         $years = array_values(array_unique(array_merge($dbYears, $defaultYears)));
         rsort($years);
 
@@ -196,6 +199,14 @@ class ElectricityCentralizedListrikPlnController extends Controller
             ->where('tahun', $year)
             ->get()
             ->keyBy('bulan');
+        $billingRows = PaymentPln::query()->where('site_id', $listrikPln->site_id)
+            ->where('id_pelanggan', $listrikPln->id_pelanggan)->where('tahun', $year)
+            ->selectRaw('bulan, SUM(harga) AS harga, MAX(tanggal_status) AS tanggal_status')
+            ->selectRaw("GROUP_CONCAT(DISTINCT status ORDER BY status SEPARATOR ' / ') AS status, GROUP_CONCAT(DISTINCT update_by ORDER BY update_by SEPARATOR ', ') AS update_by")
+            ->groupBy('bulan')->get()->keyBy('bulan')->map(fn ($row) => (object) [
+                'harga' => $row->harga, 'remark' => $row->status, 'tanggal' => $row->tanggal_status, 'update_by' => $row->update_by,
+            ]);
+        $statusRows = $statusRows->toBase()->replace($billingRows);
 
         $monthlyData = [];
         $totalNominal = 0;

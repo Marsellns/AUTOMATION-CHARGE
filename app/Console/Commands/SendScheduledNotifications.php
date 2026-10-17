@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Exports\SiteLossExport;
-use App\Models\AnomaliTagihanInbuilding;
-use App\Models\AnomaliTagihanPln;
+use App\Models\Read\AnomaliTagihanInbuilding;
+use App\Models\Read\AnomaliTagihanPln;
 use App\Models\SiteMonthlyMetric;
 use App\Models\User;
 use App\Notifications\SiteLossNotification;

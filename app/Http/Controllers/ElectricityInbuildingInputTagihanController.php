@@ -30,7 +30,7 @@ class ElectricityInbuildingInputTagihanController extends Controller
     {
         $types = InputUploadTagihanIbc::TYPES;
 
-        // Generate periode yang masuk akal: 2024 s/d 2026 (Jan - Des)
+        // Include stored periods and the next operational year.
         $namaBulan = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
@@ -38,7 +38,10 @@ class ElectricityInbuildingInputTagihanController extends Controller
         ];
 
         $periods = [];
-        for ($year = 2026; $year >= 2024; $year--) {
+        $storedYears = InputUploadTagihanIbc::query()->pluck('periode')->map(fn ($period) => (int) substr($period, 0, 4))->filter(fn ($year) => $year >= 2000 && $year <= 2100);
+        $firstYear = min(now()->year - 2, $storedYears->min() ?? now()->year);
+        $lastYear = max(now()->year + 1, $storedYears->max() ?? now()->year);
+        for ($year = $lastYear; $year >= $firstYear; $year--) {
             for ($month = 12; $month >= 1; $month--) {
                 $code = sprintf('%04d-%02d', $year, $month);
                 $label = $namaBulan[$month] . ' ' . $year;
@@ -83,30 +86,8 @@ class ElectricityInbuildingInputTagihanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate($this->validationRules());
-
-        $b = (float) ($validated['dpp_ppn_b'] ?? 0);
-        $c = (float) ($validated['ppj_pju_c'] ?? 0);
-        $d = (float) ($validated['materai_d'] ?? 0);
-        $e = (float) ($validated['others_e'] ?? 0);
-
-        // Kalkulasi Total Tagihan (F) = B + C + D + E
-        $totalTagihanF = $b + $c + $d + $e;
-
-        $g = (float) ($validated['gross_up_g'] ?? 0);
-        $h = (float) ($validated['ppn_h'] ?? 0);
-        $i = (float) ($validated['dpp_wht_i'] ?? 0);
-        $j = (float) ($validated['wht_j'] ?? 0);
-
-        // Kalkulasi Total Payment (K) = F + G + H - J (atau F + G + H - I - J jika ada potongan tambahan)
-        // Standard formula: Total Tagihan + Gross Up + PPN - WHT
-        $totalPaymentK = ($totalTagihanF + $g + $h) - $j;
-        if ($i > 0 && $j == 0) {
-            // fallback jika WHT belum dihitung tetapi DPP WHT dimasukkan
-            $totalPaymentK = ($totalTagihanF + $g + $h) - $i;
-        }
-
-        $validated['total_tagihan_f'] = $totalTagihanF;
-        $validated['total_payment_k'] = max(0, $totalPaymentK);
+        $this->assertUniqueInvoice($validated);
+        $this->calculateTotals($validated);
 
         $record = InputUploadTagihanIbc::create($validated);
 
@@ -120,6 +101,7 @@ class ElectricityInbuildingInputTagihanController extends Controller
     public function update(Request $request, InputUploadTagihanIbc $inputUploadTagihanIbc): JsonResponse
     {
         $validated = $request->validate($this->validationRules());
+        $this->assertUniqueInvoice($validated, $inputUploadTagihanIbc->id);
         $this->calculateTotals($validated);
         $inputUploadTagihanIbc->update($validated);
 
@@ -129,14 +111,25 @@ class ElectricityInbuildingInputTagihanController extends Controller
         ]);
     }
 
+    private function assertUniqueInvoice(array $data, ?int $except = null): void
+    {
+        $exists = InputUploadTagihanIbc::query()->where('site_id', $data['site_id'])
+            ->where('periode', $data['periode'])->where('type', $data['type'])
+            ->whereRaw("COALESCE(TRIM(no_invoice_bm),'') = ?", [trim($data['no_invoice_bm'] ?? '')])
+            ->when($except !== null, fn ($query) => $query->where('id', '!=', $except))->exists();
+        if ($exists) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['no_invoice_bm' => 'Tagihan dengan site, periode, tipe, dan invoice yang sama sudah ada. Gunakan Edit untuk mengoreksi.']);
+        }
+    }
+
     private function validationRules(): array
     {
         return [
-            'type' => ['required', 'string', 'max:50'], 'site_id' => ['required', 'string', 'max:50'],
+            'type' => ['required', 'string', \Illuminate\Validation\Rule::in(InputUploadTagihanIbc::TYPES)], 'site_id' => ['required', 'string', 'max:50', 'exists:listrik_inbuilding,site_id'],
             'no_faktur_pajak' => ['nullable', 'string', 'max:100'], 'tgl_faktur_pajak' => ['nullable', 'date'],
             'no_bast' => ['nullable', 'string', 'max:100'], 'tgl_bast' => ['nullable', 'date'],
             'meter_awal' => ['nullable', 'numeric'], 'meter_akhir' => ['nullable', 'numeric'],
-            'periode' => ['required', 'string', 'max:50'], 'no_invoice_bm' => ['nullable', 'string', 'max:100'],
+            'periode' => ['required', 'date_format:Y-m'], 'no_invoice_bm' => ['nullable', 'string', 'max:100'],
             'tgl_bayar_to_bm' => ['nullable', 'date'], 'no_invoice_rpj' => ['nullable', 'string', 'max:100'],
             'dpp_ppn_b' => ['nullable', 'numeric', 'min:0'], 'ppj_pju_c' => ['nullable', 'numeric', 'min:0'],
             'materai_d' => ['nullable', 'numeric', 'min:0'], 'others_e' => ['nullable', 'numeric', 'min:0'],

@@ -163,7 +163,7 @@
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-infra" role="button" tabindex="0">
                     <div class="module-kpi-title"><img src="{{ asset('assets/modules/infrastructure.svg') }}" alt="" width="35" height="35"><span>Site Sewa Lahan &amp; Combat</span></div>
-                    <div class="stat-number fs-3 mb-1">{{ number_format($infraTotal) }}</div>
+                    <div class="stat-number fs-3 mb-1" id="kpi-infra-count">{{ number_format($infraTotal) }}</div>
                 </div>
             </div>
 
@@ -171,7 +171,7 @@
             <div class="col-xl-3 col-md-6">
                 <div class="enterprise-kpi kpi-clickable" id="kpi-card-po" role="button" tabindex="0">
                     <div class="module-kpi-title"><img src="{{ asset('assets/modules/purchase-order.svg') }}" alt="" width="35" height="35"><span>Total PO HQ</span></div>
-                    <div class="stat-number fs-3 mb-1">{{ number_format($poCount) }}</div>
+                    <div class="stat-number fs-3 mb-1" id="kpi-po-count">{{ number_format($poCount) }}</div>
                 </div>
             </div>
         </div>
@@ -210,40 +210,40 @@
                             <a href="{{ route('pnl.index') }}" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Profit &amp; Loss</span>
-                                    <span class="access-val">{{ $moduleDataComposition['pnl']['percentage'] }}% &rarr;</span>
+                                    <span class="access-val" data-module-percentage="pnl">{{ $moduleDataComposition['pnl']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['pnl']['percentage'] }}%; background: #2563eb;"></div>
+                                    <div class="kpi-progress-fill" data-module-progress="pnl" style="width: {{ $moduleDataComposition['pnl']['percentage'] }}%; background: #2563eb;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('electricity.centralized.listrik-pln.index') }}" id="dashboard-pln-link" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Electricity Centralized</span>
-                                    <span class="access-val">{{ $moduleDataComposition['electricity']['percentage'] }}% &rarr;</span>
+                                    <span class="access-val" data-module-percentage="electricity">{{ $moduleDataComposition['electricity']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['electricity']['percentage'] }}%; background: #3b82f6;"></div>
+                                    <div class="kpi-progress-fill" data-module-progress="electricity" style="width: {{ $moduleDataComposition['electricity']['percentage'] }}%; background: #3b82f6;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('infrastruktur.sewa-lahan.index') }}" class="text-decoration-none d-block access-link-item mb-2">
                                 <div class="access-row mb-1">
                                     <span class="access-label">Infrastruktur Management</span>
-                                    <span class="access-val">{{ $moduleDataComposition['infrastructure']['percentage'] }}% &rarr;</span>
+                                    <span class="access-val" data-module-percentage="infrastructure">{{ $moduleDataComposition['infrastructure']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['infrastructure']['percentage'] }}%; background: #60a5fa;"></div>
+                                    <div class="kpi-progress-fill" data-module-progress="infrastructure" style="width: {{ $moduleDataComposition['infrastructure']['percentage'] }}%; background: #60a5fa;"></div>
                                 </div>
                             </a>
 
                             <a href="{{ route('po-hq.index') }}" class="text-decoration-none d-block access-link-item mb-1">
                                 <div class="access-row mb-1">
                                     <span class="access-label">PO HQ &amp; Lainnya</span>
-                                    <span class="access-val">{{ $moduleDataComposition['po']['percentage'] }}% &rarr;</span>
+                                    <span class="access-val" data-module-percentage="po">{{ $moduleDataComposition['po']['percentage'] }}% &rarr;</span>
                                 </div>
                                 <div class="kpi-progress-bar">
-                                    <div class="kpi-progress-fill" style="width: {{ $moduleDataComposition['po']['percentage'] }}%; background: #93c5fd;"></div>
+                                    <div class="kpi-progress-fill" data-module-progress="po" style="width: {{ $moduleDataComposition['po']['percentage'] }}%; background: #93c5fd;"></div>
                                 </div>
                             </a>
                         </div>
@@ -495,7 +495,7 @@ $(function () {
     let paymentDetailRequest = null;
     let paymentDetailRequestId = 0;
     const chartInstances = {};
-    const chartDataCache = new Map();
+
     let currentTab = 'overview';
 
     const palette = window.SimasterChartPalette;
@@ -1320,6 +1320,13 @@ $(function () {
     function renderAllCharts(res) {
         if (!res) return;
         cachedChartData = res;
+        const global = res.global_summary || {};
+        if (global.infraTotal !== undefined) $('#kpi-infra-count').text(Number(global.infraTotal).toLocaleString('id-ID'));
+        if (global.poCount !== undefined) $('#kpi-po-count').text(Number(global.poCount).toLocaleString('id-ID'));
+        Object.entries(global.moduleDataComposition || {}).forEach(([key, value]) => {
+            $('[data-module-percentage="' + key + '"]').text(value.percentage + '% →');
+            $('[data-module-progress="' + key + '"]').css('width', value.percentage + '%');
+        });
         $('.dashboard-tab-panel').each(function () {
             $(this).find('.enterprise-kpi, .chart-card').each(function (index) {
                 this.style.animationDelay = `${Math.min(index * 70, 420)}ms`;
@@ -1403,20 +1410,14 @@ $(function () {
         $('#dashboard-year, #dashboard-month, #dashboard-nop').prop('disabled', false);
     }
 
+    window.addEventListener('simaster:data-changed', function (event) { event.detail.handled = true; loadChartData(); });
+
     function loadChartData() {
         if (!selectedPeriod) return;
         const requestPeriod = { ...selectedPeriod };
         const key = chartCacheKey(requestPeriod);
-        const cached = chartDataCache.get(key);
-        const requestId = ++chartRequestId;
 
-        if (cached) {
-            if (chartRequest) chartRequest.abort();
-            setChartsLoading(false);
-            populateFilterControls(cached.filters);
-            renderAllCharts(cached);
-            return;
-        }
+        const requestId = ++chartRequestId;
 
         if (chartRequest) chartRequest.abort();
         $('#dashboard-year, #dashboard-month, #dashboard-nop').prop('disabled', true);
@@ -1427,7 +1428,7 @@ $(function () {
             method: 'GET',
             data: requestPeriod,
             success: function (res) {
-                chartDataCache.set(key, res);
+
                 if (requestId !== chartRequestId || chartCacheKey(selectedPeriod) !== key) return;
                 populateFilterControls(res.filters);
                 renderAllCharts(res);
