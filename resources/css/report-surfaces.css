@@ -5,17 +5,44 @@
     --report-amber: #d97706;
     --report-violet: #8b5cf6;
     --report-tint: 5%;
+    --report-surface: #ffffff;
+    --report-outline: #d4dfec;
+    --report-shadow: 0 3px 12px rgb(15 23 42 / .055);
+    --bs-body-bg: #ffffff;
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-header: #ffffff;
+    background-color: var(--report-surface);
 }
-.simaster-report[data-bs-theme="dark"] { --report-tint: 9%; }
+.simaster-report[data-bs-theme="dark"] {
+    --report-tint: 9%;
+    --report-surface: #111827;
+    --report-outline: #334155;
+    --report-shadow: 0 3px 12px rgb(0 0 0 / .2);
+    --bs-body-bg: #111827;
+    --bg-page: #111827;
+    --bg-surface: #111827;
+    --bg-header: #111827;
+}
 .simaster-report .row > :nth-child(4n + 1) { --report-accent: var(--report-blue); }
 .simaster-report .row > :nth-child(4n + 2) { --report-accent: var(--report-mint); }
 .simaster-report .row > :nth-child(4n + 3) { --report-accent: var(--report-amber); }
 .simaster-report .row > :nth-child(4n + 4) { --report-accent: var(--report-violet); }
 .simaster-report :is(.card, .enterprise-card, .stat-card):not([class*="bg-"]) {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--report-accent, #3b82f6) var(--report-tint), var(--bs-body-bg, #fff)), var(--bs-body-bg, #fff) 85%);
+    background: var(--report-surface);
+    border-color: var(--report-outline);
+    box-shadow: var(--report-shadow);
 }
 .simaster-report :is(.card-header, .enterprise-card-header):not([class*="bg-"]) {
-    background: linear-gradient(110deg, color-mix(in srgb, var(--report-accent, #3b82f6) 8%, var(--bs-body-bg, #fff)), color-mix(in srgb, #0d9488 3%, var(--bs-body-bg, #fff)));
+    background: linear-gradient(110deg, color-mix(in srgb, var(--report-accent, #3b82f6) 6%, var(--report-surface)), var(--report-surface));
+    border-bottom-color: var(--report-outline);
+    border-start-start-radius: inherit;
+    border-start-end-radius: inherit;
+}
+.simaster-report .feasibility-panel {
+    background: var(--report-surface);
+    border-color: var(--report-outline);
+    box-shadow: var(--report-shadow);
 }
 .simaster-report :is(.table, table.dataTable) {
     --bs-table-striped-bg: color-mix(in srgb, #3b82f6 4%, var(--bs-body-bg, #fff));

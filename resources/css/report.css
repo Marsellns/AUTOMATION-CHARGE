@@ -31,30 +31,32 @@
     }
 }
 
-/* Keep dashboard charts and their titles clear of heavy card borders. */
+/* Each chart owns a white surface, a visible outline and its own padded header. */
 .simaster-report .dashboard-tab-panel .chart-card,
 .simaster-report .infra-overview-chart-card,
 .simaster-report .infra-detail-chart-card,
 .simaster-report .electricity-chart-card {
-    border: 0 !important;
-    box-shadow: none !important;
-    background: transparent !important;
+    border: 1px solid var(--report-outline);
+    border-radius: 14px;
+    box-shadow: var(--report-shadow);
+    background: var(--report-surface);
 }
 
 .simaster-report .dashboard-tab-panel .chart-card > .enterprise-card-header,
 .simaster-report .infra-overview-chart-card > .card-header,
 .simaster-report .infra-detail-chart-card > .card-header,
 .simaster-report .electricity-chart-card > .enterprise-card-header {
-    padding: 0 0 0.65rem;
-    border: 0;
-    background: transparent;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--report-outline);
+    flex-wrap: wrap;
+    gap: .75rem;
 }
 
 .simaster-report .dashboard-tab-panel .chart-card > .enterprise-card-body,
 .simaster-report .infra-overview-chart-card > .card-body,
 .simaster-report .infra-detail-chart-card > .card-body,
 .simaster-report .electricity-chart-card > .enterprise-card-body {
-    padding: 0;
+    padding: 1.25rem;
 }
 
 .simaster-report .modal {

@@ -282,7 +282,7 @@
 
                     <div class="row g-3 mb-4">
                         <div class="col-12">
-                            <div class="enterprise-card chart-card">
+                            <div class="enterprise-card chart-card mb-4">
                                 <div class="enterprise-card-header">
                                     <div>
                                         <h2 class="enterprise-card-title">Cakupan Data Pembayaran Listrik — Makro dan Inbuilding</h2>
