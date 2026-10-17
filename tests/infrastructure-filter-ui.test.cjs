@@ -173,7 +173,7 @@ test('main-module filters opt into the shared compact drawer', () => {
     assert.match(layout, /periodMenu\) periodMenu\.classList\.add\('show'\)/, 'existing period picker must be shown only when Filter is opened');
 
     const filtersCss = read('public/css/simaster.css');
-    assert.match(filtersCss, /\.simaster-filter-context-menu\s*\{\s*max-height: min\(72vh, 620px\)/);
+    assert.match(filtersCss, /\.simaster-filter-context-menu\s*\{\s*max-height: none;\s*overflow: visible/);
     assert.match(filtersCss, /\.simaster-filter-drawer \.simaster-filter-wrapper > \.simaster-filter-btn\s*\{\s*display: none !important/);
     assert.doesNotMatch(filtersCss, /\.simaster-filter-drawer\s*\{[\s\S]*?height: 100%/);
 });

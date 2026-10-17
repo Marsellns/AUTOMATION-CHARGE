@@ -72,7 +72,7 @@
 
                 // Header Popover
                 const $menuHeader = $('<div>', {
-                    class: 'd-flex align-items-center justify-content-between pb-2 mb-2 border-bottom',
+                    class: 'd-flex align-items-center justify-content-between pb-2 mb-2 border-bottom simaster-period-header',
                 });
                 const $headerTitle = $('<div>', {
                     class: 'd-flex align-items-center gap-2',
@@ -491,6 +491,7 @@
          cloned, so every page keeps its current IDs and event handlers. --}}
     <script>
         $(function () {
+            let closeActiveFilter = null;
             document.querySelectorAll('[data-simaster-filter-panel]').forEach(function (source, index) {
                 if (source.dataset.simasterFilterReady === 'true') return;
                 source.dataset.simasterFilterReady = 'true';
@@ -532,6 +533,9 @@
 
                 const periodPicker = source.querySelector('.simaster-filter-wrapper');
                 const periodMenu = periodPicker?.querySelector('.simaster-filter-menu');
+                const periodApply = periodMenu?.querySelector('.simaster-period-apply');
+                const filterForm = source.matches('form') ? source : source.querySelector('form');
+                const formSubmit = filterForm?.querySelector('button[type="submit"], button:not([type]), input[type="submit"]');
 
                 // Header setiap modul selalu memakai satu tombol Filter biru.
                 // Kontrol periode/NOP yang sudah ada hanya ditampilkan setelah
@@ -541,6 +545,7 @@
                 trigger.type = 'button';
                 trigger.className = 'simaster-context-filter-trigger';
                 trigger.setAttribute('aria-controls', popupId);
+                trigger.setAttribute('aria-haspopup', 'dialog');
                 trigger.setAttribute('aria-expanded', 'false');
                 trigger.textContent = 'Filter';
                 const actionArea = placeInHeader(trigger);
@@ -550,16 +555,19 @@
                 overlay.className = 'simaster-filter-overlay';
                 overlay.setAttribute('aria-hidden', 'true');
                 overlay.innerHTML = `
-                    <aside class="simaster-filter-drawer" id="${popupId}" role="dialog" aria-modal="true" aria-label="Filter">
+                    <aside class="simaster-filter-drawer" id="${popupId}" role="dialog" aria-modal="true" aria-labelledby="${popupId}-title">
                         <div class="simaster-filter-drawer-header">
+                            <h2 class="simaster-filter-drawer-title" id="${popupId}-title"></h2>
                             <button type="button" class="btn-close simaster-filter-close ms-auto" aria-label="Tutup filter"></button>
                         </div>
                         <div class="simaster-filter-drawer-body"></div>
-                        ${periodMenu ? '' : `<div class="simaster-filter-drawer-footer">
-                            <button type="button" class="btn btn-primary w-100 simaster-filter-apply">✓ Tutup &amp; Terapkan</button>
+                        ${periodMenu || formSubmit ? '' : `<div class="simaster-filter-drawer-footer">
+                            <button type="button" class="btn btn-primary w-100 simaster-filter-apply">Selesai</button>
                         </div>`}
                     </aside>`;
                 const popupBody = overlay.querySelector('.simaster-filter-drawer-body');
+                const popup = overlay.querySelector('.simaster-filter-drawer');
+                overlay.querySelector('.simaster-filter-drawer-title').textContent = source.dataset.simasterFilterPanel || 'Filter';
 
                 if (periodPicker && periodMenu) {
                     source.querySelectorAll('.badge.text-bg-light').forEach(badge => {
@@ -575,6 +583,11 @@
                     periodMenu.classList.add('simaster-filter-context-menu');
                     if (footer) {
                         periodMenu.insertBefore(source, footer);
+                        // Reuse the original action and its listeners in one footer.
+                        footer.className = 'simaster-filter-drawer-footer';
+                        popup.appendChild(footer);
+                        const label = periodApply?.querySelector('span');
+                        if (label) label.textContent = 'Selesai';
                     } else {
                         periodMenu.appendChild(source);
                     }
@@ -583,18 +596,42 @@
                     // kontrol aslinya di pop-up kecil yang sama.
                     popupBody.appendChild(source);
                 }
+                if (formSubmit && !periodMenu) {
+                    // Keep submit/reset inside their original form so Enter,
+                    // validation, GET parameters and delegated handlers survive.
+                    const resets = Array.from(filterForm.querySelectorAll('button[type="reset"], input[type="reset"], a.btn'))
+                        .filter(control => control.type === 'reset' || /reset|atur ulang|↺/i.test(control.textContent + ' ' + (control.getAttribute('aria-label') || '')));
+                    const actions = document.createElement('div');
+                    actions.className = 'simaster-filter-form-actions';
+                    [...resets, formSubmit].forEach(control => {
+                        const previousParent = control.parentElement;
+                        if (control.textContent.trim() === '↺') control.textContent = 'Reset';
+                        actions.appendChild(control);
+                        if (previousParent !== filterForm && previousParent.children.length === 0 && previousParent.textContent.trim() === '') {
+                            previousParent.remove();
+                        }
+                    });
+                    filterForm.appendChild(actions);
+                }
                 reportRoot.appendChild(overlay);
 
                 const closeButton = overlay.querySelector('.simaster-filter-close');
                 const positionPopup = function () {
                     const rect = trigger.getBoundingClientRect();
-                    const popup = overlay.querySelector('.simaster-filter-drawer');
-                    const width = Math.min(390, window.innerWidth - 24);
+                    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+                    const width = Math.min(390, viewportWidth - 24);
                     popup.style.width = `${width}px`;
-                    popup.style.left = `${Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12))}px`;
-                    popup.style.top = `${Math.min(rect.bottom + 8, window.innerHeight - 84)}px`;
+                    popup.style.maxHeight = `${Math.max(0, window.innerHeight - 24)}px`;
+                    popup.style.left = `${Math.max(12, Math.min(rect.right - width, viewportWidth - width - 12))}px`;
+                    const height = popup.offsetHeight;
+                    const below = rect.bottom + 8;
+                    const above = rect.top - height - 8;
+                    const preferred = below + height <= window.innerHeight - 12 ? below : (above >= 12 ? above : below);
+                    popup.style.top = `${Math.max(12, Math.min(preferred, window.innerHeight - height - 12))}px`;
                 };
                 const openPopup = function () {
+                    if (closeActiveFilter) closeActiveFilter();
+                    closeActiveFilter = closePopup;
                     if (periodMenu) periodMenu.classList.add('show');
                     positionPopup();
                     overlay.classList.add('is-open');
@@ -603,6 +640,7 @@
                     window.setTimeout(() => closeButton.focus(), 0);
                 };
                 const closePopup = function () {
+                    if (closeActiveFilter === closePopup) closeActiveFilter = null;
                     if (periodMenu) periodMenu.classList.remove('show');
                     overlay.classList.remove('is-open');
                     overlay.setAttribute('aria-hidden', 'true');
@@ -614,14 +652,31 @@
                 closeButton.addEventListener('click', closePopup);
                 overlay.querySelector('.simaster-filter-apply')?.addEventListener('click', closePopup);
                 periodMenu?.querySelector('.simaster-period-close')?.addEventListener('click', closePopup);
-                periodMenu?.querySelector('.simaster-period-apply')?.addEventListener('click', closePopup);
+                periodApply?.addEventListener('click', closePopup);
                 overlay.addEventListener('click', event => {
                     if (event.target === overlay) closePopup();
                 });
-                window.addEventListener('resize', positionPopup);
-                window.addEventListener('scroll', positionPopup, true);
+                const repositionOpenPopup = function () {
+                    if (overlay.classList.contains('is-open')) positionPopup();
+                };
+                window.addEventListener('resize', repositionOpenPopup);
+                window.addEventListener('scroll', repositionOpenPopup, true);
                 document.addEventListener('keydown', event => {
-                    if (event.key === 'Escape' && overlay.classList.contains('is-open')) closePopup();
+                    if (!overlay.classList.contains('is-open')) return;
+                    if (event.key === 'Escape') closePopup();
+                    if (event.key === 'Tab') {
+                        const controls = Array.from(popup.querySelectorAll('button, a[href], input, select, textarea, [tabindex="0"]'))
+                            .filter(control => !control.disabled && control.getClientRects().length > 0);
+                        const first = controls[0];
+                        const last = controls[controls.length - 1];
+                        if (event.shiftKey && document.activeElement === first) {
+                            event.preventDefault();
+                            last?.focus();
+                        } else if (!event.shiftKey && document.activeElement === last) {
+                            event.preventDefault();
+                            first?.focus();
+                        }
+                    }
                 });
             });
         });
