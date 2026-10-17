@@ -4,7 +4,7 @@
     --report-mint: #0d9488;
     --report-amber: #d97706;
     --report-violet: #8b5cf6;
-    --report-tint: 5%;
+    --report-tint: 14%;
     --report-surface: #ffffff;
     --report-outline: #d4dfec;
     --report-shadow: 0 3px 12px rgb(15 23 42 / .055);
@@ -15,7 +15,7 @@
     background-color: var(--report-surface);
 }
 .simaster-report[data-bs-theme="dark"] {
-    --report-tint: 9%;
+    --report-tint: 18%;
     --report-surface: #111827;
     --report-outline: #334155;
     --report-shadow: 0 3px 12px rgb(0 0 0 / .2);
@@ -28,21 +28,29 @@
 .simaster-report .row > :nth-child(4n + 2) { --report-accent: var(--report-mint); }
 .simaster-report .row > :nth-child(4n + 3) { --report-accent: var(--report-amber); }
 .simaster-report .row > :nth-child(4n + 4) { --report-accent: var(--report-violet); }
-.simaster-report :is(.card, .enterprise-card, .stat-card):not([class*="bg-"]) {
-    background: var(--report-surface);
+.simaster-report :is(.kpi-grid, .dashboard-grid, .feasibility-kpis) > :nth-child(4n + 1) { --report-accent: var(--report-blue); }
+.simaster-report :is(.kpi-grid, .dashboard-grid, .feasibility-kpis) > :nth-child(4n + 2) { --report-accent: var(--report-mint); }
+.simaster-report :is(.kpi-grid, .dashboard-grid, .feasibility-kpis) > :nth-child(4n + 3) { --report-accent: var(--report-amber); }
+.simaster-report :is(.kpi-grid, .dashboard-grid, .feasibility-kpis) > :nth-child(4n + 4) { --report-accent: var(--report-violet); }
+.simaster-report :is(.card, .enterprise-card, .enterprise-kpi, .stat-card, .feasibility-panel, .feasibility-kpi, .feasibility-category-card):not([class*="bg-"]),
+.simaster-report #equipmentRelocationPage :is(.kpi-card, .dashboard-card) {
+    background: linear-gradient(125deg, color-mix(in srgb, var(--tone, var(--po-accent, var(--report-accent, #3b82f6))) var(--report-tint), var(--report-surface)), var(--report-surface) 85%);
     border-color: var(--report-outline);
     box-shadow: var(--report-shadow);
 }
-.simaster-report :is(.card-header, .enterprise-card-header):not([class*="bg-"]) {
-    background: linear-gradient(110deg, color-mix(in srgb, var(--report-accent, #3b82f6) 6%, var(--report-surface)), var(--report-surface));
+.simaster-report :is(.card-header, .enterprise-card-header, .feasibility-panel-header):not([class*="bg-"]),
+.simaster-report #equipmentRelocationPage .dashboard-card .card-header {
+    background: linear-gradient(110deg, color-mix(in srgb, var(--report-accent, #3b82f6) var(--report-tint), var(--report-surface)), var(--report-surface));
     border-bottom-color: var(--report-outline);
     border-start-start-radius: inherit;
     border-start-end-radius: inherit;
 }
-.simaster-report .feasibility-panel {
+.simaster-report :is(.card:has(> .card-header) > .card-body, .enterprise-card-body, .feasibility-panel-body),
+.simaster-report #equipmentRelocationPage .chart-container {
+    /* Transparent chart canvases must keep a neutral plotting surface. */
     background: var(--report-surface);
-    border-color: var(--report-outline);
-    box-shadow: var(--report-shadow);
+    border-end-start-radius: inherit;
+    border-end-end-radius: inherit;
 }
 .simaster-report :is(.table, table.dataTable) {
     --bs-table-striped-bg: color-mix(in srgb, #3b82f6 4%, var(--bs-body-bg, #fff));

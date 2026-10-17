@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/chart-data', [DashboardMasterController::class, 'chartData'])->name('dashboard.chart-data');
     Route::get('/dashboard/electricity-payment-data', [DashboardMasterController::class, 'electricityPaymentData'])->name('dashboard.electricity-payment-data');
     Route::get('/dashboard/electricity-payment-detail', [DashboardMasterController::class, 'electricityPaymentDetail'])->name('dashboard.electricity-payment-detail');
+    Route::get('/electricity/payment-detail', \App\Http\Controllers\ElectricityPaymentDetailController::class)->name('electricity.payment-detail');
 
     // Profit & Loss (P & L) Khusus: Halaman Tabel Data PnL Site & Financial Analytics
     Route::get('/pnl', [PnlViewController::class, 'index'])->name('pnl.index');

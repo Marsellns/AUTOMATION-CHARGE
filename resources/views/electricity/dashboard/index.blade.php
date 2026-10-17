@@ -385,6 +385,7 @@
         </div>
     </div>
     </section>
+    @include('electricity.partials.payment-detail-modal')
 @endsection
 
 @push('scripts')
@@ -491,10 +492,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const theme = { text: isDark() ? '#e2e8f0' : '#334155', gridLine: isDark() ? '#475569' : '#cbd5e1' };
         const comparison = data.electricity_comparison || { labels: [], periods: [], series: [], notes: [] };
         setText('electricity-comparison-caption', renderer.caption(comparison));
-        const openPayment = (key, period) => {
+        const openPayment = (key, period, metric) => {
             if (!period) return;
-            const url = key === 'macro' ? @json(route('electricity.centralized.listrik-all.index')) : @json(route('electricity.inbuilding.payment.index'));
-            window.location.href = `${url}?${new URLSearchParams({ tahun: period.tahun, bulan: period.bulan, status: 'Done' })}`;
+            window.SimasterElectricityDetail.open(key, period, metric, data.filters.nop || '');
         };
         upsertChart('comparisonSites', 'chart-electricity-comparison-sites', renderer.options(comparison, theme, 'sites', openPayment));
         upsertChart('comparisonAmount', 'chart-electricity-comparison-amount', renderer.options(comparison, theme, 'amount', openPayment));
@@ -507,10 +507,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rows = this.points.map((point) => `<span style="color:${point.color}">●</span> ${point.series.name}: <b>${fullCurrency(point.y)}</b>`).join('<br>');
                 return `<b>${this.x}</b><br>${rows}`;
             } },
-            plotOptions: { column: { borderWidth: 0, borderRadius: 4, groupPadding: .12 } },
+            plotOptions: { column: { borderWidth: 0, borderRadius: 4, groupPadding: .12, cursor: 'pointer', point: { events: { click() {
+                window.SimasterElectricityDetail.open(this.series.options.custom.source, trend.periods[this.index], 'billing', data.filters.nop || '');
+            } } } } },
             series: [
-                { name: 'Centralized', data: trend.centralized, color: '#2563eb' },
-                { name: 'Inbuilding', data: trend.inbuilding, color: '#06b6d4' },
+                { name: 'Centralized', data: trend.centralized, color: '#2563eb', custom: { source: 'macro' } },
+                { name: 'Inbuilding', data: trend.inbuilding, color: '#06b6d4', custom: { source: 'inbuilding' } },
                 { name: 'Belum Terbayar', data: trend.pending, color: '#f59e0b', type: 'spline', marker: { radius: 3 }, lineWidth: 2 },
             ],
         });

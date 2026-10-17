@@ -9,7 +9,7 @@
     function options(data, theme, metric = 'sites', onPointClick) {
         const sites = metric === 'sites';
         return {
-            chart: { type: 'column', spacingTop: 35, scrollablePlotArea: { minWidth: Math.max(680, (data.labels || []).length * 110 + 100), scrollPositionX: 0 } },
+            chart: { type: 'column', backgroundColor: 'transparent', spacingTop: 35, scrollablePlotArea: { minWidth: Math.max(680, (data.labels || []).length * 110 + 100), scrollPositionX: 0 } },
             title: { text: null }, credits: { enabled: false }, exporting: { enabled: false },
             xAxis: { categories: data.labels || [], tickmarkPlacement: 'between', gridLineWidth: 1, gridLineColor: theme.gridLine, labels: { style: { color: theme.text } } },
             yAxis: { min: 0, maxPadding: .24, allowDecimals: !sites, gridLineWidth: 1, gridLineColor: theme.gridLine, gridLineDashStyle: 'ShortDash',
@@ -29,7 +29,7 @@
                 dataLabels: { enabled: sites, inside: false, crop: true, overflow: 'justify', y: -5,
                     formatter() { return `${count(this.y)}<br/>(${percent(this.point.custom.percentage)})`; },
                     style: { color: theme.text, fontSize: '13px', fontWeight: '600', textOutline: 'none' } },
-                point: { events: { click() { if (onPointClick) onPointClick(this.series.options.custom.key, data.periods[this.index]); } } } } },
+                point: { events: { click() { if (onPointClick) onPointClick(this.series.options.custom.key, data.periods[this.index], metric); } } } } },
             series: (data.series || []).map(series => ({ name: series.name, color: series.key === 'macro' ? '#f97316' : '#2563eb', custom: { key: series.key },
                 data: series.points.map(point => ({ y: point.available ? (sites ? point.paid_sites : point.amount) : null,
                     custom: { ...point, source: series.source, population_label: series.population_label } })) })),

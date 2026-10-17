@@ -28,7 +28,7 @@ test('shared comparison preserves absent versus zero months, source metadata, an
     const labels = options.plotOptions.column.dataLabels;
     assert.equal(labels.formatter.call({ y: 116, point: options.series[1].data[0] }), '116<br/>(62,4%)');
     options.plotOptions.column.point.events.click.call({ index: 0, series: { options: options.series[1] } });
-    assert.deepEqual(clicked, ['inbuilding', data.periods[0]]);
+    assert.deepEqual(clicked, ['inbuilding', data.periods[0], 'sites']);
     assert.match(renderer.caption(data), /186 site aktif pada master saat ini/);
     const tooltip = options.tooltip.formatter.call({ point: { ...options.series[1].data[0], index: 0 }, series: options.series[1] });
     assert.match(tooltip, /di luar master/);
@@ -37,7 +37,8 @@ test('shared comparison preserves absent versus zero months, source metadata, an
 });
 
 test('amount chart measures rupiah while the site chart measures site counts', () => {
-    const amount = renderer.options(data, { text: '#fff', gridLine: '#475569' }, 'amount');
+    let clicked;
+    const amount = renderer.options(data, { text: '#fff', gridLine: '#475569' }, 'amount', (...args) => { clicked = args; });
     assert.equal(amount.series[0].data[0].y, 14e9);
     assert.equal(amount.series[1].data[0].y, 742037209);
     assert.equal(amount.plotOptions.column.dataLabels.enabled, false);
@@ -45,4 +46,7 @@ test('amount chart measures rupiah while the site chart measures site counts', (
     assert.equal(amount.yAxis.labels.formatter.call({ value: 14e9 }), 'Rp 14 miliar');
     assert.equal(amount.yAxis.gridLineWidth, 1);
     assert.equal(amount.xAxis.gridLineWidth, 1);
+    assert.equal(amount.chart.backgroundColor, 'transparent');
+    amount.plotOptions.column.point.events.click.call({ index: 0, series: { options: amount.series[1] } });
+    assert.deepEqual(clicked, ['inbuilding', data.periods[0], 'amount']);
 });

@@ -453,6 +453,7 @@
         </div>
     </div>
 
+    @include('electricity.partials.payment-detail-modal')
 @endsection
 
 @push('scripts')
@@ -1240,7 +1241,7 @@ $(function () {
                             click: function () {
                                 const p = periods[this.index];
                                 if (p) {
-                                    navigateToElectricityPayments(p.tahun, p.bulan, cachedChartData?.filters?.nop);
+                                    window.SimasterElectricityDetail.open('macro', p, 'billing', cachedChartData?.filters?.nop || '');
                                 } else {
                                     window.location.href = routesMap.payment;
                                 }
@@ -1308,14 +1309,9 @@ $(function () {
         const renderer = window.SimasterElectricityComparison;
         $('#electricity-payment-caption').text(renderer.caption(data));
         $('#electricity-all-caption').text('Nominal pembayaran per bulan. Inquiry PLN dan transaksi IBC Pending tidak dihitung sebagai pembayaran. Bulan tanpa sumber ditandai belum tersedia.');
-        const openDetail = function (key, period) {
+        const openDetail = function (key, period, metric) {
             if (!period) return;
-            if (key === 'macro') {
-                showElectricityPaymentDetail(period.tahun, period.bulan, cachedChartData?.filters?.nop || '');
-            } else {
-                const params = new URLSearchParams({ tahun: period.tahun, bulan: period.bulan, status: 'Done' });
-                window.location.href = `{{ route('electricity.inbuilding.payment.index') }}?${params}`;
-            }
+            window.SimasterElectricityDetail.open(key, period, metric, cachedChartData?.filters?.nop || '');
         };
         upsertChart('electricityPayment', 'chart-electricity-payment', renderer.options(data, theme, 'sites', openDetail));
         upsertChart('electricityAll', 'chart-electricity-all', renderer.options(data, theme, 'amount', openDetail));
