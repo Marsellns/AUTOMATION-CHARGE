@@ -3,10 +3,10 @@
 @section('title', 'Data Site Unlock — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — Data Site Unlock</h1>
-        <div class="d-flex gap-2">
-            @role('admin')<a href="{{ route('infrastruktur.upload', 'site-unlock') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        <div class="d-flex flex-wrap gap-2">
+            @include('infrastruktur.partials.entry-actions', ['dataset' => 'site-unlock'])
             <a href="{{ route('infrastruktur.upload.export', 'site-unlock') }}" class="btn btn-sm btn-outline-brand">Download Excel</a>
         </div>
     </div>
@@ -43,6 +43,7 @@
             </table>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'site-unlock'])
 @endsection
 
 @push('styles')

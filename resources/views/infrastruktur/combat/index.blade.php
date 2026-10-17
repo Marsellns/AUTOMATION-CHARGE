@@ -3,9 +3,9 @@
 @section('title', 'Combat — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — Combat</h1>
-        @role('admin')<a href="{{ route('infrastruktur.upload', 'combat') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        @include('infrastruktur.partials.entry-actions', ['dataset' => 'combat'])
     </div>
 
     @include('infrastruktur.partials.analytics', ['scope' => 'combat'])
@@ -107,6 +107,7 @@
             </div>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'combat'])
 @endsection
 
 @push('styles')

@@ -3,9 +3,9 @@
 @section('title', 'Recurring (ANT & Ipas) — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — Recurring (ANT & Ipas)</h1>
-        @role('admin')<a href="{{ route('infrastruktur.upload', 'recurring-ipas') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        @include('infrastruktur.partials.entry-actions', ['dataset' => 'recurring-ipas'])
     </div>
 
     {{-- Toolbar --}}
@@ -57,6 +57,7 @@
             </div>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'recurring-ipas'])
 @endsection
 
 @push('styles')

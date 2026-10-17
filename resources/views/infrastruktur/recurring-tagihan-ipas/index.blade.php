@@ -3,10 +3,10 @@
 @section('title', 'Recurring (Tagihan Ipas) — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — Recurring (Tagihan Ipas)</h1>
-        <div class="d-flex gap-2">
-            @role('admin')<a href="{{ route('infrastruktur.upload', 'recurring-tagihan-ipas') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        <div class="d-flex flex-wrap gap-2">
+            @include('infrastruktur.partials.entry-actions', ['dataset' => 'recurring-tagihan-ipas'])
             <a href="{{ route('infrastruktur.upload.export', 'recurring-tagihan-ipas') }}" class="btn btn-sm btn-outline-brand">Download Excel</a>
         </div>
     </div>
@@ -61,6 +61,7 @@
             </div>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'recurring-tagihan-ipas'])
 @endsection
 
 @push('scripts')

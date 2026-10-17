@@ -3,9 +3,9 @@
 @section('title', 'Sewa Lahan (Jaknet & Dapot) — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — Sewa Lahan (Jaknet & Dapot)</h1>
-        @role('admin')<a href="{{ route('infrastruktur.upload', 'jaknet') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        @include('infrastruktur.partials.entry-actions', ['dataset' => 'jaknet'])
     </div>
 
     {{-- Toolbar --}}
@@ -20,7 +20,7 @@
                 </select>
             </div>
             <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
-                <input class="form-check-input" type="checkbox" id="toggle-unlock" checked>
+                <input class="form-check-input" type="checkbox" id="toggle-unlock" @checked(! request()->boolean('show_unlock'))>
                 <label class="form-check-label small fw-semibold text-nowrap" for="toggle-unlock">Sembunyikan Site Unlock</label>
             </div>
             <a href="{{ route('infrastruktur.jaknet.export-excel') }}" id="btn-export" class="btn btn-sm btn-outline-brand ms-auto">
@@ -56,6 +56,7 @@
             </div>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'jaknet'])
 @endsection
 
 @push('styles')

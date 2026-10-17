@@ -3,9 +3,9 @@
 @section('title', 'BAPSS — Infrastruktur Management — SIMAWAR')
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Infrastruktur Management — BAPSS</h1>
-        @role('admin')<a href="{{ route('infrastruktur.upload', 'bapss') }}" class="btn btn-sm btn-brand">Upload Excel</a>@endrole
+        @include('infrastruktur.partials.entry-actions', ['dataset' => 'bapss'])
     </div>
 
     {{-- Toolbar --}}
@@ -51,6 +51,7 @@
             </table>
         </div>
     </div>
+    @include('infrastruktur.partials.manual-entry-modal', ['dataset' => 'bapss'])
 @endsection
 
 @push('scripts')

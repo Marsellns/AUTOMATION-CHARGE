@@ -143,6 +143,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [InfrastructureDashboardController::class, 'index'])->name('index');
         Route::get('/dashboard-data', [InfrastructureDashboardController::class, 'data'])->name('dashboard.data');
         Route::get('/dashboard-details', [InfrastructureDashboardController::class, 'details'])->name('dashboard.details');
+        Route::post('{dataset}/manual', [\App\Http\Controllers\InfrastructureManualEntryController::class, 'store'])
+            ->whereIn('dataset', array_keys(\App\Support\InfrastructureManualEntry::DATASETS))
+            ->name('manual.store')->middleware('role:admin');
 
         // Upload dataset per modul (halaman khusus, tanpa menu baru).
         Route::get('{dataset}/upload', [InfrastructureUploadController::class, 'create'])
@@ -175,22 +178,22 @@ Route::middleware('auth')->group(function () {
             ->parameters(['sewa-lahan' => 'sewaLahan'])
             ->middlewareFor(['edit', 'update', 'destroy'], 'role:admin');
 
-        // -- Recurring (ANT & Ipas) — read-only --
+        // -- Recurring (ANT & Ipas) --
         Route::get('recurring-ipas', [RecurringIpasController::class, 'index'])->name('recurring-ipas.index');
         Route::get('recurring-ipas/data', [RecurringIpasController::class, 'data'])->name('recurring-ipas.data');
         Route::get('recurring-ipas/export-excel', [RecurringIpasController::class, 'exportExcel'])->name('recurring-ipas.export-excel');
         Route::get('recurring-ipas/export-csv', [RecurringIpasController::class, 'exportCsv'])->name('recurring-ipas.export-csv');
 
-        // -- Recurring (Tagihan Ipas) — read-only --
+        // -- Recurring (Tagihan Ipas) --
         Route::get('recurring-tagihan-ipas', [RecurringTagihanIpasController::class, 'index'])->name('recurring-tagihan-ipas.index');
         Route::get('recurring-tagihan-ipas/data', [RecurringTagihanIpasController::class, 'data'])->name('recurring-tagihan-ipas.data');
 
-        // -- Sewa Lahan (Jaknet & Dapot) — read-only --
+        // -- Sewa Lahan (Jaknet & Dapot) --
         Route::get('jaknet', [JaknetContractController::class, 'index'])->name('jaknet.index');
         Route::get('jaknet/data', [JaknetContractController::class, 'data'])->name('jaknet.data');
         Route::get('jaknet/export-excel', [JaknetContractController::class, 'exportExcel'])->name('jaknet.export-excel');
 
-        // -- Data Site Unlock — read-only --
+        // -- Data Site Unlock --
         Route::get('site-unlock', [DataSiteUnlockController::class, 'index'])->name('site-unlock.index');
         Route::get('site-unlock/data', [DataSiteUnlockController::class, 'data'])->name('site-unlock.data');
 
