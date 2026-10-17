@@ -462,7 +462,6 @@
 <script>
 $(function () {
     const chartApiUrl = "{{ route('dashboard.chart-data') }}";
-    const electricityPaymentApiUrl = "{{ route('dashboard.electricity-payment-data') }}";
     const routesMap = {
         pnl: "{{ route('pnl.index') }}",
         pnlData: "{{ route('pnl.data') }}",
@@ -491,8 +490,8 @@ $(function () {
     let cachedChartData = null;
     let chartRequest = null;
     let chartRequestId = 0;
-    let paymentRequest = null;
-    let paymentRequestId = 0;
+    let paymentDetailRequest = null;
+    let paymentDetailRequestId = 0;
     const chartInstances = {};
     const chartDataCache = new Map();
     let currentTab = 'overview';
@@ -872,8 +871,11 @@ $(function () {
         );
 
         upsertChart('electricityPayment', 'chart-electricity-payment', {
-            chart: { type: 'column' },
-            spacingTop: 44,
+            chart: {
+                type: 'column',
+                spacingTop: 24,
+                scrollablePlotArea: { minWidth: 760, scrollPositionX: 0 }
+            },
             exporting: { enabled: false },
             xAxis: {
                 categories: labels,
@@ -883,7 +885,8 @@ $(function () {
             yAxis: {
                 min: 0,
                 // Reserve headroom above 100% so data labels stay inside the plot.
-                max: 110,
+                max: 120,
+                endOnTick: false,
                 tickPositions: [0, 25, 50, 75, 100],
                 title: { text: 'Cakupan pada Snapshot (%)', style: { color: theme.text, fontSize: '11px' } },
                 labels: { format: '{value}%', style: { color: theme.text, fontSize: '11px' } },
@@ -894,7 +897,7 @@ $(function () {
                 formatter: function () {
                     const i = this.point.index;
                     return `<b>${labels[i]}</b><br>` +
-                        `Terbayar: <b>${Number(paidCounts[i] || 0).toLocaleString('id-ID')}</b> site<br>` +
+                        `Site dengan flagging: <b>${Number(paidCounts[i] || 0).toLocaleString('id-ID')}</b><br>` +
                         `Site pada snapshot: <b>${Number(activeSites[i] || 0).toLocaleString('id-ID')}</b><br>` +
                         `Persentase: <b>${dataAvailable[i] ? `${Number(percentages[i] || 0).toLocaleString('id-ID')}%` : 'Belum tersedia'}</b><br>` +
                         `Total biaya: <b>Rp ${Number(costs[i] || 0).toLocaleString('id-ID')}</b>` +
@@ -910,17 +913,18 @@ $(function () {
                         enabled: true,
                         formatter: function () {
                             const i = this.point.index;
-                            return `${Number(paidCounts[i] || 0)}/${Number(activeSites[i] || 0)}`;
+                            // Two short, readable lines also fit narrow monthly columns.
+                            return `${Number(paidCounts[i] || 0).toLocaleString('id-ID')}<br/>/ ${Number(activeSites[i] || 0).toLocaleString('id-ID')}`;
                         },
                         style: {
-                            color: '#ffffff',
-                            fontSize: '10px',
+                            color: theme.text,
+                            fontSize: '11px',
                             fontWeight: '600',
                             textOutline: 'none'
                         },
-                        inside: true,
-                        verticalAlign: 'top',
-                        y: 6,
+                        inside: false,
+                        align: 'center',
+                        y: -6,
                         crop: true,
                         overflow: 'justify'
                     },
@@ -1000,14 +1004,22 @@ $(function () {
     }
 
     function showElectricityPaymentDetail(year, month, nop) {
+        const requestId = ++paymentDetailRequestId;
+        if (paymentDetailRequest) paymentDetailRequest.abort();
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('electricityPaymentModal'));
         $('#electricity-payment-title').text(`Site Tanpa Flagging Pembayaran — ${monthNames[month - 1]} ${year}`);
         $('#electricity-payment-detail-summary').text('Memuat site pada snapshot yang belum memiliki nilai flagging pembayaran...');
         $('#electricity-payment-detail-body').html('<tr><td colspan="5" class="text-center text-body-secondary">Memuat data...</td></tr>');
         modal.show();
 
-        $.get("{{ route('dashboard.electricity-payment-detail') }}", { tahun: year, bulan: month, nop: nop })
+        paymentDetailRequest = $.ajax({
+            url: "{{ route('dashboard.electricity-payment-detail') }}",
+            method: 'GET',
+            data: { tahun: year, bulan: month, nop: nop },
+            timeout: 30000
+        })
             .done(function (res) {
+                if (requestId !== paymentDetailRequestId) return;
                 const rows = (res.sites || []).map(site => `
                     <tr>
                         <td>${escapeHtml(site.site_id)}</td>
@@ -1025,11 +1037,23 @@ $(function () {
                     rows || '<tr><td colspan="5" class="text-center text-success">Semua site pada snapshot memiliki flagging pembayaran.</td></tr>'
                 );
             })
-            .fail(function () {
-                $('#electricity-payment-detail-summary').text('Gagal mengambil detail pembayaran.');
+            .fail(function (xhr) {
+                if (requestId !== paymentDetailRequestId || xhr.statusText === 'abort') return;
+                $('#electricity-payment-detail-summary').text(xhr.statusText === 'timeout'
+                    ? 'Server terlalu lama merespons. Tutup rincian, lalu klik bulan untuk mencoba lagi.'
+                    : 'Gagal mengambil detail pembayaran. Tutup rincian, lalu coba lagi.');
                 $('#electricity-payment-detail-body').html('<tr><td colspan="5" class="text-center text-danger">Data tidak dapat dimuat.</td></tr>');
+            })
+            .always(function () {
+                if (requestId === paymentDetailRequestId) paymentDetailRequest = null;
             });
     }
+
+    $('#electricityPaymentModal').on('hidden.bs.modal', function () {
+        ++paymentDetailRequestId;
+        if (paymentDetailRequest) paymentDetailRequest.abort();
+        paymentDetailRequest = null;
+    });
 
     function escapeHtml(value) {
         return $('<div>').text(value == null || value === '' ? '-' : String(value)).html();
@@ -1305,6 +1329,7 @@ $(function () {
         renderGrowthBars(res.pnl || {}, theme);
         renderCategoryDonut(res.pnl_status || [], theme);
         renderSiteOwners(res.site_owners || {}, theme);
+        renderElectricityPayment(res.electricity_payment || {}, theme);
         renderElectricityAll(res.electricity_all || {}, theme);
 
         // Screen 2: Analytics
@@ -1312,32 +1337,6 @@ $(function () {
         renderStorageAllocation(res.infra || [], theme);
         renderPeakUsage(res.pln || {}, theme);
         renderErrorDistribution(res.anomalies || {}, theme);
-    }
-
-    function loadElectricityPaymentData(period) {
-        const requestId = ++paymentRequestId;
-        if (paymentRequest) paymentRequest.abort();
-        paymentRequest = $.ajax({
-            url: electricityPaymentApiUrl,
-            method: 'GET',
-            data: period,
-            timeout: 30000,
-            success: function (res) {
-                if (requestId !== paymentRequestId) return;
-                renderElectricityPayment(res || {}, getThemeStyles());
-            },
-            error: function (xhr) {
-                if (requestId !== paymentRequestId || xhr.statusText === 'abort') return;
-                $('#electricity-payment-caption').text(
-                    xhr.statusText === 'timeout'
-                        ? 'Data pembayaran terlalu lama dimuat. Silakan coba lagi.'
-                        : 'Data pembayaran tidak dapat dimuat.'
-                );
-            },
-            complete: function () {
-                if (requestId === paymentRequestId) paymentRequest = null;
-            }
-        });
     }
 
     // Filter controls management
@@ -1397,11 +1396,6 @@ $(function () {
             if (chartRequest) chartRequest.abort();
             setChartsLoading(false);
             populateFilterControls(cached.filters);
-            loadElectricityPaymentData({
-                tahun: cached.filters.tahun,
-                bulan: cached.filters.all_months ? 'all' : cached.filters.bulan,
-                nop: cached.filters.nop || ''
-            });
             renderAllCharts(cached);
             return;
         }
@@ -1418,11 +1412,6 @@ $(function () {
                 chartDataCache.set(key, res);
                 if (requestId !== chartRequestId || chartCacheKey(selectedPeriod) !== key) return;
                 populateFilterControls(res.filters);
-                loadElectricityPaymentData({
-                    tahun: res.filters.tahun,
-                    bulan: res.filters.all_months ? 'all' : res.filters.bulan,
-                    nop: res.filters.nop || ''
-                });
                 renderAllCharts(res);
             },
             error: function (xhr) {

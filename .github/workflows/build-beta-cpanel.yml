@@ -59,6 +59,7 @@ jobs:
           composer install --prefer-dist --no-interaction
           npm ci
           npm run build
+          node --test tests/*.test.cjs
           cp .env.example .env
           php artisan key:generate --force
           php <<'PHP'

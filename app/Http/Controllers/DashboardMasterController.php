@@ -603,43 +603,32 @@ class DashboardMasterController extends Controller
         $nopInput = trim((string) ($validated['nop'] ?? ''));
         $nop = $nopInput === '' || strcasecmp($nopInput, 'all') === 0 ? null : $nopInput;
         $electricityNop = $nop === null ? null : $this->normalizedElectricityNop($nop);
-        $activeSiteQuery = PaymentPlnMasterMonthly::query()
+        // Aggregate this period once. Correlated UPPER/TRIM lookups otherwise
+        // rescan the payment snapshot for every site on shared hosting.
+        $snapshotSites = DB::table('payment_pln_master_monthly')
             ->where('tahun', $validated['tahun'])
             ->where('bulan', $validated['bulan'])
-            ->where(function ($query) {
-                $query->whereNull('status_aktif_site')
-                    ->orWhereRaw("LOWER(TRIM(status_aktif_site)) <> 'tidak aktif'");
-            })
-            ->when($electricityNop !== null, function ($query) use ($electricityNop) {
-                $query->whereExists(function ($siteQuery) use ($electricityNop) {
-                    $siteQuery->selectRaw('1')
-                        ->from('listrik_pln')
-                        ->whereRaw('UPPER(TRIM(listrik_pln.site_id)) = UPPER(TRIM(payment_pln_master_monthly.site_id))')
-                        ->whereRaw(
-                            "REPLACE(REPLACE(UPPER(TRIM(listrik_pln.nop)), 'NOP ', ''), 'NOP-', '') = ?",
-                            [$electricityNop]
-                        );
-                });
-            })
-            ->whereNotExists(function ($query) use ($validated) {
-                $query->selectRaw('1')
-                    ->from('payment_pln_master_monthly as paid_master')
-                    ->whereRaw('UPPER(TRIM(paid_master.site_id)) = UPPER(TRIM(payment_pln_master_monthly.site_id))')
-                    ->where('paid_master.tahun', $validated['tahun'])
-                    ->where('paid_master.bulan', $validated['bulan'])
-                    ->where('paid_master.is_paid', true);
-            });
-        $missingCount = (clone $activeSiteQuery)->distinct('site_id')->count('site_id');
+            ->selectRaw('UPPER(TRIM(site_id)) as site_id, MAX(site_name) as site_name, MAX(id_pelanggan) as id_pelanggan, MAX(status_aktif_site) as status_aktif_site')
+            ->selectRaw("MAX(CASE WHEN status_aktif_site IS NULL OR LOWER(TRIM(status_aktif_site)) <> 'tidak aktif' THEN 1 ELSE 0 END) as has_active")
+            ->selectRaw('MAX(is_paid) as has_paid')
+            ->groupByRaw('UPPER(TRIM(site_id))');
+        $plnSites = DB::table('listrik_pln')
+            ->when($electricityNop !== null, fn ($query) => $query->whereRaw(
+                "REPLACE(REPLACE(UPPER(TRIM(nop)), 'NOP ', ''), 'NOP-', '') = ?",
+                [$electricityNop]
+            ))
+            ->selectRaw('UPPER(TRIM(site_id)) as site_id, MIN(nop) as nop')
+            ->groupByRaw('UPPER(TRIM(site_id))');
+        $activeSiteQuery = DB::query()
+            ->fromSub($snapshotSites, 'snapshot')
+            ->leftJoinSub($plnSites, 'pln', 'pln.site_id', '=', 'snapshot.site_id')
+            ->where('snapshot.has_active', 1)
+            ->where('snapshot.has_paid', 0)
+            ->when($electricityNop !== null, fn ($query) => $query->whereNotNull('pln.site_id'));
+        $missingCount = (clone $activeSiteQuery)->count();
         $activeSites = $activeSiteQuery
-            ->selectRaw('site_id, MAX(site_name) as site_name, MAX(id_pelanggan) as id_pelanggan, MAX(status_aktif_site) as status_aktif_site')
-            ->selectSub(function ($query) {
-                $query->from('listrik_pln as detail_pln')
-                    ->select('nop')
-                    ->whereRaw('UPPER(TRIM(detail_pln.site_id)) = UPPER(TRIM(payment_pln_master_monthly.site_id))')
-                    ->limit(1);
-            }, 'nop')
-            ->groupBy('site_id')
-            ->orderBy('site_id')
+            ->select('snapshot.site_id', 'snapshot.site_name', 'snapshot.id_pelanggan', 'snapshot.status_aktif_site', 'pln.nop')
+            ->orderBy('snapshot.site_id')
             ->limit(5000)
             ->get();
 
@@ -829,31 +818,27 @@ class DashboardMasterController extends Controller
         $query = ListrikAll::query()
             ->where('tahun', $tahun)
             ->when($nop !== null, function ($query) use ($nop) {
-                $query->whereExists(function ($siteQuery) use ($nop) {
-                    $siteQuery->selectRaw('1')
-                        ->from('listrik_pln')
-                        ->whereRaw('UPPER(TRIM(listrik_pln.site_id)) = UPPER(TRIM(listrik_all.site_id))')
+                $query->whereIn(DB::raw('UPPER(TRIM(listrik_all.site_id))'), function ($siteQuery) use ($nop) {
+                    $siteQuery->from('listrik_pln')
+                        ->selectRaw('UPPER(TRIM(site_id))')
                         ->whereRaw(
                             "REPLACE(REPLACE(UPPER(TRIM(listrik_pln.nop)), 'NOP ', ''), 'NOP-', '') = ?",
                             [$nop]
                         );
                 });
             });
-        $siteCount = (clone $query)->distinct('site_id')->count('site_id');
-        $costs = [];
-        $siteCounts = [];
-
+        $query->selectRaw('COUNT(DISTINCT site_id) as site_count');
         foreach ($months as $month) {
-            $costs[] = (float) (clone $query)->sum($month);
-            $siteCounts[] = (int) (clone $query)->where($month, '>', 0)->distinct('site_id')->count('site_id');
+            $query->selectRaw("SUM({$month}) as {$month}_cost, COUNT(DISTINCT CASE WHEN {$month} > 0 THEN site_id END) as {$month}_sites");
         }
+        $totals = $query->first();
 
         return [
             'labels' => $labels,
             'year' => $tahun,
-            'site_count' => $siteCount,
-            'site_counts' => $siteCounts,
-            'costs' => $costs,
+            'site_count' => (int) ($totals->site_count ?? 0),
+            'site_counts' => array_map(fn ($month) => (int) ($totals->{$month.'_sites'} ?? 0), $months),
+            'costs' => array_map(fn ($month) => (float) ($totals->{$month.'_cost'} ?? 0), $months),
         ];
     }
 

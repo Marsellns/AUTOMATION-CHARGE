@@ -56,7 +56,7 @@ asset="simawar-beta-$sha.zip"
 if [[ ! -d "$release" ]]; then
     [[ ! -e "$release" && ! -L "$release" ]] || fail 'release path is not a regular directory'
     stage="$(mktemp -d "$deploy_root/.incoming-$sha-XXXXXXXX")"
-    url="https://github.com/Marsellns/AUTOMATION-CHARGE/releases/download/beta-$sha/$asset"
+    url="https://github.com/Marsellns/SIMAWAR-TKM/releases/download/beta-$sha/$asset"
     curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 10 --max-time 300 -o "$stage/$asset" "$url" ||
         fail "GitHub build package for $sha is unavailable; wait for its beta workflow"
     curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 10 --max-time 30 -o "$stage/$asset.sha256" "$url.sha256" ||

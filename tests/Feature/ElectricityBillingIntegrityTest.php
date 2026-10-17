@@ -219,4 +219,57 @@ class ElectricityBillingIntegrityTest extends TestCase
             'tahun' => 2026,
         ]);
     }
+
+    public function test_missing_flagging_detail_groups_accounts_and_excludes_paid_inactive_and_other_periods(): void
+    {
+        $user = User::factory()->create(['account_status' => 'approved']);
+        $rows = [
+            ['MISSING', 'M-1', false, 'Aktif', 8],
+            [' missing ', 'M-2', false, null, 8],
+            ['PAID', 'P-1', false, 'Aktif', 8],
+            [' paid ', 'P-2', true, 'Aktif', 8],
+            ['INACTIVE', 'I-1', false, ' Tidak Aktif ', 8],
+            ['OTHER-MONTH', 'O-1', false, 'Aktif', 7],
+            ['NO-PLN', 'N-1', false, null, 8],
+        ];
+        foreach ($rows as [$site, $account, $paid, $status, $month]) {
+            DB::table('payment_pln_master_monthly')->insert([
+                'site_id' => $site, 'id_pelanggan' => $account, 'site_name' => 'Site '.$site,
+                'is_paid' => $paid, 'status_aktif_site' => $status, 'bulan' => $month, 'tahun' => 2026,
+            ]);
+        }
+        DB::table('listrik_pln')->insert([
+            ['site_id' => ' missing ', 'id_pelanggan' => 'M-1', 'nop' => 'NOP BEKASI'],
+            ['site_id' => 'MISSING', 'id_pelanggan' => 'M-2', 'nop' => 'BEKASI'],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.electricity-payment-detail', ['tahun' => 2026, 'bulan' => 8]))
+            ->assertOk()->assertJsonPath('total', 2)->assertJsonPath('limited', false)
+            ->assertJsonCount(2, 'sites')->assertJsonPath('sites.0.site_id', 'MISSING')
+            ->assertJsonPath('sites.1.site_id', 'NO-PLN');
+
+        $this->getJson(route('dashboard.electricity-payment-detail', ['tahun' => 2026, 'bulan' => 8, 'nop' => 'NOP-BEKASI']))
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonCount(1, 'sites')
+            ->assertJsonPath('sites.0.site_id', 'MISSING')->assertJsonPath('sites.0.nop', 'BEKASI');
+
+        $this->getJson(route('dashboard.electricity-payment-detail', ['tahun' => 2025, 'bulan' => 8]))
+            ->assertOk()->assertJsonPath('total', 0)->assertJsonCount(0, 'sites');
+    }
+
+    public function test_missing_flagging_detail_reports_total_before_limiting_results(): void
+    {
+        $user = User::factory()->create(['account_status' => 'approved']);
+        foreach (array_chunk(range(1, 5001), 500) as $batch) {
+            DB::table('payment_pln_master_monthly')->insert(array_map(fn ($index) => [
+                'site_id' => sprintf('SITE-%05d', $index), 'bulan' => 8, 'tahun' => 2026, 'is_paid' => false,
+            ], $batch));
+        }
+
+        $this->actingAs($user)
+            ->getJson(route('dashboard.electricity-payment-detail', ['tahun' => 2026, 'bulan' => 8]))
+            ->assertOk()->assertJsonPath('total', 5001)->assertJsonPath('limited', true)
+            ->assertJsonCount(5000, 'sites')->assertJsonPath('sites.0.site_id', 'SITE-00001')
+            ->assertJsonPath('sites.4999.site_id', 'SITE-05000');
+    }
 }

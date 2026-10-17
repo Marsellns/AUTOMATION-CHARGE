@@ -19,6 +19,14 @@ Unggahan website memakai `CentralizedListrikAllImport` untuk memperbarui `listri
 
 Tabel Listrik All memakai nilai master pembayaran sesuai pasangan Site ID dan ID Pelanggan bila tersedia. Ini mencegah total pembayaran satu site diulang untuk setiap rekening. Ekspor tetap mengikuti kontrak sebelumnya: agregat per site dari master pembayaran bila tersedia, atau data Listrik All bila master tidak tersedia. Diagram cakupan menampilkan periode tanpa data sebagai tidak tersedia, bukan 0%.
 
+## Performa dashboard dan rincian flagging
+
+Rincian site tanpa flagging mengagregasi snapshot satu periode dan master NOP terlebih dahulu, lalu menggabungkannya per Site ID yang telah dinormalisasi. Hindari mengembalikan pencarian `UPPER(TRIM(site_id))` berkorelasi untuk setiap baris: pola itu memindai snapshot berulang kali dan terasa lambat di shared hosting. Site dengan beberapa rekening tetap tampil sekali; site tidak aktif serta site yang mempunyai flagging positif pada rekening mana pun dalam periode yang sama dikecualikan. Total dihitung sebelum batas tampilan 5.000 site diterapkan.
+
+Ringkasan Listrik All menghitung seluruh bulan dalam satu query agregasi. Grafik pembayaran menggunakan `electricity_payment` dari respons dashboard yang sama, sehingga tidak mengirim request kedua untuk data yang sudah diterima. Label jumlah memakai dua baris di atas batang, menyesuaikan tema, dan grafik dapat digeser horizontal pada layar sempit. Request rincian dibatalkan saat modal ditutup atau bulan berganti; timeout menampilkan kegagalan dan petunjuk mencoba lagi.
+
+Pengukuran lokal 17 Oktober 2026 pada snapshot Agustus 2026: rincian semua NOP sekitar 4.391 ms menjadi 217 ms, dan filter NOP Bekasi sekitar 23.020 ms menjadi 82 ms. Jumlah dan daftar Site ID sebelum/sesudah sama pada data yang diperiksa. Angka ini bukan pengukuran server live; jaringan, beban akun hosting, dan cache database dapat memengaruhi hasil live. Perubahan ini tidak memerlukan migrasi database.
+
 ## Notifikasi pagi dan sore
 
 - Waktu: pukul 08.00 dan 17.00 WIB setiap hari (`Asia/Jakarta`). Pengaturan: `NOTIFICATION_DAILY_AT`, `NOTIFICATION_EVENING_AT`, dan `NOTIFICATION_TIMEZONE`.
